@@ -1,0 +1,5 @@
+This is a collection of programs which aren't large enough to deem an independent project/repository.
+
+All the programs here have been modified in someway. Usually it's self-explanitory.
+
+Patches of mine that haven't been accepted upstream also go here. (Or a collection + installer, as is the case with ./nethack/)
