@@ -1,0 +1,22 @@
+diff -Naur nethack-3.4.3/src/pray.c nethack-3.4.3-pray_paren/src/pray.c
+--- nethack-3.4.3/src/pray.c	2009-03-22 13:12:24.000000000 -0400
++++ nethack-3.4.3-pray_paren/src/pray.c	2009-03-22 13:18:02.000000000 -0400
+@@ -1287,15 +1287,13 @@
+ 		pline("%s is enraged...", u_gname());
+ 		pline("Fortunately, %s permits you to live...", a_gname());
+ 		pline("A cloud of %s smoke surrounds you...",
+-
+-#ifdef RECORD_ACHIEVE
+-                achieve.ascended = 1;
+-#endif
+-
+ 		      hcolor((const char *)"orange"));
+ 		done(ESCAPED);
+ 	    } else { /* super big win */
+ 		adjalign(10);
++#ifdef RECORD_ACHIEVE
++                achieve.ascended = 1;
++#endif
+                 pline("%s sings, and you are bathed in radiance...",
+                     Hallucination?"The fat lady":"An invisible choir");
+ 		godvoice(altaralign, "Congratulations, mortal!");

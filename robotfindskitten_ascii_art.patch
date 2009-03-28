@@ -1,0 +1,52 @@
+diff -Naur robotfindskitten-1.7320508.406/src/robotfindskitten.c robotfindskitten-1.7320508.406-256art/src/robotfindskitten.c
+--- robotfindskitten-1.7320508.406/src/robotfindskitten.c	2007-11-30 23:25:21.000000000 -0500
++++ robotfindskitten-1.7320508.406-256art/src/robotfindskitten.c	2009-03-28 18:39:39.000000000 -0400
+@@ -378,6 +378,36 @@
+   printw("ends when robotfindskitten. Alternatively, you may end the game by hitting\n");
+   printw("the Esc key. See the documentation for more information.\n\n");
+   printw("Press any key to start.\n");
++
++  printw("\n\n");
++  attrset(COLOR_PAIR(101));
++  printw(" ["); attrset(COLOR_PAIR(COLOR_GREEN));
++  printw("-"); attrset(COLOR_PAIR(101)); printw("]                ");
++  attrset(COLOR_PAIR(100));
++  printw(".::. .::.");
++  attrset(COLOR_PAIR(102));
++  printw("              |\\_/|\n");
++
++  attrset(COLOR_PAIR(101)); printw(" (");
++  attrset(COLOR_PAIR(100)); printw("+");
++  attrset(COLOR_PAIR(101)); printw(")=C              ");
++  attrset(COLOR_PAIR(100)); printw(":::::::::              ");
++  attrset(COLOR_PAIR(102)); printw("|");
++  attrset(COLOR_PAIR(COLOR_GREEN) | A_BOLD); printw("o o");
++  attrset(COLOR_PAIR(102)); printw("|__\n");
++
++  attrset(COLOR_PAIR(101)); printw(" | |                ");
++  attrset(COLOR_PAIR(100)); printw("':::::::'              ");
++  attrset(COLOR_PAIR(COLOR_WHITE)); printw("=-");
++  attrset(COLOR_PAIR(103)); printw("*");
++  attrset(COLOR_PAIR(COLOR_WHITE)); printw("-=");
++  attrset(COLOR_PAIR(102)); printw("__\\\n");
++
++  attrset(COLOR_PAIR(104)); printw(" OOO                  ");
++  attrset(COLOR_PAIR(100)); printw("':::'               ");
++  attrset(COLOR_PAIR(102)); printw("c_c__(___)\n");
++
++  attrset(COLOR_PAIR(COLOR_WHITE));
+   refresh();
+ 
+   dummy = getch();
+@@ -444,6 +474,11 @@
+       init_pair(COLOR_MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
+       init_pair(COLOR_BLUE, COLOR_BLUE, COLOR_BLACK);
+       init_pair(COLOR_YELLOW, COLOR_YELLOW, COLOR_BLACK);
++      init_pair(100, 124, COLOR_BLACK);
++      init_pair(101, 63, COLOR_BLACK);
++      init_pair(102, 172, COLOR_BLACK);
++      init_pair(103, 212, COLOR_BLACK);
++      init_pair(104, 240, COLOR_BLACK);
+     }
+ 
+ }

@@ -1,0 +1,28 @@
+--- nethack-3.4.3/src/makemon.c	2009-03-18 17:31:26.000000000 -0400
++++ nethack-3.4.3-nomul/src/makemon.c	2009-03-18 17:23:07.000000000 -0400
+@@ -1815,7 +1815,11 @@
+ 		dropx(bag);
+ 		break;
+ 	case 3:
+-		nomul(-1*(rnd(4)));
++		nomul(-1*(rnd(4))
++#ifdef HELPLESS
++		     , 0
++#endif
++		);
+ 		if(Hallucination) {
+ 			You("start climbing into the bag.");
+ 			nomovemsg = "You give up your attempt to climb into the bag.";
+@@ -1855,7 +1859,11 @@
+ 		}
+ 		if((ACURR(A_WIS)<rnd(20) && !bag->blessed) || bag->cursed) {
+ 			You("are startled into immobility.");
+-			nomul(-1*rnd(3));
++			nomul(-1*(rnd(3))
++#ifdef HELPLESS
++			     , 0
++#endif
++			);
+ 			nomovemsg = "You regain your composure.";
+ 		}
+ 		break;

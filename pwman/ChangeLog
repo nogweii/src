@@ -1,0 +1,66 @@
+0.3.9   Nick Burch <gagravarr@users.sourceforge.net>
+	* gnupg.c: fix segfault if the secret key isn't present
+
+0.3.8   Nick Burch <gagravarr@users.sourceforge.net>
+    * pwlist.c/actions.c: support moving entries and sublists up and down
+      within their parent list, using [ and ]. (You could already move them
+      to parent or child lists)
+
+0.3.7   Nick Burch <gagravarr@users.sourceforge.net>
+    * gnupg.c/pwman.c: improved handling of new files, and when you cancel the
+      gnupg passphrase input / key not found
+
+0.3.6   Nick Burch <gagravarr@users.sourceforge.net>
+	* uilist.c: fix so we don't have an inifinite loop if no data
+
+0.3.5   Nick Burch <gagravarr@users.sourceforge.net>
+    * gnupg.c: add support for encrypting data to multiple recipients
+    * gnupg.c/actions.c/pwlist.c: make the export of passwords and lists
+      handle multiple recipients. (Normal use still only works with one)
+    * filter.c: show an on-screen alert when filtering is turned on
+
+0.3.4   Nick Burch <gagravarr@users.sourceforge.net>
+    * *.c: implement read only patch from Jon
+    * pwlist.c: XML escape data, so strings with a & in them don't break
+
+0.3.3   Ivan Kelly  <ivan@ivankelly.net>
+    * *.c: renamed a few functions to make it clearer where they're from
+    * uilist.c: fix for cursor going off the screen
+
+0.3.1	Ivan Kelly	<ivan@ivankelly.net>
+	* pwman.1: updated man page
+	* gnupg.c: large rewrite, switched back from gpgme to using gpg with pipes
+	* pwlist.c/actions.c/uilist.c: added sublist functionallity
+	* pwlist.c: new format due to addition of sublists
+	* convert_pwdb.c: separate executable for converting old database
+	* pwdb2csv.c: separate executable to convert a database to a csv file
+	* misc.c: added file misc.c and move some misc functions to it
+	* *.c: other small changes
+	
+0.2.1	Ivan Kelly 	<ivan@ivankelly.net>
+	* filter.c: Bugfixes on filter
+	* launch.c: Fixed launch command with filters
+	* pwlist.c: Added a file write after each add so that data isn't lost if pwman
+	  isn't shut down right
+
+0.2.0	Ivan Kelly	<ivan@ivankelly.net>
+	* filter.c: Added search/filtering function
+	* gnupg.c: Switched from using gpg to gpgme
+	* pwgen.c: Added password generator
+	* pwlist.c: Rewrote most of password file I/O
+	* import_export.c: Added Import/Export functions
+	* uilist.c: Got rid of incessant blinking/flashing on scroll
+	* ui.c/pwman.c/gnupg.c: Shadowed passphrase and timeout improvements
+
+0.1.2	Ivan Kelly 	<ivan@ivankelly.net>
+	* options.c/pwlist.c: Switched from libxml to libxml2
+	* gnupg.c: Added a passphrase timeout option
+	* configure.in: Changed configure.in so that it now builds on openbsd
+	* pwman.c Added lock files on the password files
+	* *: Now Building on MacOSX10.1, FreeBSD 4.5 & Solaris 8 also
+
+0.1.1	Ivan Kelly	<ivan@ivankelly.net>
+	* *.c: Few bug fixes and error handling. Code clean up.
+
+0.1.0 	Ivan Kelly	<ivan@ivankelly.net>
+	* pwman: Initial release

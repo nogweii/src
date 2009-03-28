@@ -1,0 +1,39 @@
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/pline.c nethack-3.4.3-toonhit/src/pline.c
+--- nethack-3.4.3-orig/src/pline.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-toonhit/src/pline.c	2005-03-06 01:24:48.000000000 +0200
+@@ -66,6 +66,17 @@
+ 	if (vision_full_recalc) vision_recalc(0);
+ 	if (u.ux) flush_screen(1);		/* %% */
+ 	putstr(WIN_MESSAGE, 0, line);
++
++	if (Hallucination && !rn2(20)) {
++	    static const char *interjects[22] = {
++		"Awesome!", "Brilliant!", "Cool!", "Excellent!", "Far out!",
++		"Groovy!", "Oh, boy!", "Oh, goodie!", "Rad!", "Smashing!",
++		"Spiffy!", "Splendid!", "Stupendous!", "Super!", "Sweet!",
++		"Swell!", "Way out!", "Whoa!", "Wicked!", "Wow!",
++		"Yeah!", "Yow!"
++	    };
++	    putstr(WIN_MESSAGE, 0, interjects[rn2(22)]);
++	}
+ }
+ 
+ /*VARARGS1*/
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/uhitm.c nethack-3.4.3-toonhit/src/uhitm.c
+--- nethack-3.4.3-orig/src/uhitm.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-toonhit/src/uhitm.c	2005-03-05 02:20:49.000000000 +0200
+@@ -971,6 +971,14 @@
+ 
+ 	/* VERY small chance of stunning opponent if unarmed. */
+ 	if (unarmed && tmp > 1 && !thrown && !obj && !Upolyd) {
++
++	    if (Hallucination && rn2(3)) {
++		static const char *toonhits[5] = {
++			"Pow", "Wham", "Biff", "Sock", "Krak"
++		};
++		pline("%s!", toonhits[rn2(5)]);
++	    }
++
+ 	    if (rnd(100) < P_SKILL(P_BARE_HANDED_COMBAT) &&
+ 			!bigmonst(mdat) && !thick_skinned(mdat)) {
+ 		if (canspotmon(mon))

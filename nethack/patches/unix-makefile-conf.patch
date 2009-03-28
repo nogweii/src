@@ -1,0 +1,67 @@
+diff -Naur nethack-3.4.3/sys/unix/Makefile.src nethack-3.4.3-unix/sys/unix/Makefile.src
+--- nethack-3.4.3/sys/unix/Makefile.src	2003-12-07 18:39:13.000000000 -0500
++++ nethack-3.4.3-unix/sys/unix/Makefile.src	2009-03-22 13:59:23.000000000 -0400
+@@ -61,7 +61,7 @@
+ #	if you get setcgtty() warnings during execution, you are feeding gcc
+ #		a non-ANSI <sys/ioctl.h> -- either run fixincludes on it or use
+ #		-traditional in CFLAGS
+-# CC = gcc
++CC = gcc
+ #
+ #	For Bull DPX/2 systems at B.O.S. 2.0 or higher use the following:
+ #
+@@ -151,7 +151,7 @@
+ # flags for debugging:
+ # CFLAGS = -g -I../include
+ 
+-CFLAGS = -O -I../include
++CFLAGS = -O3 -fomit-frame-pointer -march=core2 -I../include
+ LFLAGS = 
+ 
+ # The Qt and Be window systems are written in C++, while the rest of
+@@ -159,7 +159,7 @@
+ # the C++ libraries linked in.
+ CXXFLAGS = $(CFLAGS) -I. -I$(QTDIR)/include
+ CXX=g++
+-#LINK=g++
++LINK=g++
+ #	For cross-compiling, eg. with gcc on Linux (see also CC further up):
+ #CXX=arm-linux-g++
+ #LINK=arm-linux-gcc
+@@ -230,12 +230,12 @@
+ # WINTTYLIB = -ltermcap
+ # WINTTYLIB = -lcurses
+ # WINTTYLIB = -lcurses16
+-# WINTTYLIB = -lncurses
+-WINTTYLIB = -ltermlib
++WINTTYLIB = -lncurses
++#WINTTYLIB = -ltermlib
+ #
+ # libraries for X11
+ # If USE_XPM is defined in config.h, you will also need -lXpm here.
+-WINX11LIB = -lXaw -lXmu -lXext -lXt -lX11
++WINX11LIB = -lXaw -lXmu -lXext -lXt -lX11 -lXpm
+ # WINX11LIB = -lXaw -lXmu -lXt -lX11
+ # WINX11LIB = -lXaw -lXmu -lXext -lXt -lXpm -lX11 -lm
+ # WINX11LIB = -lXaw -lXmu -lXpm -lXext -lXt -lX11 -lSM -lICE -lm # BSD/OS 2.0
+diff -Naur nethack-3.4.3/sys/unix/Makefile.utl nethack-3.4.3-unix/sys/unix/Makefile.utl
+--- nethack-3.4.3/sys/unix/Makefile.utl	2003-12-07 18:39:13.000000000 -0500
++++ nethack-3.4.3-unix/sys/unix/Makefile.utl	2009-03-22 14:00:08.000000000 -0400
+@@ -15,7 +15,7 @@
+ 
+ # if you are using gcc as your compiler,
+ #	uncomment the CC definition below if it's not in your environment
+-# CC = gcc
++CC = gcc
+ #
+ #	For Bull DPX/2 systems at B.O.S. 2.0 or higher use the following:
+ #
+@@ -89,7 +89,7 @@
+ # flags for debugging:
+ # CFLAGS = -g -I../include
+ 
+-CFLAGS = -O -I../include
++CFLAGS = -O3 -fomit-frame-pointer -march=core2 -I../include
+ LFLAGS =
+ 
+ LIBS =

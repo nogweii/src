@@ -1,0 +1,22 @@
+--- src/Makefile	2009-03-17 17:05:06.000000000 -0400
++++ src/Makefile.cf	2009-03-17 17:04:09.000000000 -0400
+@@ -151,7 +151,7 @@
+ # flags for debugging:
+ # CFLAGS = -g -I../include
+ 
+-CFLAGS = -O -I../include
++CFLAGS = -O3 -pipe -fomit-frame-pointer -march=core2 -I../include
+ LFLAGS = 
+ 
+ # The Qt and Be window systems are written in C++, while the rest of
+--- util/Makefile	2009-03-17 17:01:01.000000000 -0400
++++ util/Makefile.cf	2009-03-17 17:04:45.000000000 -0400
+@@ -89,7 +89,7 @@
+ # flags for debugging:
+ # CFLAGS = -g -I../include
+ 
+-CFLAGS = -O -I../include
++CFLAGS = -O3 -pipe -fomit-frame-pointer -march=core2 -I../include
+ LFLAGS =
+ 
+ LIBS =

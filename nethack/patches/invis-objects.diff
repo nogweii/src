@@ -1,0 +1,1904 @@
+diff -u -X files.exc nethack-3.4.3-orig/include/config.h nethack-3.4.3-invis/include/config.h
+--- nethack-3.4.3-orig/include/config.h	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/include/config.h	Thu Dec 11 10:15:03 2003
+@@ -351,6 +351,8 @@
+ /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+ /*#define AUTOPICKUP_EXCEPTIONS */ /* exceptions to autopickup */
+ 
++#define INVISIBLE_OBJECTS
++
+ /* End of Section 5 */
+ 
+ #include "global.h"	/* Define everything else according to choices above */
+diff -u -X files.exc nethack-3.4.3-orig/include/display.h nethack-3.4.3-invis/include/display.h
+--- nethack-3.4.3-orig/include/display.h	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/include/display.h	Thu Dec 11 10:15:03 2003
+@@ -295,6 +295,20 @@
+ 	    (int) (obj)->corpsenm + GLYPH_BODY_OFF :			      \
+ 	    (int) (obj)->otyp + GLYPH_OBJ_OFF))
+ 
++#ifdef INVISIBLE_OBJECTS
++#define obj_to_iglyph(obj)						\
++	(not_seen(obj) ? NO_GLYPH :					\
++    (Hallucination ?							  \
++	((otg_temp = random_object()) == CORPSE ?			      \
++	    random_monster() + GLYPH_BODY_OFF :				      \
++	    otg_temp + GLYPH_OBJ_OFF)	:				      \
++	((obj)->otyp == CORPSE ?					      \
++	    (int) (obj)->corpsenm + GLYPH_BODY_OFF :			      \
++	    (int) (obj)->otyp + GLYPH_OBJ_OFF)) )
++#else
++#define obj_to_iglyph	obj_to_glyph
++#endif
++
+ #define cmap_to_glyph(cmap_idx) ((int) (cmap_idx)   + GLYPH_CMAP_OFF)
+ #define explosion_to_glyph(expltype,idx)	\
+ 		((((expltype) * MAXEXPCHARS) + ((idx) - S_explode1)) + GLYPH_EXPLODE_OFF)
+diff -u -X files.exc nethack-3.4.3-orig/include/extern.h nethack-3.4.3-invis/include/extern.h
+--- nethack-3.4.3-orig/include/extern.h	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/include/extern.h	Thu Dec 11 10:15:03 2003
+@@ -1079,6 +1079,9 @@
+ #ifdef WIZARD
+ E void NDECL(obj_sanity_check);
+ #endif
++#ifdef INVISIBLE_OBJECTS
++E uchar FDECL(change_obj_invis, (struct obj *, UCHAR_P));
++#endif
+ 
+ /* ### mkroom.c ### */
+ 
+@@ -2368,7 +2371,7 @@
+ E void FDECL(miss, (const char *,struct monst *));
+ E struct monst *FDECL(bhit, (int,int,int,int,int (*)(MONST_P,OBJ_P),
+ 			     int (*)(OBJ_P,OBJ_P),struct obj *));
+-E struct monst *FDECL(boomhit, (int,int));
++E struct monst *FDECL(boomhit, (int,int,BOOLEAN_P,BOOLEAN_P));
+ E int FDECL(burn_floor_paper, (int,int,BOOLEAN_P,BOOLEAN_P));
+ E void FDECL(buzz, (int,int,XCHAR_P,XCHAR_P,int,int));
+ E void FDECL(melt_ice, (XCHAR_P,XCHAR_P));
+diff -u -X files.exc nethack-3.4.3-orig/include/obj.h nethack-3.4.3-invis/include/obj.h
+--- nethack-3.4.3-orig/include/obj.h	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/include/obj.h	Thu Dec 11 10:15:03 2003
+@@ -79,9 +79,6 @@
+ 
+ 	Bitfield(recharged,3);	/* number of times it's been recharged */
+ 	Bitfield(lamplit,1);	/* a light-source -- can be lit */
+-#ifdef INVISIBLE_OBJECTS
+-	Bitfield(oinvis,1);	/* invisible */
+-#endif
+ 	Bitfield(greased,1);	/* covered with grease */
+ 	Bitfield(oattached,2);	/* obj struct has special attachment */
+ #define OATTACHED_NOTHING 0
+@@ -91,7 +88,10 @@
+ 
+ 	Bitfield(in_use,1);	/* for magic items before useup items */
+ 	Bitfield(bypass,1);	/* mark this as an object to be skipped by bhito() */
+-	/* 6 free bits */
++#ifdef INVISIBLE_OBJECTS
++	Bitfield(oinvis,1);	/* invisible */
++#endif
++	/* 5 free bits */
+ 
+ 	int	corpsenm;	/* type of corpse is mons[corpsenm] */
+ #define leashmon  corpsenm	/* gets m_id of attached pet */
+@@ -293,6 +293,10 @@
+ 				 (otmp)->otyp == RUBBER_HOSE)
+ #else
+ #define is_flimsy(otmp)		(objects[(otmp)->otyp].oc_material <= LEATHER)
++#endif
++
++#ifdef INVISIBLE_OBJECTS
++#define not_seen(obj)	(!See_invisible && (obj)->oinvis)
+ #endif
+ 
+ /* helpers, simple enough to be macros */
+diff -u -X files.exc nethack-3.4.3-orig/include/sp_lev.h nethack-3.4.3-invis/include/sp_lev.h
+--- nethack-3.4.3-orig/include/sp_lev.h	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/include/sp_lev.h	Thu Dec 11 10:15:03 2003
+@@ -27,6 +27,9 @@
+ #define SP_LEV_ROOMS	1
+ #define SP_LEV_MAZE	2
+ 
++#define O_VISIBLE   0
++#define O_INVISIBLE 1
++
+ /*
+  * Structures manipulated by the special levels loader & compiler
+  */
+@@ -69,6 +72,7 @@
+ 	short id, spe;
+ 	xchar x, y, chance, class, containment;
+ 	schar curse_state;
++	schar invisible;
+ } object;
+ 
+ typedef struct {
+diff -u -X files.exc nethack-3.4.3-orig/include/youprop.h nethack-3.4.3-invis/include/youprop.h
+--- nethack-3.4.3-orig/include/youprop.h	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/include/youprop.h	Thu Dec 11 10:15:03 2003
+@@ -96,10 +96,15 @@
+ #define Blinded			u.uprops[BLINDED].intrinsic
+ #define Blindfolded		(ublindf && ublindf->otyp != LENSES)
+ 		/* ...means blind because of a cover */
++#ifndef INVISIBLE_OBJECTS
+ #define Blind	((Blinded || Blindfolded || !haseyes(youmonst.data)) && \
+ 		 !(ublindf && ublindf->oartifact == ART_EYES_OF_THE_OVERWORLD))
+ 		/* ...the Eyes operate even when you really are blind
+ 		    or don't have any eyes */
++#else
++#define Blind	((Blinded || (Blindfolded && ublindf->oinvis==0) || !haseyes(youmonst.data)) && \
++		 !(ublindf && ublindf->oartifact == ART_EYES_OF_THE_OVERWORLD))
++#endif
+ 
+ #define Sick			u.uprops[SICK].intrinsic
+ #define Stoned			u.uprops[STONED].intrinsic
+diff -u -X files.exc nethack-3.4.3-orig/src/apply.c nethack-3.4.3-invis/src/apply.c
+--- nethack-3.4.3-orig/src/apply.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/apply.c	Thu Dec 11 10:15:03 2003
+@@ -617,6 +617,12 @@
+ 			pline_The("mirror fogs up and doesn't reflect!");
+ 		return 1;
+ 	}
++#ifdef INVISIBLE_OBJECTS
++	if(obj->oinvis) {
++		pline("An invisible %s doesn't reflect much.", xname(obj));
++		return 1;
++	}
++#endif
+ 	if(!u.dx && !u.dy && !u.dz) {
+ 		if(!Blind && !Invisible) {
+ 		    if (u.umonnum == PM_FLOATING_EYE) {
+@@ -1426,6 +1432,9 @@
+ 	    can->blessed = obj->blessed;
+ 	    can->owt = weight(can);
+ 	    can->known = 1;
++#ifdef INVISIBLE_OBJECTS
++		(void) change_obj_invis(can,obj->oinvis);
++#endif
+ 	    can->spe = -1;  /* Mark tinned tins. No spinach allowed... */
+ 	    if (carried(corpse)) {
+ 		if (corpse->unpaid)
+@@ -1848,7 +1857,11 @@
+ #endif
+ 
+     /* in case it was acquired while blinded */
+-    if (!Blind) tstone->dknown = 1;
++    if (!Blind
++#ifdef INVISIBLE_OBJECTS
++		&& !not_seen(tstone)
++#endif
++		) tstone->dknown = 1;
+     /* when the touchstone is fully known, don't bother listing extra
+        junk as likely candidates for rubbing */
+     choices = (tstone->otyp == TOUCHSTONE && tstone->dknown &&
+@@ -1887,8 +1900,11 @@
+ 	return;
+     }
+ 
+-    if (Blind) {
+-	pline(scritch);
++    if (Blind
++#ifdef INVISIBLE_OBJECTS
++		|| obj->oinvis || tstone->oinvis
++#endif		
++		) {	pline(scritch);
+ 	return;
+     } else if (Hallucination) {
+ 	pline("Oh wow, man: Fractals!");
+@@ -2679,6 +2695,9 @@
+     case WAN_POLYMORPH:
+     case WAN_TELEPORTATION:
+     case WAN_UNDEAD_TURNING:
++#ifdef INVISIBLE_OBJECTS
++	case WAN_MAKE_INVISIBLE:
++#endif
+ 	affects_objects = TRUE;
+ 	break;
+     default:
+@@ -2976,6 +2995,9 @@
+ 		    pline("%s spills out.", what);
+ 		    otmp->blessed = obj->blessed;
+ 		    otmp->cursed = obj->cursed;
++#ifdef INVISIBLE_OBJECTS
++			(void) change_obj_invis(otmp,obj->oinvis);
++#endif
+ 		    otmp->owt = weight(otmp);
+ 		    otmp = hold_another_object(otmp, u.uswallow ?
+ 				       "Oops!  %s out of your reach!" :
+diff -u -X files.exc nethack-3.4.3-orig/src/artifact.c nethack-3.4.3-invis/src/artifact.c
+--- nethack-3.4.3-orig/src/artifact.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/artifact.c	Thu Dec 11 10:15:03 2003
+@@ -969,7 +969,12 @@
+ 	/* the four basic attacks: fire, cold, shock and missiles */
+ 	if (attacks(AD_FIRE, otmp)) {
+ 	    if (realizes_damage)
+-		pline_The("fiery blade %s %s%c",
++#ifndef INVISIBLE_OBJECTS
++ 		pline_The("fiery blade %s %s%c",
++#else
++		pline("%s %s %s%c",
++			!youattack && not_seen(otmp) ? Something : "The fiery blade",
++#endif
+ 			!spec_dbon_applies ? "hits" :
+ 			(mdef->data == &mons[PM_WATER_ELEMENTAL]) ?
+ 			"vaporizes part of" : "burns",
+@@ -982,7 +987,12 @@
+ 	}
+ 	if (attacks(AD_COLD, otmp)) {
+ 	    if (realizes_damage)
+-		pline_The("ice-cold blade %s %s%c",
++#ifndef INVISIBLE_OBJECTS
++ 		pline_The("ice-cold blade %s %s%c",
++#else
++		pline("%s %s %s%c",
++			!youattack && not_seen(otmp) ? Something : "The ice-cold blade",
++#endif
+ 			!spec_dbon_applies ? "hits" : "freezes",
+ 			hittee, !spec_dbon_applies ? '.' : '!');
+ 	    if (!rn2(4)) (void) destroy_mitem(mdef, POTION_CLASS, AD_COLD);
+@@ -990,7 +1000,12 @@
+ 	}
+ 	if (attacks(AD_ELEC, otmp)) {
+ 	    if (realizes_damage)
++#ifndef INVISIBLE_OBJECTS
+ 		pline_The("massive hammer hits%s %s%c",
++#else
++		pline("%s hits%s %s%c,",
++			!youattack && not_seen(otmp) ? Something : "The massive hammer",
++#endif
+ 			  !spec_dbon_applies ? "" : "!  Lightning strikes",
+ 			  hittee, !spec_dbon_applies ? '.' : '!');
+ 	    if (!rn2(5)) (void) destroy_mitem(mdef, RING_CLASS, AD_ELEC);
+@@ -999,7 +1014,12 @@
+ 	}
+ 	if (attacks(AD_MAGM, otmp)) {
+ 	    if (realizes_damage)
++#ifndef INVISIBLE_OBJECTS
+ 		pline_The("imaginary widget hits%s %s%c",
++#else
++		pline("%s hits%s %s%c,",
++			!youattack && not_seen(otmp) ? Something : "The imaginary widget",
++#endif
+ 			  !spec_dbon_applies ? "" :
+ 				"!  A hail of magic missiles strikes",
+ 			  hittee, !spec_dbon_applies ? '.' : '!');
+@@ -1021,7 +1041,11 @@
+ 	/* reverse from AD&D. */
+ 	if (spec_ability(otmp, SPFX_BEHEAD)) {
+ 	    if (otmp->oartifact == ART_TSURUGI_OF_MURAMASA && dieroll == 1) {
+-		wepdesc = "The razor-sharp blade";
++		wepdesc = 
++#ifdef INVISIBLE_OBJECTS
++			!youattack && not_seen(otmp) ? Something :
++#endif
++			"The razor-sharp blade";
+ 		/* not really beheading, but so close, why add another SPFX */
+ 		if (youattack && u.uswallow && mdef == u.ustuck) {
+ 		    You("slice %s wide open!", mon_nam(mdef));
+@@ -1074,8 +1098,12 @@
+ 
+ 		if (youattack && u.uswallow && mdef == u.ustuck)
+ 			return FALSE;
+-		wepdesc = artilist[ART_VORPAL_BLADE].name;
+-		if (!youdefend) {
++		wepdesc = 
++#ifdef INVISIBLE_OBJECTS
++			!youattack && not_seen(otmp) ? Something :
++#endif			
++			artilist[ART_VORPAL_BLADE].name;
++			if (!youdefend) {
+ 			if (!has_head(mdef->data) || notonhead || u.uswallow) {
+ 				if (youattack)
+ 					pline("Somehow, you miss %s wildly.",
+@@ -1122,12 +1150,19 @@
+ 	if (spec_ability(otmp, SPFX_DRLI)) {
+ 		if (!youdefend) {
+ 			if (vis) {
+-			    if(otmp->oartifact == ART_STORMBRINGER)
++			    if(otmp->oartifact == ART_STORMBRINGER
++#ifdef INVISIBLE_OBJECTS
++					&& (youattack || !not_seen(otmp))
++#endif
++					)
+ 				pline_The("%s blade draws the life from %s!",
+ 				      hcolor(NH_BLACK),
+ 				      mon_nam(mdef));
+ 			    else
+ 				pline("%s draws the life from %s!",
++#ifdef INVISIBLE_OBJECTS
++				!youattack && not_seen(otmp) ? Something :
++#endif
+ 				      The(distant_name(otmp, xname)),
+ 				      mon_nam(mdef));
+ 			}
+@@ -1145,7 +1180,11 @@
+ 		} else { /* youdefend */
+ 			int oldhpmax = u.uhpmax;
+ 
+-			if (Blind)
++			if (Blind
++#ifdef INVISIBLE_OBJECTS
++				|| not_seen(otmp)
++#endif
++				)
+ 				You_feel("an %s drain your life!",
+ 				    otmp->oartifact == ART_STORMBRINGER ?
+ 				    "unholy blade" : "object");
+diff -u -X files.exc nethack-3.4.3-orig/src/detect.c nethack-3.4.3-invis/src/detect.c
+--- nethack-3.4.3-orig/src/detect.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/detect.c	Thu Dec 11 10:15:03 2003
+@@ -1179,8 +1179,12 @@
+ 	    int fund = (uwep && uwep->oartifact &&
+ 		    spec_ability(uwep, SPFX_SEARCH)) ?
+ 		    uwep->spe : 0;
+-	    if (ublindf && ublindf->otyp == LENSES && !Blind)
+-		    fund += 2; /* JDS: lenses help searching */
++	    if (ublindf && ublindf->otyp == LENSES 
++#ifdef INVISIBLE_OBJECTS
++			/* only visible lenses bend light */
++			&& ublindf->oinvis==0
++#endif
++			 )   fund += 2; /* JDS: lenses help searching */
+ 	    if (fund > 5) fund = 5;
+ 	    for(x = u.ux-1; x < u.ux+2; x++)
+ 	      for(y = u.uy-1; y < u.uy+2; y++) {
+diff -u -X files.exc nethack-3.4.3-orig/src/display.c nethack-3.4.3-invis/src/display.c
+--- nethack-3.4.3-orig/src/display.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/display.c	Thu Dec 11 10:15:03 2003
+@@ -885,6 +885,9 @@
+ 	    break;
+ 
+ 	default:	/* do it */
++#ifdef INVISIBLE_OBJECTS
++		if (tglyph->glyph == NO_GLYPH) break;
++#endif
+ 	    if (tglyph->style == DISP_BEAM) {
+ 		if (!cansee(x,y)) break;
+ 		/* save pos for later erasing */
+@@ -1105,13 +1108,23 @@
+ /*
+  * Loop through all of the object *locations* and update them.  Called when
+  *	+ hallucinating.
++ *  and for INVISIBLE_OBJECTS when See_invisible changes
+  */
+ void
+ see_objects()
+ {
+     register struct obj *obj;
+-    for(obj = fobj; obj; obj = obj->nobj)
++#ifdef INVISIBLE_OBJECTS
++	register struct obj *otmp;
++#endif
++
++	for(obj = fobj; obj; obj = obj->nobj)
++#ifdef INVISIBLE_OBJECTS
++	/* we need to check the case that there are no visible objects where there used to be some */
++	if ((otmp=vobj_at(obj->ox,obj->oy))==obj || otmp==(struct obj*)0) newsym(obj->ox, obj->oy);
++#else
+ 	if (vobj_at(obj->ox,obj->oy) == obj) newsym(obj->ox, obj->oy);
++#endif
+ }
+ 
+ /*
+diff -u -X files.exc nethack-3.4.3-orig/src/do_wear.c nethack-3.4.3-invis/src/do_wear.c
+--- nethack-3.4.3-orig/src/do_wear.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/do_wear.c	Thu Dec 11 10:15:03 2003
+@@ -929,6 +929,11 @@
+ 	    /* "You are now wearing the Eyes of the Overworld." */
+ 	    You("can see!");
+ 	}
++#ifdef INVISIBLE_OBJECTS
++	else if (!Blind && otmp->oinvis && otmp->otyp != LENSES && flags.verbose) {
++		You("can still see.");
++	}
++#endif
+ 	if (changed) {
+ 	    /* blindness has just been toggled */
+ 	    if (Blind_telepat || Infravision) see_monsters();
+diff -u -X files.exc nethack-3.4.3-orig/src/dog.c nethack-3.4.3-invis/src/dog.c
+--- nethack-3.4.3-orig/src/dog.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/dog.c	Thu Dec 11 10:15:03 2003
+@@ -114,6 +114,9 @@
+ 		mtmp = christen_monst(mtmp, ONAME(otmp));
+ 	}
+ 	set_malign(mtmp); /* more alignment changes */
++#ifdef INVISIBLE_OBJECTS
++	if(otmp) mtmp->minvis = otmp->oinvis;
++#endif
+ 	newsym(mtmp->mx, mtmp->my);
+ 
+ 	/* must wield weapon immediately since pets will otherwise drop it */
+diff -u -X files.exc nethack-3.4.3-orig/src/dogmove.c nethack-3.4.3-invis/src/dogmove.c
+--- nethack-3.4.3-orig/src/dogmove.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/dogmove.c	Thu Dec 11 10:15:03 2003
+@@ -163,8 +163,11 @@
+ 	if (cansee(x, y) || cansee(mtmp->mx, mtmp->my))
+ 	    pline("%s %s %s.", mon_visible(mtmp) ? noit_Monnam(mtmp) : "It",
+ 		  devour ? "devours" : "eats",
+-		  (obj->oclass == FOOD_CLASS) ?
+-			singular(obj, doname) : doname(obj));
++#ifdef INVISIBLE_OBJECTS
++		  not_seen(obj) ? something :
++#endif
++		  ((obj->oclass == FOOD_CLASS) ?
++			singular(obj, doname) : doname(obj)));
+ 	/* It's a reward if it's DOGFOOD and the player dropped/threw it. */
+ 	/* We know the player had it if invlet is set -dlc */
+ 	if(dogfood(mtmp,obj) == DOGFOOD && obj->invlet)
+@@ -180,7 +183,11 @@
+ 	    mtmp->mstun = 1;
+ 	    if (canseemon(mtmp) && flags.verbose) {
+ 		pline("%s spits %s out in disgust!",
+-		      Monnam(mtmp), distant_name(obj,doname));
++		      Monnam(mtmp), 
++#ifdef INVISIBLE_OBJECTS
++		  not_seen(obj) ? something :
++#endif			  
++			  distant_name(obj,doname));
+ 	    }
+ 	} else if (obj == uball) {
+ 	    unpunish();
+@@ -306,6 +313,9 @@
+ 			if (rn2(udist) || !rn2(edog->apport)) {
+ 			    if (cansee(omx, omy) && flags.verbose)
+ 				pline("%s picks up %s.", Monnam(mtmp),
++#ifdef INVISIBLE_OBJECTS
++					not_seen(obj) ? something :
++#endif
+ 				    distant_name(obj, doname));
+ 			    obj_extract_self(obj);
+ 			    newsym(omx,omy);
+diff -u -X files.exc nethack-3.4.3-orig/src/dokick.c nethack-3.4.3-invis/src/dokick.c
+--- nethack-3.4.3-orig/src/dokick.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/dokick.c	Thu Dec 11 10:15:03 2003
+@@ -475,7 +475,11 @@
+ 	if (IS_ROCK(levl[x][y].typ) || closed_door(x, y)) {
+ 	    if ((!martial() && rn2(20) > ACURR(A_DEX)) ||
+ 		    IS_ROCK(levl[u.ux][u.uy].typ) || closed_door(u.ux, u.uy)) {
+-		if (Blind)
++			if (Blind
++#ifdef INVISIBLE_OBJECTS
++				|| not_seen(kickobj)
++#endif
++				)
+ 		    pline("It doesn't come loose.");
+ 		else
+ 		    pline("%s %sn't come loose.",
+@@ -483,7 +487,11 @@
+ 			  otense(kickobj, "do"));
+ 		return (!rn2(3) || martial());
+ 	    }
+-	    if (Blind)
++	    if (Blind
++#ifdef INVISIBLE_OBJECTS
++				|| not_seen(kickobj)
++#endif
++			)
+ 		pline("It comes loose.");
+ 	    else
+ 		pline("%s %s loose.",
+@@ -520,6 +528,11 @@
+ 		    }
+ 		} else {
+ 		    if (!rn2(3) || (martial() && !rn2(2))) {
++#ifdef INVISIBLE_OBJECTS
++			if(Blind || not_seen(kickobj)) {
++				You_hear("%s slam open and shut.", something);
++			} else
++#endif
+ 			pline_The("lid slams open, then falls shut.");
+ 			if (otrp) (void) chest_trap(kickobj, LEG, FALSE);
+ 			return(1);
+@@ -543,9 +556,20 @@
+ 
+ 	if (kickobj->quan > 1L && !isgold) kickobj = splitobj(kickobj, 1L);
+ 
++#ifdef INVISIBLE_OBJECTS
++	if(not_seen(kickobj)) Your("%s connects with something.", body_part(FOOT));
++#endif
++
+ 	if (slide && !Blind)
+-	    pline("Whee!  %s %s across the %s.", Doname2(kickobj),
+-		  otense(kickobj, "slide"), surface(x,y));
++	    pline("Whee!  %s %s across the %s.", 
++#ifdef INVISIBLE_OBJECTS
++		not_seen(kickobj) ? something :
++#endif
++		Doname2(kickobj),
++#ifdef INVISIBLE_OBJECTS
++		not_seen(kickobj) ? "slides" :
++#endif
++		otense(kickobj, "slide"), surface(x,y));
+ 
+ 	obj_extract_self(kickobj);
+ 	(void) snuff_candle(kickobj);
+diff -u -X files.exc nethack-3.4.3-orig/src/dothrow.c nethack-3.4.3-invis/src/dothrow.c
+--- nethack-3.4.3-orig/src/dothrow.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/dothrow.c	Thu Dec 11 10:15:03 2003
+@@ -846,7 +846,7 @@
+     if (bhitpos.x != u.ux || bhitpos.y != u.uy) {
+ 	int x = bhitpos.x - u.dx, y = bhitpos.y - u.dy;
+ 
+-	tmp_at(DISP_FLASH, obj_to_glyph(obj));
++	tmp_at(DISP_FLASH, obj_to_iglyph(obj));
+ 	while(x != u.ux || y != u.uy) {
+ 	    tmp_at(x, y);
+ 	    delay_output();
+@@ -864,8 +864,13 @@
+ {
+ 	register struct monst *mon;
+ 	register int range, urange;
+-	boolean impaired = (Confusion || Stunned || Blind ||
+-			   Hallucination || Fumbling);
++	boolean cant_see_it = (Blind
++#ifdef INVISIBLE_OBJECTS
++		|| not_seen(obj)
++#endif
++		);
++	boolean impaired = (Confusion || Stunned || cant_see_it ||
++						Hallucination || Fumbling);
+ 
+ 	if ((obj->cursed || obj->greased) && (u.dx || u.dy) && !rn2(7)) {
+ 	    boolean slipok = TRUE;
+@@ -927,8 +932,12 @@
+ 	} else if(obj->otyp == BOOMERANG && !Underwater) {
+ 		if(Is_airlevel(&u.uz) || Levitation)
+ 		    hurtle(-u.dx, -u.dy, 1, TRUE);
+-		mon = boomhit(u.dx, u.dy);
+-		if(mon == &youmonst) {		/* the thing was caught */
++		mon = boomhit(u.dx, u.dy, Fumbling || Stunned, !Blind
++#ifdef INVISIBLE_OBJECTS
++			&& !not_seen(obj)
++#endif
++			);
++			if(mon == &youmonst) {		/* the thing was caught */
+ 			exercise(A_DEX, TRUE);
+ 			obj = addinv(obj);
+ 			(void) encumber_msg();
+@@ -1034,16 +1043,16 @@
+ 		    } else {
+ 			int dmg = rn2(2);
+ 			if (!dmg) {
+-			    pline(Blind ? "%s lands %s your %s." :
++			    pline(cant_see_it ? "%s lands %s your %s." :
+ 					"%s back to you, landing %s your %s.",
+-				  Blind ? Something : Tobjnam(obj, "return"),
++				  cant_see_it ? Something : Tobjnam(obj, "return"),
+ 				  Levitation ? "beneath" : "at",
+ 				  makeplural(body_part(FOOT)));
+ 			} else {
+ 			    dmg += rnd(3);
+-			    pline(Blind ? "%s your %s!" :
++			    pline(cant_see_it ? "%s your %s!" :
+ 					"%s back toward you, hitting your %s!",
+-				  Tobjnam(obj, Blind ? "hit" : "fly"),
++				  Tobjnam(obj, cant_see_it ? "hit" : "fly"),
+ 				  body_part(ARM));
+ 			    (void) artifact_hit((struct monst *)0,
+ 						&youmonst, obj, &dmg, 0);
+@@ -1062,7 +1071,7 @@
+ 
+ 		if (!IS_SOFT(levl[bhitpos.x][bhitpos.y].typ) &&
+ 			breaktest(obj)) {
+-		    tmp_at(DISP_FLASH, obj_to_glyph(obj));
++		    tmp_at(DISP_FLASH, obj_to_iglyph(obj));
+ 		    tmp_at(bhitpos.x, bhitpos.y);
+ 		    delay_output();
+ 		    tmp_at(DISP_END, 0);
+@@ -1653,6 +1662,9 @@
+ {
+ 	const char *to_pieces;
+ 
++#ifdef INVISIBLE_OBJECTS
++	in_view = in_view && !not_seen(obj);
++#endif
+ 	to_pieces = "";
+ 	switch (obj->oclass == POTION_CLASS ? POT_WATER : obj->otyp) {
+ 		default: /* glass or crystal wand */
+diff -u -X files.exc nethack-3.4.3-orig/src/eat.c nethack-3.4.3-invis/src/eat.c
+--- nethack-3.4.3-orig/src/eat.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/eat.c	Thu Dec 11 10:15:03 2003
+@@ -1684,8 +1684,15 @@
+ 		make_blinded((long)u.ucreamed,TRUE);
+ 		break;
+ 	    case FORTUNE_COOKIE:
++#ifdef INVISIBLE_OBJECTS
++		if(not_seen(otmp)) {
++			pline("The last bite tasted strangely papery...");
++		} else
++#endif
++		{
+ 		outrumor(bcsign(otmp), BY_COOKIE);
+ 		if (!Blind) u.uconduct.literate++;
++		}
+ 		break;
+ 	    case LUMP_OF_ROYAL_JELLY:
+ 		/* This stuff seems to be VERY healthy! */
+diff -u -X files.exc nethack-3.4.3-orig/src/invent.c nethack-3.4.3-invis/src/invent.c
+--- nethack-3.4.3-orig/src/invent.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/invent.c	Thu Dec 11 10:15:03 2003
+@@ -377,8 +377,12 @@
+ {
+ 	char buf[BUFSZ];
+ 
+-	if (!Blind) obj->dknown = 1;	/* maximize mergibility */
+-	if (obj->oartifact) {
++	if (!Blind
++#ifdef INVISIBLE_OBJECTS
++		&& !not_seen(obj)
++#endif
++		) obj->dknown = 1;	/* maximize mergibility */
++		if (obj->oartifact) {
+ 	    /* place_object may change these */
+ 	    boolean crysknife = (obj->otyp == CRYSKNIFE);
+ 	    int oerode = obj->oerodeproof;
+@@ -2233,7 +2237,7 @@
+ 	    if (dfeature) pline(fbuf);
+ 	    read_engr_at(u.ux, u.uy); /* Eric Backus */
+ #ifdef INVISIBLE_OBJECTS
+-	    if (otmp->oinvis && !See_invisible) verb = "feel";
++	    if (not_seen(otmp)) verb = "feel";
+ #endif
+ 	    You("%s here %s.", verb, doname(otmp));
+ 	    if (otmp->otyp == CORPSE) feel_cockatrice(otmp, FALSE);
+@@ -2277,7 +2281,11 @@
+ struct obj *otmp;
+ boolean force_touch;
+ {
+-	if ((Blind || force_touch) && !uarmg && !Stone_resistance &&
++	if ((Blind
++#ifdef INVISIBLE_OBJECTS
++		|| not_seen(otmp)
++#endif		
++		|| force_touch) && !uarmg && !Stone_resistance &&
+ 		(otmp->otyp == CORPSE && touch_petrifies(&mons[otmp->corpsenm])))
+ 			return TRUE;
+ 	return FALSE;
+diff -u -X files.exc nethack-3.4.3-orig/src/mhitm.c nethack-3.4.3-invis/src/mhitm.c
+--- nethack-3.4.3-orig/src/mhitm.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/mhitm.c	Thu Dec 11 10:15:03 2003
+@@ -1236,12 +1236,20 @@
+ 	    (is_acid ? is_corrodeable(obj) : is_rustprone(obj)) &&
+ 	    (is_acid ? obj->oeroded2 : obj->oeroded) < MAX_ERODE) {
+ 		if (obj->greased || obj->oerodeproof || (obj->blessed && rn2(3))) {
+-		    if (cansee(mdef->mx, mdef->my) && flags.verbose)
++		    if (cansee(mdef->mx, mdef->my) && flags.verbose
++#ifdef INVISIBLE_OBJECTS
++				&& !not_seen(obj)
++#endif
++				)
+ 			pline("%s weapon is not affected.",
+ 			                 s_suffix(Monnam(magr)));
+ 		    if (obj->greased && !rn2(2)) obj->greased = 0;
+ 		} else {
+-		    if (cansee(mdef->mx, mdef->my)) {
++		    if (cansee(mdef->mx, mdef->my)
++#ifdef INVISIBLE_OBJECTS
++				&& !not_seen(obj)
++#endif				
++				) {
+ 			pline("%s %s%s!", s_suffix(Monnam(magr)),
+ 			    aobjnam(obj, (is_acid ? "corrode" : "rust")),
+ 			    (is_acid ? obj->oeroded2 : obj->oeroded)
+@@ -1261,6 +1269,13 @@
+ 	char buf[BUFSZ];
+ 	if (!flags.verbose || Blind || !mon_visible(magr)) return;
+ 	Strcpy(buf, mon_nam(mdef));
++#ifdef INVISIBLE_OBJECTS
++	if (not_seen(otemp))
++		pline("%s %s %s at %s.", Monnam(magr),
++	      (objects[otemp->otyp].oc_dir & PIERCE) ? "thrusts" : "swings",
++		  something, buf);
++	else
++#endif
+ 	pline("%s %s %s %s at %s.", Monnam(magr),
+ 	      (objects[otemp->otyp].oc_dir & PIERCE) ? "thrusts" : "swings",
+ 	      mhis(magr), singular(otemp, xname), buf);
+diff -u -X files.exc nethack-3.4.3-orig/src/mhitu.c nethack-3.4.3-invis/src/mhitu.c
+--- nethack-3.4.3-orig/src/mhitu.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/mhitu.c	Thu Dec 11 10:15:03 2003
+@@ -109,6 +109,13 @@
+ {
+ 	if (!flags.verbose || Blind || !mon_visible(mtmp))
+ 		return;
++#ifdef INVISIBLE_OBJECTS
++	if(not_seen(otemp))
++		pline("%s %s %s.", Monnam(mtmp),
++		(objects[otemp->otyp].oc_dir & PIERCE) ? "thrusts" : "swings",
++		something);
++	else
++#endif
+ 	pline("%s %s %s %s.", Monnam(mtmp),
+ 	      (objects[otemp->otyp].oc_dir & PIERCE) ? "thrusts" : "swings",
+ 	      mhis(mtmp), singular(otemp, xname));
+diff -u -X files.exc nethack-3.4.3-orig/src/mkobj.c nethack-3.4.3-invis/src/mkobj.c
+--- nethack-3.4.3-orig/src/mkobj.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/mkobj.c	Thu Dec 11 10:15:03 2003
+@@ -385,7 +385,7 @@
+ 	if (!objects[otmp->otyp].oc_uses_known)
+ 		otmp->known = 1;
+ #ifdef INVISIBLE_OBJECTS
+-	otmp->oinvis = !rn2(1250);
++	(void) change_obj_invis(otmp,!rn2(500));
+ #endif
+ 	if (init) switch (let) {
+ 	case WEAPON_CLASS:
+@@ -1633,6 +1633,75 @@
+     }
+ }
+ #endif /* WIZARD */
++
++#ifdef INVISIBLE_OBJECTS
++/* use this function to change an object's invisibleness 
++ * instead of changing the value directly, unless you're 
++ * positive there is no need for any of the special 
++ * checking below.
++ * Returns the new invisibleness status of obj.
++ */
++uchar 
++change_obj_invis(obj,invis)
++	struct obj *obj;
++	uchar invis;
++{
++	const char resists[] = "%s momentarily fades.";
++
++	if(obj->oinvis == invis) return(invis);
++
++	switch(obj->otyp) {
++	case BOULDER:
++	case GOLD_PIECE:
++		obj->oinvis = 0;
++		break;
++	case MUMMY_WRAPPING:
++		/* don't let this object become invisible */
++		if(cansee(obj->ox,obj->oy) && invis)
++			pline_The(resists, xname(obj));
++		obj->oinvis = 0;
++		break;
++	case ATHAME:
++		/* Magicbane resists becoming invisible */
++		if(obj->oartifact == ART_MAGICBANE && invis) {
++			if(!(obj->oinvis = !rn2(8)) && cansee(obj->ox,obj->oy))
++				pline(resists, xname(obj));
++		}
++		else
++			obj->oinvis = invis;
++		break;
++	case BLINDFOLD:
++	case TOWEL:
++		{
++			boolean already_blind = Blind, blind_changed = FALSE;
++
++			obj->oinvis = invis;
++
++			if (Blind && !already_blind) {
++				blind_changed = TRUE;
++				if (flags.verbose) You_cant("see any more.");
++				/* set ball&chain variables before the hero goes blind */
++				if (Punished) set_bc(0);
++			} else if (already_blind && !Blind) {
++				blind_changed = TRUE;
++				You("can see!");
++			}
++			if (blind_changed) {
++				/* blindness has just been toggled */
++				if (Blind_telepat || Infravision) see_monsters();
++				vision_full_recalc = 1;	/* recalc vision limits */
++				flags.botl = 1;
++			}
++		}
++		break;
++	default:
++		obj->oinvis = invis;
++		break;
++	}
++
++	return(obj->oinvis);
++}
++#endif
+ 
+ #endif /* OVL1 */
+ 
+diff -u -X files.exc nethack-3.4.3-orig/src/mon.c nethack-3.4.3-invis/src/mon.c
+--- nethack-3.4.3-orig/src/mon.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/mon.c	Thu Dec 11 10:19:28 2003
+@@ -195,6 +195,9 @@
+ 		    obj = mksobj_at(num, x, y, FALSE, FALSE);
+ 		    obj->spe = 0;
+ 		    obj->cursed = obj->blessed = FALSE;
++#ifdef INVISIBLE_OBJECTS
++			(void) change_obj_invis(obj,mtmp->minvis);
++#endif
+ 		}
+ 		goto default_1;
+ 
+@@ -205,11 +208,22 @@
+ 			if (canseemon(mtmp))
+ 			   pline("%s recently regrown horn crumbles to dust.",
+ 				s_suffix(Monnam(mtmp)));
+-		} else
++		} else {
++#ifdef INVISIBLE_OBJECTS
++			obj = mksobj_at(UNICORN_HORN, x, y, TRUE, FALSE);
++			(void) change_obj_invis(obj,mtmp->minvis);
++#else
+ 			(void) mksobj_at(UNICORN_HORN, x, y, TRUE, FALSE);
++#endif
++		}
+ 		goto default_1;
+ 	    case PM_LONG_WORM:
++#ifdef INVISIBLE_OBJECTS
++		obj = mksobj_at(WORM_TOOTH, x, y, TRUE, FALSE);
++		(void) change_obj_invis(obj,mtmp->minvis);
++#else
+ 		(void) mksobj_at(WORM_TOOTH, x, y, TRUE, FALSE);
++#endif
+ 		goto default_1;
+ 	    case PM_VAMPIRE:
+ 	    case PM_VAMPIRE_LORD:
+@@ -314,7 +328,7 @@
+ 
+ #ifdef INVISIBLE_OBJECTS
+ 	/* Invisible monster ==> invisible corpse */
+-	obj->oinvis = mtmp->minvis;
++	(void) change_obj_invis(obj,mtmp->minvis);
+ #endif
+ 
+ 	stackobj(obj);
+@@ -679,6 +693,9 @@
+ 		    if (canseemon(mtmp) && flags.verbose) {
+ 			pline("%s eats %s!",
+ 				Monnam(mtmp),
++#ifdef INVISIBLE_OBJECTS
++				not_seen(otmp) ? something :
++#endif
+ 				distant_name(otmp,doname));
+ 		    }
+ 		    /* The object's rustproofing is gone now */
+@@ -686,13 +703,20 @@
+ 		    mtmp->mstun = 1;
+ 		    if (canseemon(mtmp) && flags.verbose) {
+ 			pline("%s spits %s out in disgust!",
+-			      Monnam(mtmp), distant_name(otmp,doname));
++			      Monnam(mtmp), 
++#ifdef INVISIBLE_OBJECTS
++				  not_seen(otmp) ? something :
++#endif				  
++				  distant_name(otmp,doname));
+ 		    }
+ 		/* KMH -- Don't eat indigestible/choking objects */
+ 		} else if (otmp->otyp != AMULET_OF_STRANGULATION &&
+ 				otmp->otyp != RIN_SLOW_DIGESTION) {
+ 		    if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
+ 			pline("%s eats %s!", Monnam(mtmp),
++#ifdef INVISIBLE_OBJECTS
++				not_seen(otmp) ? something :
++#endif
+ 				distant_name(otmp,doname));
+ 		    else if (flags.soundok && flags.verbose)
+ 			You_hear("a crunching sound.");
+@@ -774,6 +798,9 @@
+ 		++count;
+ 		if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
+ 		    pline("%s eats %s!", Monnam(mtmp),
++#ifdef INVISIBLE_OBJECTS
++				not_seen(otmp) ? something :
++#endif
+ 			    distant_name(otmp, doname));
+ 		else if (flags.soundok && flags.verbose)
+ 		    You_hear("a slurping sound.");
+@@ -816,6 +843,9 @@
+ 		++ecount;
+ 		if (ecount == 1) {
+ 			Sprintf(buf, "%s engulfs %s.", Monnam(mtmp),
++#ifdef INVISIBLE_OBJECTS
++				not_seen(otmp) ? something :
++#endif
+ 			    distant_name(otmp,doname));
+ 		} else if (ecount == 2)
+ 			Sprintf(buf, "%s engulfs several objects.", Monnam(mtmp));
+@@ -891,6 +921,9 @@
+ #endif
+ 		if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
+ 			pline("%s picks up %s.", Monnam(mtmp),
++#ifdef INVISIBLE_OBJECTS
++				not_seen(otmp) ? something :
++#endif
+ 			      (distu(mtmp->mx, mtmp->my) <= 5) ?
+ 				doname(otmp) : distant_name(otmp, doname));
+ 		obj_extract_self(otmp);
+@@ -1663,6 +1696,10 @@
+ 	} else
+ 		otmp = mksobj_at(ROCK, x, y, TRUE, FALSE);
+ 
++#ifdef INVISIBLE_OBJECTS
++	/* invisible monster make invisible statues */
++	(void) change_obj_invis(otmp,mdef->minvis);
++#endif
+ 	stackobj(otmp);
+ 	/* mondead() already does this, but we must do it before the newsym */
+ 	if(glyph_is_invisible(levl[x][y].glyph))
+diff -u -X files.exc nethack-3.4.3-orig/src/mthrowu.c nethack-3.4.3-invis/src/mthrowu.c
+--- nethack-3.4.3-orig/src/mthrowu.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/mthrowu.c	Thu Dec 11 10:15:03 2003
+@@ -166,7 +166,11 @@
+ 	} else if (otmp->oclass == POTION_CLASS) {
+ 	    if (ismimic) seemimic(mtmp);
+ 	    mtmp->msleeping = 0;
+-	    if (vis) otmp->dknown = 1;
++	    if (vis
++#ifdef INVISIBLE_OBJECTS
++			&& !not_seen(otmp)
++#endif
++			) otmp->dknown = 1;
+ 	    potionhit(mtmp, otmp, FALSE);
+ 	    return 1;
+ 	} else {
+@@ -316,7 +320,7 @@
+ 	 * early to avoid the dagger bug, anyone who modifies this code should
+ 	 * be careful not to use either one after it's been freed.
+ 	 */
+-	if (sym) tmp_at(DISP_FLASH, obj_to_glyph(singleobj));
++	if (sym) tmp_at(DISP_FLASH, obj_to_iglyph(singleobj));
+ 	while(range-- > 0) { /* Actually the loop is always exited by break */
+ 		bhitpos.x += dx;
+ 		bhitpos.y += dy;
+@@ -345,7 +349,11 @@
+ 			break;
+ 		    }
+ 		    if (singleobj->oclass == POTION_CLASS) {
+-			if (!Blind) singleobj->dknown = 1;
++			if (!Blind
++#ifdef INVISIBLE_OBJECTS
++				&& !not_seen(singleobj)
++#endif
++				) singleobj->dknown = 1;
+ 			potionhit(&youmonst, singleobj, FALSE);
+ 			break;
+ 		    }
+diff -u -X files.exc nethack-3.4.3-orig/src/muse.c nethack-3.4.3-invis/src/muse.c
+--- nethack-3.4.3-orig/src/muse.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/muse.c	Thu Dec 11 10:15:03 2003
+@@ -128,7 +128,11 @@
+ 
+ 	    if (flags.soundok) {
+ 		if (vis) pline("%s zaps %s, which suddenly explodes!",
+-			Monnam(mon), an(xname(obj)));
++			Monnam(mon), 
++#ifdef INVISIBLE_OBJECTS
++				not_seen(obj) ? something :
++#endif			
++				an(xname(obj)));
+ 		else You_hear("a zap and an explosion in the distance.");
+ 	    }
+ 	    m_useup(mon, obj);
+@@ -156,9 +160,17 @@
+ 					"nearby" : "distant");
+ 	} else if (self)
+ 		pline("%s zaps %sself with %s!",
+-		      Monnam(mtmp), mhim(mtmp), doname(otmp));
++		      Monnam(mtmp), mhim(mtmp), 
++#ifdef INVISIBLE_OBJECTS
++				not_seen(otmp) ? something :
++#endif
++				doname(otmp));
+ 	else {
+-		pline("%s zaps %s!", Monnam(mtmp), an(xname(otmp)));
++		pline("%s zaps %s!", Monnam(mtmp), 
++#ifdef INVISIBLE_OBJECTS
++			not_seen(otmp) ? something :
++#endif
++			an(xname(otmp)));
+ 		stop_occupation();
+ 	}
+ }
+@@ -209,7 +221,11 @@
+ {
+ 	if (canseemon(mtmp)) {
+ 		otmp->dknown = 1;
+-		pline("%s drinks %s!", Monnam(mtmp), singular(otmp, doname));
++		pline("%s drinks %s!", Monnam(mtmp), 
++#ifdef INVISIBLE_OBJECTS
++				not_seen(otmp) ? something :
++#endif
++				singular(otmp, doname));
+ 	} else
+ 		if (flags.soundok)
+ 			You_hear("a chugging sound.");
+@@ -546,7 +562,11 @@
+ 	case MUSE_UNICORN_HORN:
+ 		if (vismon) {
+ 		    if (otmp)
++#ifdef INVISIBLE_OBJECTS
++			pline("%s uses %s!", Monnam(mtmp), not_seen(otmp) ? something : "a unicorn horn");
++#else
+ 			pline("%s uses a unicorn horn!", Monnam(mtmp));
++#endif
+ 		    else
+ 			pline_The("tip of %s's horn glows!", mon_nam(mtmp));
+ 		}
+@@ -1296,7 +1316,11 @@
+ 	case MUSE_FROST_HORN:
+ 		if (oseen) {
+ 			makeknown(otmp->otyp);
+-			pline("%s plays a %s!", Monnam(mtmp), xname(otmp));
++			pline("%s plays %s!", Monnam(mtmp), 
++#ifdef INVISIBLE_OBJECTS
++			not_seen(otmp) ? something : 
++#endif
++			an(xname(otmp)));
+ 		} else
+ 			You_hear("a horn being played.");
+ 		otmp->spe--;
+@@ -1369,6 +1393,9 @@
+ 
+ 				if (cansee(mtmp2->mx, mtmp2->my)) {
+ 				    pline("%s is hit by %s!", Monnam(mtmp2),
++#ifdef INVISIBLE_OBJECTS
++									not_seen(otmp2) ? something :
++#endif
+ 	    	    	    			doname(otmp2));
+ 				    if (mtmp2->minvis && !canspotmon(mtmp2))
+ 					map_invisible(mtmp2->mx, mtmp2->my);
+@@ -1377,14 +1404,22 @@
+ 				if (helmet) {
+ 				    if(is_metallic(helmet)) {
+ 					if (canspotmon(mtmp2))
+-					    pline("Fortunately, %s is wearing a hard helmet.", mon_nam(mtmp2));
++#ifdef INVISIBLE_OBJECTS
++						pline("Fortunately, %s is %swearing a hard helmet.", mon_nam(mtmp2), not_seen(helmet) ? "apparently " : "");
++#else
++						pline("Fortunately, %s is wearing a hard helmet.", mon_nam(mtmp2));
++#endif
+ 					else if (flags.soundok)
+ 					    You_hear("a clanging sound.");
+ 					if (mdmg > 2) mdmg = 2;
+ 				    } else {
+ 					if (canspotmon(mtmp2))
+ 					    pline("%s's %s does not protect %s.",
+-						Monnam(mtmp2), xname(helmet),
++						Monnam(mtmp2), 
++#ifdef INVISIBLE_OBJECTS
++						not_seen(helmet) ? "invisible helm" :
++#endif
++						xname(helmet),
+ 						mhim(mtmp2));
+ 				    }
+ 				}
+@@ -1498,8 +1533,14 @@
+ 		 * are not objects.  Also set dknown in mthrowu.c.
+ 		 */
+ 		if (cansee(mtmp->mx, mtmp->my)) {
++#ifdef INVISIBLE_OBJECTS
++			if(!not_seen(otmp))
++#endif
+ 			otmp->dknown = 1;
+ 			pline("%s hurls %s!", Monnam(mtmp),
++#ifdef INVISIBLE_OBJECTS
++						not_seen(otmp) ? something :
++#endif
+ 						singular(otmp, doname));
+ 		}
+ 		m_throw(mtmp, mtmp->mx, mtmp->my, sgn(mtmp->mux-mtmp->mx),
+@@ -1704,6 +1745,10 @@
+ 	vismon = canseemon(mtmp);
+ 	oseen = otmp && vismon;
+ 
++#ifdef INVISIBLE_OBJECTS
++	if(oseen) oseen = !not_seen(otmp);
++#endif
++
+ 	switch(m.has_misc) {
+ 	case MUSE_POT_GAIN_LEVEL:
+ 		mquaffmsg(mtmp, otmp);
+@@ -2140,7 +2185,10 @@
+ 	obj->quan = 1L;
+ 	pline("%s %ss %s.", Monnam(mon),
+ 		    (obj->otyp == POT_ACID) ? "quaff" : "eat",
+-		    distant_name(obj,doname));
++#ifdef INVISIBLE_OBJECTS
++				not_seen(obj) ? something :
++#endif
++				distant_name(obj,doname));
+ 	obj->quan = save_quan;
+     } else if (flags.soundok)
+ 	You_hear("%s.", (obj->otyp == POT_ACID) ? "drinking" : "chewing");
+diff -u -X files.exc nethack-3.4.3-orig/src/objnam.c nethack-3.4.3-invis/src/objnam.c
+--- nethack-3.4.3-orig/src/objnam.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/objnam.c	Thu Dec 11 10:15:03 2003
+@@ -254,7 +254,11 @@
+ 	 * and printing the wrong article gives away information.
+ 	 */
+ 	if (!nn && ocl->oc_uses_known && ocl->oc_unique) obj->known = 0;
+-	if (!Blind) obj->dknown = TRUE;
++	if (!Blind
++#ifdef INVISIBLE_OBJECTS
++		&& !not_seen(obj)
++#endif		
++		) obj->dknown = TRUE;
+ 	if (Role_if(PM_PRIEST)) obj->bknown = TRUE;
+ 	if (obj_is_pname(obj))
+ 	    goto nameit;
+@@ -2627,7 +2631,7 @@
+ 	}
+ 
+ #ifdef INVISIBLE_OBJECTS
+-	if (isinvisible) otmp->oinvis = 1;
++	(void) change_obj_invis(otmp,isinvisible);
+ #endif
+ 
+ 	/* set eroded */
+diff -u -X files.exc nethack-3.4.3-orig/src/pickup.c nethack-3.4.3-invis/src/pickup.c
+--- nethack-3.4.3-orig/src/pickup.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/pickup.c	Thu Dec 11 10:15:03 2003
+@@ -1256,7 +1256,7 @@
+ 	   to look at it yet; affects docall(SCR_SCARE_MONSTER). */
+ 	if (!Blind)
+ #ifdef INVISIBLE_OBJECTS
+-		if (!obj->oinvis || See_invisible)
++		if (!not_seen(obj))
+ #endif
+ 		obj->dknown = 1;
+ 
+diff -u -X files.exc nethack-3.4.3-orig/src/potion.c nethack-3.4.3-invis/src/potion.c
+--- nethack-3.4.3-orig/src/potion.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/potion.c	Thu Dec 11 10:15:03 2003
+@@ -971,7 +971,11 @@
+ 		losehp(rnd(2), "thrown potion", KILLED_BY_AN);
+ 	} else {
+ 		distance = distu(mon->mx,mon->my);
+-		if (!cansee(mon->mx,mon->my)) pline("Crash!");
++		if (!cansee(mon->mx,mon->my)
++#ifdef INVISIBLE_OBJECTS
++			|| not_seen(obj)
++#endif
++			) pline("Crash!");
+ 		else {
+ 		    char *mnam = mon_nam(mon);
+ 		    char buf[BUFSZ];
+@@ -1678,8 +1682,12 @@
+ 		}
+ 
+ 		obj->blessed = obj->cursed = obj->bknown = 0;
++#ifdef INVISIBLE_OBJECTS
++		obj->oinvis = obj->oinvis && potion->oinvis;
++		if (Blind || Hallucination || not_seen(obj)) obj->dknown = 0;
++#else
+ 		if (Blind || Hallucination) obj->dknown = 0;
+-
++#endif
+ 		if ((mixture = mixtype(obj, potion)) != 0) {
+ 			obj->otyp = mixture;
+ 		} else {
+@@ -1724,22 +1732,24 @@
+ 
+ #ifdef INVISIBLE_OBJECTS
+ 	if (potion->otyp == POT_INVISIBILITY && !obj->oinvis) {
+-		obj->oinvis = TRUE;
++		if(change_obj_invis(obj,TRUE)) {
+ 		if (!Blind) {
+ 		    if (!See_invisible) pline("Where did %s go?",
+ 		    		the(xname(obj)));
+ 		    else You("notice a little haziness around %s.",
+ 		    		the(xname(obj)));
+ 		}
++		}
+ 		goto poof;
+ 	} else if (potion->otyp == POT_SEE_INVISIBLE && obj->oinvis) {
+-		obj->oinvis = FALSE;
++		if(change_obj_invis(obj,FALSE)==0) {
+ 		if (!Blind) {
+ 		    if (!See_invisible) pline("So that's where %s went!",
+ 		    		the(xname(obj)));
+ 		    else pline_The("haziness around %s disappears.",
+ 		    		the(xname(obj)));
+ 		}
++		}
+ 		goto poof;
+ 	}
+ #endif
+@@ -1891,7 +1901,11 @@
+ 		else
+ 		    singlepotion->cursed = obj->cursed;  /* odiluted left as-is */
+ 		singlepotion->bknown = FALSE;
+-		if (Blind) {
++		if (Blind
++#ifdef INVISIBLE_OBJECTS
++			|| not_seen(singlepotion)
++#endif
++			) {
+ 		    singlepotion->dknown = FALSE;
+ 		} else {
+ 		    singlepotion->dknown = !Hallucination;
+diff -u -X files.exc nethack-3.4.3-orig/src/pray.c nethack-3.4.3-invis/src/pray.c
+--- nethack-3.4.3-orig/src/pray.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/pray.c	Thu Dec 11 10:15:03 2003
+@@ -169,7 +169,11 @@
+ 		    ((otmp = unchanger()) != 0 && otmp->cursed)))
+ 		return TROUBLE_UNUSEABLE_HANDS;
+ 	}
+-	if(Blindfolded && ublindf->cursed) return(TROUBLE_CURSED_BLINDFOLD);
++	if(Blindfolded
++#ifdef INVISIBLE_OBJECTS
++		&& ublindf->oinvis==0
++#endif
++		&& ublindf->cursed) return(TROUBLE_CURSED_BLINDFOLD);
+ 
+ 	/*
+ 	 * minor troubles
+diff -u -X files.exc nethack-3.4.3-orig/src/priest.c nethack-3.4.3-invis/src/priest.c
+--- nethack-3.4.3-orig/src/priest.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/priest.c	Thu Dec 11 10:15:03 2003
+@@ -100,6 +100,9 @@
+ 		if(ib) {
+ 			if (cansee(mtmp->mx,mtmp->my))
+ 			    pline("%s picks up %s.", Monnam(mtmp),
++#ifdef INVISIBLE_OBJECTS
++				not_seen(ib) ? something :
++#endif
+ 				distant_name(ib,doname));
+ 			obj_extract_self(ib);
+ 			(void) mpickobj(mtmp, ib);
+diff -u -X files.exc nethack-3.4.3-orig/src/read.c nethack-3.4.3-invis/src/read.c
+--- nethack-3.4.3-orig/src/read.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/read.c	Thu Dec 11 10:15:03 2003
+@@ -40,18 +40,32 @@
+ {
+ 	register struct obj *scroll;
+ 	register boolean confused;
++#ifdef INVISIBLE_OBJECTS
++	register boolean scroll_not_seen;
++#endif
+ 
+ 	known = FALSE;
+ 	if(check_capacity((char *)0)) return (0);
+ 	scroll = getobj(readable, "read");
+ 	if(!scroll) return(0);
+ 
++#ifdef INVISIBLE_OBJECTS
++	scroll_not_seen = not_seen(scroll);
++#endif
+ 	/* outrumor has its own blindness check */
+ 	if(scroll->otyp == FORTUNE_COOKIE) {
+ 	    if(flags.verbose)
+ 		You("break up the cookie and throw away the pieces.");
++#ifdef INVISIBLE_OBJECTS
++		if(scroll_not_seen) {
++			You_cant("read the invisible fortune!");
++		}
++		else
++#endif
++		{
+ 	    outrumor(bcsign(scroll), BY_COOKIE);
+ 	    if (!Blind) u.uconduct.literate++;
++		}
+ 	    useup(scroll);
+ 	    return(1);
+ #ifdef TOURIST
+@@ -77,7 +91,11 @@
+ 	    char buf[BUFSZ];
+ 	    int erosion;
+ 
+-	    if (Blind) {
++	    if (Blind
++#ifdef INVISIBLE_OBJECTS
++			|| scroll_not_seen
++#endif			
++			) {
+ 		You_cant("feel any Braille writing.");
+ 		return 0;
+ 	    }
+@@ -107,6 +125,11 @@
+ 		pline("Being blind, you cannot read the %s.", what);
+ 		return(0);
+ 	    }
++#ifdef INVISIBLE_OBJECTS
++	} else if (scroll_not_seen && !scroll->dknown) {
++		You_cant("see any writing on %s.", the(xname(scroll)));
++		return(0);
++#endif
+ 	}
+ 
+ 	/* Actions required to win the game aren't counted towards conduct */
+@@ -124,7 +147,11 @@
+ 	}
+ 	scroll->in_use = TRUE;	/* scroll, not spellbook, now being read */
+ 	if(scroll->otyp != SCR_BLANK_PAPER) {
+-	  if(Blind)
++	  if(Blind
++#ifdef INVISIBLE_OBJECTS
++		  || scroll_not_seen
++#endif
++		  )
+ 	    pline("As you %s the formula on it, the scroll disappears.",
+ 			is_silent(youmonst.data) ? "cogitate" : "pronounce");
+ 	  else
+diff -u -X files.exc nethack-3.4.3-orig/src/sit.c nethack-3.4.3-invis/src/sit.c
+--- nethack-3.4.3-orig/src/sit.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/sit.c	Thu Dec 11 10:15:03 2003
+@@ -296,6 +296,10 @@
+ 		uegg->owt = weight(uegg);
+ 		uegg->corpsenm = egg_type_from_parent(u.umonnum, FALSE);
+ 		uegg->known = uegg->dknown = 1;
++#ifdef INVISIBLE_OBJECTS
++		/* invisible creatures lay invisible eggs.  Lamark was right */
++		uegg->oinvis = (HInvis || EInvis || pm_invisible(youmonst.data));
++#endif
+ 		attach_egg_hatch_timeout(uegg);
+ 		You("lay an egg.");
+ 		dropy(uegg);
+@@ -422,6 +426,10 @@
+ 			HSee_invisible &= ~INTRINSIC;
+ 			You("%s!", Hallucination ? "tawt you taw a puttie tat"
+ 						: "thought you saw something");
++			see_monsters();
++#ifdef INVISIBLE_OBJECTS
++			see_objects();
++#endif
+ 			break;
+ 		}
+ 	case 8 : if (HFast & INTRINSIC) {
+diff -u -X files.exc nethack-3.4.3-orig/src/sp_lev.c nethack-3.4.3-invis/src/sp_lev.c
+--- nethack-3.4.3-orig/src/sp_lev.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/sp_lev.c	Thu Dec 11 10:15:03 2003
+@@ -954,6 +954,11 @@
+ 	if (o->spe != -127)	/* That means NOT RANDOM! */
+ 	    otmp->spe = (schar)o->spe;
+ 
++#ifdef INVISIBLE_OBJECTS
++	if(o->invisible >= 0)
++		otmp->oinvis = o->invisible;
++#endif
++
+ 	switch (o->curse_state) {
+ 	      case 1:	bless(otmp); break; /* BLESSED */
+ 	      case 2:	unbless(otmp); uncurse(otmp); break; /* uncursed */
+diff -u -X files.exc nethack-3.4.3-orig/src/spell.c nethack-3.4.3-invis/src/spell.c
+--- nethack-3.4.3-orig/src/spell.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/spell.c	Thu Dec 11 10:15:03 2003
+@@ -321,7 +321,12 @@
+ 	boolean costly = TRUE;
+ 
+ 	/* JDS: lenses give 50% faster reading; 33% smaller read time */
+-	if (delay && ublindf && ublindf->otyp == LENSES && rn2(2)) delay++;
++	if (delay && ublindf && ublindf->otyp == LENSES 
++#ifdef INVISIBLE_OBJECTS
++		/* ... but only if they're visible */
++		&& ublindf->oinvis == 0
++#endif
++		&& rn2(2)) delay++;
+ 	if (Confusion) {		/* became confused while learning */
+ 	    (void) confused_book(book);
+ 	    book = 0;			/* no longer studying */
+@@ -440,7 +445,11 @@
+ 			/* uncursed - chance to fail */
+ 			int read_ability = ACURR(A_INT) + 4 + u.ulevel/2
+ 			    - 2*objects[booktype].oc_level
+-			    + ((ublindf && ublindf->otyp == LENSES) ? 2 : 0);
++			    + ((ublindf && ublindf->otyp == LENSES
++#ifdef INVISIBLE_OBJECTS
++				&& ublindf->oinvis == 0
++#endif
++				) ? 2 : 0);
+ 			/* only wizards know if a spell is too difficult */
+ 			if (Role_if(PM_WIZARD) && read_ability < 20 &&
+ 			    !confused) {
+diff -u -X files.exc nethack-3.4.3-orig/src/steal.c nethack-3.4.3-invis/src/steal.c
+--- nethack-3.4.3-orig/src/steal.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/steal.c	Thu Dec 11 10:22:01 2003
+@@ -544,7 +544,11 @@
+ 	obj->owornmask = 0L;
+     }
+     if (verbosely && cansee(omx, omy))
+-	pline("%s drops %s.", Monnam(mon), distant_name(obj, doname));
++	pline("%s drops %s.", Monnam(mon), 
++#ifdef INVISIBLE_OBJECTS
++		not_seen(obj) ? something :
++#endif
++		distant_name(obj, doname));
+     if (!flooreffects(obj, omx, omy, "fall")) {
+ 	place_object(obj, omx, omy);
+ 	stackobj(obj);
+diff -u -X files.exc nethack-3.4.3-orig/src/timeout.c nethack-3.4.3-invis/src/timeout.c
+--- nethack-3.4.3-orig/src/timeout.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/timeout.c	Thu Dec 11 10:15:03 2003
+@@ -443,6 +443,10 @@
+ 		    if (!enexto(&cc, x, y, &mons[mnum]) ||
+ 			 !(mon = makemon(&mons[mnum], cc.x, cc.y, NO_MINVENT)))
+ 			break;
++#ifdef INVISIBLE_OBJECTS
++			/* invisible egg makes invisible monster */
++			mon->minvis = egg->oinvis;
++#endif
+ 		    /* tame if your own egg hatches while you're on the
+ 		       same dungeon level, or any dragon egg which hatches
+ 		       while it's in your inventory */
+@@ -509,7 +513,7 @@
+ 	    switch (egg->where) {
+ 		case OBJ_INVENT:
+ 		    knows_egg = TRUE; /* true even if you are blind */
+-		    if (!cansee_hatchspot)
++		    if (!cansee_hatchspot || !canseemon(mon))
+ 			You_feel("%s %s from your pack!", something,
+ 			    locomotion(mon->data, "drop"));
+ 		    else
+@@ -527,14 +531,18 @@
+ 
+ 		case OBJ_FLOOR:
+ 		    if (cansee_hatchspot) {
+-			knows_egg = TRUE;
+-			You("see %s hatch.", monnambuf);
+-			redraw = TRUE;	/* update egg's map location */
++				if(canseemon(mon)) {
++				knows_egg = TRUE;
++				You("see %s hatch.", monnambuf);
++				redraw = TRUE;	/* update egg's map location */
++				}
++				else
++					You_hear("%s hatch.", something);
+ 		    }
+ 		    break;
+ 
+ 		case OBJ_MINVENT:
+-		    if (cansee_hatchspot) {
++		    if (cansee_hatchspot && canseemon(mon)) {
+ 			/* egg carring monster might be invisible */
+ 			if (canseemon(egg->ocarry)) {
+ 			    Sprintf(carriedby, "%s pack",
+@@ -558,7 +566,7 @@
+ 		    break;
+ 	    }
+ 
+-	    if (cansee_hatchspot && knows_egg)
++	    if (cansee_hatchspot && knows_egg && canseemon(mon))
+ 		learn_egg_type(mnum);
+ 
+ 	    if (egg->quan > 0) {
+diff -u -X files.exc nethack-3.4.3-orig/src/trap.c nethack-3.4.3-invis/src/trap.c
+--- nethack-3.4.3-orig/src/trap.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/trap.c	Thu Dec 11 10:15:03 2003
+@@ -473,6 +473,10 @@
+ 	/* if statue has been named, give same name to the monster */
+ 	if (statue->onamelth)
+ 	    mon = christen_monst(mon, ONAME(statue));
++#ifdef INVISIBLE_OBJECTS
++	/* make monster same invisibility as statue */
++	mon->minvis = statue->oinvis;
++#endif
+ 	/* transfer any statue contents to monster's inventory */
+ 	while ((item = statue->cobj) != 0) {
+ 	    obj_extract_self(item);
+@@ -485,6 +489,9 @@
+ 	if (mon->m_ap_type) seemimic(mon);
+ 	else mon->mundetected = FALSE;
+ 	if ((x == u.ux && y == u.uy) || cause == ANIMATE_SPELL) {
++#ifdef INVISIBLE_OBJECTS
++		if(See_invisible) {
++#endif
+ 	    const char *comes_to_life = nonliving(mon->data) ?
+ 					"moves" : "comes to life"; 
+ 	    if (cause == ANIMATE_SPELL)
+@@ -493,11 +500,20 @@
+ 	    else
+ 		pline_The("statue %s!",
+ 			canspotmon(mon) ? comes_to_life : "disappears");
++#ifdef INVISIBLE_OBJECTS
++		}
++#endif
+ 	    if (historic) {
++#ifdef INVISIBLE_OBJECTS
++			if(See_invisible)
++#endif
+ 		    You_feel("guilty that the historic statue is now gone.");
+ 		    adjalign(-1);
+ 	    }
+ 	} else if (cause == ANIMATE_SHATTER)
++#ifdef INVISIBLE_OBJECTS
++		if(See_invisible)
++#endif
+ 	    pline("Instead of shattering, the statue suddenly %s!",
+ 		canspotmon(mon) ? "comes to life" : "disappears");
+ 	else { /* cause == ANIMATE_NORMAL */
+@@ -655,7 +671,11 @@
+ 		    obfree(otmp, (struct obj *)0);
+ 		} else {
+ 		    place_object(otmp, u.ux, u.uy);
+-		    if (!Blind) otmp->dknown = 1;
++		    if (!Blind
++#ifdef INVISIBLE_OBJECTS
++				&& !not_seen(otmp)
++#endif
++				) otmp->dknown = 1;
+ 		    stackobj(otmp);
+ 		    newsym(u.ux, u.uy);
+ 		}
+@@ -684,7 +704,11 @@
+ 		    obfree(otmp, (struct obj *)0);
+ 		} else {
+ 		    place_object(otmp, u.ux, u.uy);
+-		    if (!Blind) otmp->dknown = 1;
++		    if (!Blind
++#ifdef INVISIBLE_OBJECTS
++				&& !not_seen(otmp)
++#endif				
++				) otmp->dknown = 1;
+ 		    stackobj(otmp);
+ 		    newsym(u.ux, u.uy);
+ 		}
+@@ -718,7 +742,11 @@
+ 			}
+ 		    }
+ 
+-		    if (!Blind) otmp->dknown = 1;
++		    if (!Blind
++#ifdef INVISIBLE_OBJECTS
++				&& !not_seen(otmp)
++#endif
++				) otmp->dknown = 1;
+ 		    stackobj(otmp);
+ 		    newsym(u.ux,u.uy);	/* map the rock */
+ 
+@@ -1380,7 +1408,7 @@
+ 	    default:
+ 			if (!delaycnt) delaycnt = 1;
+ 			if (!cansee(bhitpos.x,bhitpos.y)) curs_on_u();
+-			tmp_at(DISP_FLASH, obj_to_glyph(singleobj));
++			tmp_at(DISP_FLASH, obj_to_iglyph(singleobj));
+ 			tmp_at(bhitpos.x, bhitpos.y);
+ 	}
+ 
+diff -u -X files.exc nethack-3.4.3-orig/src/weapon.c nethack-3.4.3-invis/src/weapon.c
+--- nethack-3.4.3-orig/src/weapon.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/weapon.c	Thu Dec 11 10:15:03 2003
+@@ -545,7 +545,10 @@
+ 		obj_extract_self(obj);
+ 		if (cansee(mon->mx, mon->my)) {
+ 		    pline("%s drops %s.", Monnam(mon),
+-			  distant_name(obj, doname));
++#ifdef INVISIBLE_OBJECTS
++				not_seen(obj) ? something :
++#endif
++				distant_name(obj, doname));
+ 		    newsym(mon->mx, mon->my);
+ 		}
+ 		/* might be dropping object into water or lava */
+@@ -645,13 +648,23 @@
+ 				  s_suffix(mon_nam(mon)),
+ 				  plur(mw_tmp->quan), welded_buf);
+ 			    pline("%s cannot wield that %s.",
+-				mon_nam(mon), xname(obj));
++				mon_nam(mon), 
++#ifdef INVISIBLE_OBJECTS
++				not_seen(mw_tmp) ? "thing" :
++#endif
++				xname(obj));
+ 			} else {
+ 			    pline("%s tries to wield %s.", Monnam(mon),
++#ifdef INVISIBLE_OBJECTS
++				not_seen(obj) ? something :
++#endif
+ 				doname(obj));
+ 			    pline("%s %s %s!",
+-				  s_suffix(Monnam(mon)),
+-				  xname(mw_tmp), welded_buf);
++					s_suffix(Monnam(mon)),
++#ifdef INVISIBLE_OBJECTS
++					not_seen(mw_tmp) ? something :
++#endif
++					xname(mw_tmp), welded_buf);
+ 			}
+ 			mw_tmp->bknown = 1;
+ 		    }
+@@ -662,11 +675,22 @@
+ 		setmnotwielded(mon, mw_tmp);
+ 		mon->weapon_check = NEED_WEAPON;
+ 		if (canseemon(mon)) {
+-		    pline("%s wields %s!", Monnam(mon), doname(obj));
++		    pline("%s wields %s!", Monnam(mon), 
++#ifdef INVISIBLE_OBJECTS
++				not_seen(obj) ? something :
++#endif				
++				doname(obj));
+ 		    if (obj->cursed && obj->otyp != CORPSE) {
+ 			pline("%s %s to %s %s!",
++#ifdef INVISIBLE_OBJECTS
++				not_seen(obj) ? "Something welds" :
++#endif
+ 			    Tobjnam(obj, "weld"),
+-			    is_plural(obj) ? "themselves" : "itself",
++			    is_plural(obj) 
++#ifdef INVISIBLE_OBJECTS
++				&& !not_seen(obj)
++#endif				
++				? "themselves" : "itself",
+ 			    s_suffix(mon_nam(mon)), mbodypart(mon,HAND));
+ 			obj->bknown = 1;
+ 		    }
+@@ -675,6 +699,9 @@
+ 		    begin_burn(obj, FALSE);
+ 		    if (canseemon(mon))
+ 			pline("%s brilliantly in %s %s!",
++#ifdef INVISIBLE_OBJECTS
++				not_seen(obj) ? "Something glows" :
++#endif
+ 			    Tobjnam(obj, "glow"), 
+ 			    s_suffix(mon_nam(mon)), mbodypart(mon,HAND));
+ 		}
+@@ -1307,9 +1334,13 @@
+     if (artifact_light(obj) && obj->lamplit) {
+ 	end_burn(obj, FALSE);
+ 	if (canseemon(mon))
+-	    pline("%s in %s %s %s glowing.", The(xname(obj)),
+-		  s_suffix(mon_nam(mon)), mbodypart(mon,HAND),
+-		  otense(obj, "stop"));
++	    pline("%s in %s %s %s glowing.", 
++#ifdef INVISIBLE_OBJECTS
++			not_seen(obj) ? Something :
++#endif
++			The(xname(obj)),
++			s_suffix(mon_nam(mon)), mbodypart(mon,HAND),
++			otense(obj, "stop"));
+     }
+     obj->owornmask &= ~W_WEP;
+ }
+diff -u -X files.exc nethack-3.4.3-orig/src/wield.c nethack-3.4.3-invis/src/wield.c
+--- nethack-3.4.3-orig/src/wield.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/wield.c	Thu Dec 11 10:15:03 2003
+@@ -612,6 +612,11 @@
+ 	vismon = victim && (victim != &youmonst) && canseemon(victim);
+ 	visobj = !victim && cansee(bhitpos.x, bhitpos.y); /* assume thrown */
+ 
++#ifdef INVISIBLE_OBJECTS
++	vismon = vismon && !not_seen(target);
++	visobj = visobj && !not_seen(target);
++#endif
++
+ 	erosion = acid_dmg ? target->oeroded2 : target->oeroded;
+ 
+ 	if (target->greased) {
+@@ -623,7 +628,11 @@
+ #endif
+ 					)
+ 	    {
+-		if (!Blind) {
++		if (!Blind
++#ifdef INVISIBLE_OBJECTS
++			&& !not_seen(target)
++#endif
++			) {
+ 		    if (victim == &youmonst)
+ 			Your("%s.", aobjnam(target, "fade"));
+ 		    else if (vismon)
+@@ -669,7 +678,11 @@
+ 	    if (flags.verbose) {
+ 		if (victim == &youmonst)
+ 		    Your("%s completely %s.",
+-			aobjnam(target, Blind ? "feel" : "look"),
++			aobjnam(target, Blind 
++#ifdef INVISIBLE_OBJECTS
++			|| not_seen(target)
++#endif
++			? "feel" : "look"),
+ 			acid_dmg ? "corroded" : "rusty");
+ 		else if (vismon)
+ 		    pline("%s's %s completely %s.", Monnam(victim),
+diff -u -X files.exc nethack-3.4.3-orig/src/wizard.c nethack-3.4.3-invis/src/wizard.c
+--- nethack-3.4.3-orig/src/wizard.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/wizard.c	Thu Dec 11 10:23:36 2003
+@@ -353,8 +353,11 @@
+ 			    if (cansee(mtmp->mx, mtmp->my))
+ 				pline("%s picks up %s.",
+ 				    Monnam(mtmp),
+-				    (distu(mtmp->mx, mtmp->my) <= 5) ?
+-				     doname(otmp) : distant_name(otmp, doname));
++#ifdef INVISIBLE_OBJECTS
++					not_seen(otmp) ? something :
++#endif
++					((distu(mtmp->my, mtmp->my) <= 5) ?
++					doname(otmp) : distant_name(otmp, doname)));
+ 			    obj_extract_self(otmp);
+ 			    (void) mpickobj(mtmp, otmp);
+ 			    return(1);
+diff -u -X files.exc nethack-3.4.3-orig/src/worn.c nethack-3.4.3-invis/src/worn.c
+--- nethack-3.4.3-orig/src/worn.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/worn.c	Thu Dec 11 10:15:03 2003
+@@ -487,11 +487,19 @@
+ 		char buf[BUFSZ];
+ 
+ 		if (old)
+-		    Sprintf(buf, " removes %s and", distant_name(old, doname));
++		    Sprintf(buf, " removes %s and", 
++#ifdef INVISIBLE_OBJECTS
++			not_seen(old) ? something :
++#endif
++			distant_name(old, doname));
+ 		else
+ 		    buf[0] = '\0';
+ 		pline("%s%s puts on %s.", Monnam(mon),
+-		      buf, distant_name(best,doname));
++				buf, 
++#ifdef INVISIBLE_OBJECTS
++				not_seen(best) ? something :
++#endif
++				distant_name(best,doname));
+ 	    } /* can see it */
+ 	    m_delay += objects[best->otyp].oc_delay;
+ 	    mon->mfrozen = m_delay;
+diff -u -X files.exc nethack-3.4.3-orig/src/write.c nethack-3.4.3-invis/src/write.c
+--- nethack-3.4.3-orig/src/write.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/write.c	Thu Dec 11 10:15:03 2003
+@@ -95,7 +95,11 @@
+ 	if(!paper)
+ 		return(0);
+ 	typeword = (paper->oclass == SPBOOK_CLASS) ? "spellbook" : "scroll";
+-	if(Blind && !paper->dknown) {
++	if((Blind
++#ifdef INVISIBLE_OBJECTS
++		|| not_seen(paper)	
++#endif
++		) && !paper->dknown) {
+ 		You("don't know if that %s is blank or not!", typeword);
+ 		return(1);
+ 	}
+@@ -160,7 +164,9 @@
+ 
+ 	new_obj = mksobj(i, FALSE, FALSE);
+ 	new_obj->bknown = (paper->bknown && pen->bknown);
+-
++#ifdef INVISIBLE_OBJECTS
++	new_obj->oinvis = paper->oinvis;
++#endif
+ 	/* shk imposes a flat rate per use, not based on actual charges used */
+ 	check_unpaid(pen);
+ 
+@@ -224,6 +230,11 @@
+ 	/* success */
+ 	if (new_obj->oclass == SPBOOK_CLASS) {
+ 		/* acknowledge the change in the object's description... */
++#ifdef INVISIBLE_OBJECTS
++		if(not_seen(new_obj))
++			pline_The("spellbook warps strangely.");
++		else
++#endif
+ 		pline_The("spellbook warps strangely, then turns %s.",
+ 		      OBJ_DESCR(objects[new_obj->otyp]));
+ 	}
+diff -u -X files.exc nethack-3.4.3-orig/src/zap.c nethack-3.4.3-invis/src/zap.c
+--- nethack-3.4.3-orig/src/zap.c	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/src/zap.c	Thu Dec 11 10:15:03 2003
+@@ -678,7 +678,10 @@
+ 				mtmp->mhp = eaten_stat(mtmp->mhp, obj);
+ 			/* track that this monster was revived at least once */
+ 			mtmp->mrevived = 1;
+-
++#ifdef INVISIBLE_OBJECTS
++			/* monster has same invisibility as corpse */
++			mtmp->minvis = obj->oinvis;
++#endif
+ 			if (recorporealization) {
+ 				/* If mtmp is revivification of former tame ghost*/
+ 				if (savetame) {
+@@ -899,7 +902,7 @@
+ 	unbless(obj);
+ 	uncurse(obj);
+ #ifdef INVISIBLE_OBJECTS
+-	if (obj->oinvis) obj->oinvis = 0;
++	(void) change_obj_invis(obj,FALSE);
+ #endif
+ 	return;
+ }
+@@ -1281,6 +1284,9 @@
+ 	otmp->blessed = obj->blessed;
+ 	otmp->oeroded = obj->oeroded;
+ 	otmp->oeroded2 = obj->oeroded2;
++#ifdef INVISIBLE_OBJECTS
++	(void) change_obj_invis(otmp,obj->oinvis);
++#endif
+ 	if (!is_flammable(otmp) && !is_rustprone(otmp)) otmp->oeroded = 0;
+ 	if (!is_corrodeable(otmp) && !is_rottable(otmp)) otmp->oeroded2 = 0;
+ 	if (is_damageable(otmp))
+@@ -1571,8 +1577,8 @@
+ 		break;
+ 	case WAN_MAKE_INVISIBLE:
+ #ifdef INVISIBLE_OBJECTS
+-		obj->oinvis = TRUE;
+-		newsym(obj->ox,obj->oy);	/* make object disappear */
++		if(change_obj_invis(obj,TRUE))
++			newsym(obj->ox,obj->oy);	/* make object disappear */
+ #endif
+ 		break;
+ 	case WAN_UNDEAD_TURNING:
+@@ -2639,7 +2645,7 @@
+ 	if (weapon == FLASHED_LIGHT) {
+ 	    tmp_at(DISP_BEAM, cmap_to_glyph(S_flashbeam));
+ 	} else if (weapon != ZAPPED_WAND && weapon != INVIS_BEAM)
+-	    tmp_at(DISP_FLASH, obj_to_glyph(obj));
++	    tmp_at(DISP_FLASH, obj_to_iglyph(obj));
+ 
+ 	while(range-- > 0) {
+ 	    int x,y;
+@@ -2838,22 +2844,25 @@
+ }
+ 
+ struct monst *
+-boomhit(dx, dy)
++boomhit(dx, dy, impaired, seen)
+ int dx, dy;
++boolean impaired;
++boolean seen;
+ {
+ 	register int i, ct;
+ 	int boom = S_boomleft;	/* showsym[] index  */
+ 	struct monst *mtmp;
++	int gly = seen ? cmap_to_glyph(boom) : NO_GLYPH;
+ 
+ 	bhitpos.x = u.ux;
+ 	bhitpos.y = u.uy;
+ 
+ 	for (i = 0; i < 8; i++) if (xdir[i] == dx && ydir[i] == dy) break;
+-	tmp_at(DISP_FLASH, cmap_to_glyph(boom));
++	tmp_at(DISP_FLASH, gly);
+ 	for (ct = 0; ct < 10; ct++) {
+ 		if(i == 8) i = 0;
+ 		boom = (boom == S_boomleft) ? S_boomright : S_boomleft;
+-		tmp_at(DISP_CHANGE, cmap_to_glyph(boom));/* change glyph */
++		tmp_at(DISP_CHANGE, gly);/* change glyph */
+ 		dx = xdir[i];
+ 		dy = ydir[i];
+ 		bhitpos.x += dx;
+@@ -2871,7 +2880,7 @@
+ 			break;
+ 		}
+ 		if(bhitpos.x == u.ux && bhitpos.y == u.uy) { /* ct == 9 */
+-			if(Fumbling || rn2(20) >= ACURR(A_DEX)) {
++			if(impaired || !seen || rn2(20) >= ACURR(A_DEX)) {
+ 				/* we hit ourselves */
+ 				(void) thitu(10, rnd(10), (struct obj *)0,
+ 					"boomerang");
+diff -u -X files.exc nethack-3.4.3-orig/util/lev_comp.l nethack-3.4.3-invis/util/lev_comp.l
+--- nethack-3.4.3-orig/util/lev_comp.l	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/util/lev_comp.l	Thu Dec 11 10:15:03 2003
+@@ -140,6 +140,8 @@
+ NAME		return NAME_ID;
+ CHANCE		return CHANCE_ID;
+ levregion	return LEV;
++invisible	{ yylval.i=O_INVISIBLE; return VISIBILITY; }
++visible		{ yylval.i=O_VISIBLE;   return VISIBILITY; }
+ open		{ yylval.i=D_ISOPEN; return DOOR_STATE; }
+ closed		{ yylval.i=D_CLOSED; return DOOR_STATE; }
+ locked		{ yylval.i=D_LOCKED; return DOOR_STATE; }
+diff -u -X files.exc nethack-3.4.3-orig/util/lev_comp.y nethack-3.4.3-invis/util/lev_comp.y
+--- nethack-3.4.3-orig/util/lev_comp.y	Sun Dec 07 16:39:14 2003
++++ nethack-3.4.3-invis/util/lev_comp.y	Thu Dec 11 10:15:03 2003
+@@ -156,6 +156,7 @@
+ %token	<i> CONTAINED
+ %token	<i> ',' ':' '(' ')' '[' ']'
+ %token	<map> STRING MAP_ID
++%token	<i> VISIBILITY
+ %type	<i> h_justif v_justif trap_name room_type door_state light_state
+ %type	<i> alignment altar_type a_register roomfill filling door_pos
+ %type	<i> door_wall walled secret amount chance
+@@ -896,6 +897,7 @@
+ 			tmpobj[nobj]->name.str = 0;
+ 			tmpobj[nobj]->chance = $1;
+ 			tmpobj[nobj]->id = -1;
++			tmpobj[nobj]->invisible = -1;
+ 			if ($5) {
+ 			    int token = get_object_id($5, $<i>3);
+ 			    if (token == ERR)
+@@ -951,6 +953,15 @@
+ 		  }
+ 		| ',' monster_id ',' enchantment optional_name
+ 		  {
++		  }
++		| ',' curse_state ',' enchantment obj_visib optional_name
++		  {
++		  }
++		;
++
++obj_visib	: ',' VISIBILITY
++		  {
++			tmpobj[nobj]->invisible = $2;
+ 		  }
+ 		;
+ 

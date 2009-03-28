@@ -1,0 +1,120 @@
+diff -Nurd nethack-3.4.3-pristine/src/artifact.c nethack-3.4.3/src/artifact.c
+--- nethack-3.4.3-pristine/src/artifact.c	2005-01-08 00:33:37 +0100
++++ nethack-3.4.3/src/artifact.c	2005-01-08 02:00:22 +0100
+@@ -1086,6 +1086,13 @@
+ 				*dmgptr = 0;
+ 				return ((boolean)(youattack || vis));
+ 			}
++			if (mdef->data==&mons[PM_CHROMATIC_DRAGON])
++			{
++				pline("%s cuts only a shallow wound in the thick skin of %s neck.",
++					wepdesc, s_suffix(mon_nam(mdef)));
++				/* The normal damage is still done. */
++				return TRUE;
++			}
+ 			if (noncorporeal(mdef->data) || amorphous(mdef->data)) {
+ 				pline("%s slices through %s %s.", wepdesc,
+ 				      s_suffix(mon_nam(mdef)),
+@@ -1093,8 +1100,13 @@
+ 				return TRUE;
+ 			}
+ 			*dmgptr = 2 * mdef->mhp + FATAL_DAMAGE_MODIFIER;
+-			pline(behead_msg[rn2(SIZE(behead_msg))],
+-			      wepdesc, mon_nam(mdef));
++                        if(mdef->data==&mons[PM_ETTIN]
++                          ||mdef->data==&mons[PM_ETTIN_ZOMBIE])
++                                pline("%s goes through both necks of %s at once like butter!",
++                                      wepdesc, mon_nam(mdef));
++                        else			
++				pline(behead_msg[rn2(SIZE(behead_msg))],
++				      wepdesc, mon_nam(mdef));
+ 			otmp->dknown = TRUE;
+ 			return TRUE;
+ 		} else {
+@@ -1111,6 +1123,11 @@
+ 			}
+ 			*dmgptr = 2 * (Upolyd ? u.mh : u.uhp)
+ 				  + FATAL_DAMAGE_MODIFIER;
++                        if(mdef->data==&mons[PM_ETTIN]
++                          ||mdef->data==&mons[PM_ETTIN_ZOMBIE])
++                                pline("%s goes through both your necks at once like butter!",
++                                      wepdesc);
++                        else			
+ 			pline(behead_msg[rn2(SIZE(behead_msg))],
+ 			      wepdesc, "you");
+ 			otmp->dknown = TRUE;
+diff -Nurd nethack-3.4.3-pristine/src/do_name.c nethack-3.4.3/src/do_name.c
+--- nethack-3.4.3-pristine/src/do_name.c	2005-01-08 00:33:37 +0100
++++ nethack-3.4.3/src/do_name.c	2005-01-08 01:49:11 +0100
+@@ -893,6 +893,7 @@
+ 	"shadow", "hologram", "jester", "attorney", "sleazoid",
+ 	"killer tomato", "amazon", "robot", "battlemech",
+ 	"rhinovirus", "harpy", "lion-dog", "rat-ant", "Y2K bug",
++	"catoblepas", "phoenix", "amphisbaena",	"pink oliphaunt",
+ 						/* misc. */
+ 	"grue", "Christmas-tree monster", "luck sucker", "paskald",
+ 	"brogmoid", "dornbeast",		/* Quendor (Zork, &c.) */
+@@ -901,8 +902,9 @@
+ 	"emu", "kestrel", "xeroc", "venus flytrap",
+ 						/* Rogue */
+ 	"creeping coins",			/* Wizardry */
+-	"hydra", "siren",			/* Greek legend */
+-	"killer bunny",				/* Monty Python */
++	"hydra", "siren", "pegasus",    	/* Greek legend */
++	"killer bunny", "black knight",         /* Monty Python */
++	"Trogdor the Burninator",               /* Homestar runner */
+ 	"rodent of unusual size",		/* The Princess Bride */
+ 	"Smokey the bear",	/* "Only you can prevent forest fires!" */
+ 	"Luggage",				/* Discworld */
+diff -Nurd nethack-3.4.3-pristine/src/eat.c nethack-3.4.3/src/eat.c
+--- nethack-3.4.3-pristine/src/eat.c	2005-01-08 00:33:37 +0100
++++ nethack-3.4.3/src/eat.c	2005-01-08 01:28:57 +0100
+@@ -1321,7 +1321,18 @@
+ 	    }
+ 		    
+ 	    if (!retcode) consume_oeaten(otmp, 2);	/* oeaten >>= 2 */
+-	} else {
++	} else if (mnum==PM_COCKATRICE || mnum==PM_CHICKATRICE)
++		pline("Hmm... tastes like chicken.");
++	else if (mnum==PM_FLOATING_EYE && u.umonnum==PM_RAVEN)
++		You("peck the eyeball with delight.");
++/*
++	else if (u.usym==S_VAMPIRE && !vegetarian(&mons[mnum])
++	    	pline("%s%s still has some %sblood in it!",
++			!uniq ? "This " : !type_is_pname(&mons[mnum]) ? "The " : "",
++			food_xname(otmp, FALSE),
++			(rotted<1)?"fresh ":(rotted<2)?"":"stale ");
++*/
++	else {
+ 	    pline("%s%s %s!",
+ 		  !uniq ? "This " : !type_is_pname(&mons[mnum]) ? "The " : "",
+ 		  food_xname(otmp, FALSE),
+diff -Nurd nethack-3.4.3-pristine/src/end.c nethack-3.4.3/src/end.c
+--- nethack-3.4.3-pristine/src/end.c	2005-01-08 00:33:37 +0100
++++ nethack-3.4.3/src/end.c	2005-01-08 00:34:49 +0100
+@@ -1032,10 +1032,8 @@
+ 		    }
+ 		    putstr(klwin, 0, buf);
+ 		}
+-	    /*
+-	     * if (Hallucination)
+-	     *     putstr(klwin, 0, "and a partridge in a pear tree");
+-	     */
++	    if (Hallucination && (ntypes>10))
++	        putstr(klwin, 0, "and a partridge in a pear tree");
+ 	    if (ntypes > 1) {
+ 		putstr(klwin, 0, "");
+ 		Sprintf(buf, "%ld creatures vanquished.", total_killed);
+diff -Nurd nethack-3.4.3-pristine/src/pray.c nethack-3.4.3/src/pray.c
+--- nethack-3.4.3-pristine/src/pray.c	2005-01-08 00:33:37 +0100
++++ nethack-3.4.3/src/pray.c	2005-01-08 00:36:21 +0100
+@@ -1287,7 +1287,8 @@
+ 		done(ESCAPED);
+ 	    } else { /* super big win */
+ 		adjalign(10);
+-pline("An invisible choir sings, and you are bathed in radiance...");
++                pline("%s sings, and you are bathed in radiance...",
++                    Hallucination?"The fat lady":"An invisible choir");
+ 		godvoice(altaralign, "Congratulations, mortal!");
+ 		display_nhwindow(WIN_MESSAGE, FALSE);
+ verbalize("In return for thy service, I grant thee the gift of Immortality!");

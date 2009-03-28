@@ -1,0 +1,112 @@
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.2-orig/include/config.h nethack-3.4.2-flipcoin/include/config.h
+--- nethack-3.4.2-orig/include/config.h	2003-08-30 03:07:15.000000000 +0300
++++ nethack-3.4.2-flipcoin/include/config.h	2003-10-13 01:51:32.000000000 +0300
+@@ -350,6 +350,7 @@
+  * bugs left here.
+  */
+ 
++#define FLIPCOIN	/* Heads or tails? */
+ /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+ 
+ /* End of Section 5 */
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.2-orig/src/apply.c nethack-3.4.2-flipcoin/src/apply.c
+--- nethack-3.4.2-orig/src/apply.c	2003-08-30 03:07:26.000000000 +0300
++++ nethack-3.4.2-flipcoin/src/apply.c	2003-10-13 02:25:57.000000000 +0300
+@@ -7,8 +7,16 @@
+ 
+ #ifdef OVLB
+ 
+-static const char tools[] = { TOOL_CLASS, WEAPON_CLASS, WAND_CLASS, 0 };
+-static const char tools_too[] = { ALL_CLASSES, TOOL_CLASS, POTION_CLASS,
++static const char tools[] = {
++#ifdef FLIPCOIN
++    COIN_CLASS,
++#endif
++    TOOL_CLASS, WEAPON_CLASS, WAND_CLASS, 0 };
++static const char tools_too[] = { 
++#ifdef FLIPCOIN
++      COIN_CLASS,
++#endif
++      ALL_CLASSES, TOOL_CLASS, POTION_CLASS,
+ 				  WEAPON_CLASS, WAND_CLASS, GEM_CLASS, 0 };
+ 
+ #ifdef TOURIST
+@@ -37,6 +45,9 @@
+ STATIC_DCL int FDECL(use_cream_pie, (struct obj *));
+ STATIC_DCL int FDECL(use_grapple, (struct obj *));
+ STATIC_DCL int FDECL(do_break_wand, (struct obj *));
++#ifdef FLIPCOIN
++STATIC_DCL int FDECL(do_flip_coin, (struct obj *));
++#endif
+ STATIC_DCL boolean FDECL(figurine_location_checks,
+ 				(struct obj *, coord *, BOOLEAN_P));
+ STATIC_DCL boolean NDECL(uhave_graystone);
+@@ -2756,6 +2767,57 @@
+ 	return FALSE;
+ }
+ 
++#ifdef FLIPCOIN
++STATIC_OVL int
++do_flip_coin(obj)
++struct obj *obj;
++{
++#ifndef GOLDOBJ
++    u.ugold += obj->quan;
++    dealloc_obj(obj);
++#endif
++
++    if (nohands(youmonst.data)) {
++	pline("And how would you flip the coin without hands?");
++	return 0;
++    } else if (!freehand()) {
++	You("need at least one free %s.", body_part(HAND));
++	return 0;
++    } else if (Underwater) {
++	pline("This coin wasn't designed to be flipped underwater.");
++	return 0;
++    }
++
++    You("flip %s coin.",
++#ifndef GOLDOBJ
++	(u.ugold > 1)
++#else
++	(obj->quan > 1)
++#endif
++	? "a" : "the");
++
++    if (!Fumbling && !Glib && !Blind &&
++	((ACURR(A_DEX) + Luck) > 0) && rn2((ACURR(A_DEX) + Luck))) {
++	xchar ht = rn2(2);
++	pline("%s.", ht ? "Heads" : "Tails");
++	if (Hallucination && ht && !rn2(8))
++	    pline("Oh my, it %s at you!", rn2(2) ? "grins" : "winks");
++    } else {
++	struct obj *gold;
++	You("try to catch the coin but it slips from your %s.",
++	    makeplural(body_part(HAND)));
++#ifndef GOLDOBJ
++	gold = mkgoldobj(1);
++#else
++	if (obj->quan > 1) gold = splitobj(obj, 1L);
++	else gold = obj;
++#endif
++	dropx(gold);
++    }
++    return 1;
++}
++#endif
++
+ STATIC_OVL void
+ add_class(cl, class)
+ char *cl;
+@@ -2792,6 +2854,10 @@
+ 
+ 	if (obj->oclass == WAND_CLASS)
+ 	    return do_break_wand(obj);
++#ifdef FLIPCOIN
++	else if (obj->oclass == COIN_CLASS)
++	    return do_flip_coin(obj);
++#endif
+ 
+ 	switch(obj->otyp){
+ 	case BLINDFOLD:

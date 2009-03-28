@@ -1,0 +1,2100 @@
+diff -aurN nethack-3.4.3/default.css nethack-3.4.3-htmldump-0.3/default.css
+--- nethack-3.4.3/default.css	1970-01-01 09:00:00.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/default.css	2003-12-22 08:57:35.000000000 +0900
+@@ -0,0 +1,70 @@
++/*********************************/
++/**  CSS for NetHack HTML Dump  **/
++/*********************************/
++
++/* dump html body style */
++.nhBody {
++	color:white ;
++	background-color:#202020 ;
++}
++
++DT {
++	font-weight:bold;
++}
++
++/* version display style */
++.nhVer {
++	color:#A8A854;
++	text-align:left;
++}
++
++/* message */
++.nhMSG {
++	color:white;
++	text-align:left;
++}
++
++/* enlightenment */
++.nhEL {
++	color:white;
++	text-align:left;
++}
++
++/* death */
++.nhCAUSE {
++	color:pink;
++	text-align:left;
++}
++
++/* screen dump style */
++.nhScreen {
++	background-color:black;
++}
++
++/* pet style on the screen dump */
++.nhPet {
++	background-color:#A8A8A8;
++}
++
++/* player style on the screen dump */
++.nhPlayer {
++	border-bottom:2px solid white;	/* 2px white underline */
++}
++
++/* NetHack color style */
++.nh0 { color:#A8A8A8; }  /* CLR_BLACK          */
++.nh1 { color:#A80000; }  /* CLR_RED            */
++.nh2 { color:#00A800; }  /* CLR_GREEN          */
++.nh3 { color:#A8A800; }  /* CLR_BROWN          */
++.nh4 { color:#5454FC; }  /* CLR_BLUE           */
++.nh5 { color:#A800A8; }  /* CLR_MAGENTA        */
++.nh6 { color:#00A8A8; }  /* CLR_CYAN           */
++.nh7 { color:#A8A8A8; }  /* CLR_GRAY           */
++.nh8 { color:#A8A8A8; }  /* NO_COLOR           */
++.nh9 { color:#FC5454; }  /* CLR_ORANGE         */
++.nh10 { color:#54FC54; } /* CLR_BRIGHT_GREEN   */
++.nh11 { color:#FCFC54; } /* CLR_YELLOW         */
++.nh12 { color:#0000FC; } /* CLR_BRIGHT_BLUE    */
++.nh13 { color:#FC00FC; } /* CLR_BRIGHT_MAGENTA */
++.nh14 { color:#00FCFC; } /* CLR_BRIGHT_CYAN    */
++.nh15 { color:#FCFCFC; } /* CLR_WHITE          */
+diff -aurN nethack-3.4.3/htmldump.readme.brass nethack-3.4.3-htmldump-0.3/htmldump.readme.brass
+--- nethack-3.4.3/htmldump.readme.brass	1970-01-01 09:00:00.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/htmldump.readme.brass	2003-12-22 08:57:36.000000000 +0900
+@@ -0,0 +1,31 @@
++HTML DUMP PATCH for NetHack brass 20031010
++version alpha 0.04 (2003/10/16)
++
++Usage
++  extra command "#html map" ... Map dump.
++  extra command "#html status" ... Your tatus dump.
++  Game over, full dump.
++
++Options:
++  disclose
++    add 'h'.
++    example:
++       disclose:+i +a -v yg yc yh
++
++  dump_css
++    example:
++       dump_css:default.css
++
++  dump_autoname
++
++History:
++  alpha 0.04(2003/10/16) bug fix (html syntax)
++  alpha 0.03(2003/09/22) adding skills list
++  alpha 0.02(2003/08/18) bug fix and adding style sheet type
++  alpha 0.01(2003/08/13) test release
++
++Licence:
++  A license is based on NETHACK GENERAL PUBLIC LICENSE.
++
++mail-to:so-miya@sourceforge.jp
++URL:http://nethack-users.sourceforge.jp/
+diff -aurN nethack-3.4.3/htmldump.readme.nh nethack-3.4.3-htmldump-0.3/htmldump.readme.nh
+--- nethack-3.4.3/htmldump.readme.nh	1970-01-01 09:00:00.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/htmldump.readme.nh	2003-12-22 11:35:34.000000000 +0900
+@@ -0,0 +1,65 @@
++HTML dump patch for NetHack 3.4.3
++
++What's this?
++
++  This patch allows you to dump screenshots and hero's status with HTML style.
++
++
++Usage
++
++* Extra command "#html map" ... Dump screen.
++* Extra command "#html status" ... Dump hero's status.
++* At the end of the game over, dump full data.
++
++
++Extra Options
++
++* dump_disclose
++    h ... last Htmldump
++    m ... Map screen
++    e ... Enlightenment list
++    c ... Conduct list
++    k ... sKills list
++    s ... Spells list
++    p ... Pets list
++    i ... Inventory
++    v ... Vanquished monster count list (DEFERRED)
++    g ... Genocided monster list (DEFERRED)
++    t ... last message Text
++    example:
++        dump_disclose:+h -c -p
++
++* dump_css
++    Specify external CSS file.
++    example:
++       dump_css:default.css
++
++* dump_autoname
++    NH makes HTML file name automatically.
++
++
++Bones / Save files compatibility
++
++ Not affected.
++
++
++See Also
++
++ For more detail, see http://nethack-users.sourceforge.jp/htmldump/ .
++
++
++Licence
++
++  Under NETHACK GENERAL PUBLIC LICENSE.
++
++
++Contact
++
++mailto:argrath@sourceforge.jp (for NH Ver.)
++URL:http://nethack-users.sourceforge.jp/
++
++
++History
++  0.1 (2003/08/21) Port to NH from NH brass 0.0.2.
++  0.2 (2003/10/24) Port to NH from NH brass 0.0.4.
++  0.3 (2003/12/22) move NetHack 3.4.3, add OPTIONS dump_diclose
+diff -aurN nethack-3.4.3/include/config.h nethack-3.4.3-htmldump-0.3/include/config.h
+--- nethack-3.4.3/include/config.h	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/include/config.h	2003-12-22 08:57:36.000000000 +0900
+@@ -351,6 +351,12 @@
+ /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+ /*#define AUTOPICKUP_EXCEPTIONS */ /* exceptions to autopickup */
+ 
++
++/*
++ * OUTPUT SCREEN & STATES DUMP of HTML
++ */
++#define HTMLDUMP
++
+ /* End of Section 5 */
+ 
+ #include "global.h"	/* Define everything else according to choices above */
+diff -aurN nethack-3.4.3/include/decl.h nethack-3.4.3-htmldump-0.3/include/decl.h
+--- nethack-3.4.3/include/decl.h	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/include/decl.h	2003-12-22 11:40:32.000000000 +0900
+@@ -170,6 +170,9 @@
+ E NEARDATA long yn_number;
+ 
+ E const char disclosure_options[];
++#ifdef HTMLDUMP
++E const char htmldump_disclosure_options[];
++#endif /*HTMLDUMP*/
+ 
+ E NEARDATA int smeq[];
+ E NEARDATA int doorindex;
+diff -aurN nethack-3.4.3/include/extern.h nethack-3.4.3-htmldump-0.3/include/extern.h
+--- nethack-3.4.3/include/extern.h	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/include/extern.h	2003-12-22 09:02:04.000000000 +0900
+@@ -131,6 +131,9 @@
+ E int FDECL(describe_level, (char *));
+ E const char *FDECL(rank_of, (int,SHORT_P,BOOLEAN_P));
+ E void NDECL(bot);
++#ifdef HTMLDUMP
++E int FDECL(output_html_bot, (FILE *));
++#endif /*HTMLDUMP*/
+ 
+ /* ### cmd.c ### */
+ 
+@@ -179,6 +182,16 @@
+ E void NDECL(sanity_check);
+ #endif
+ E char FDECL(yn_function, (const char *, const char *, CHAR_P));
++#ifdef HTMLDUMP
++E int NDECL(output_screen_html);
++E int NDECL(output_normal_dump_html);
++E int FDECL(output_final_dump_html_start, (int));
++E int FDECL(output_final_dump_html_mesg, (const char *));
++E int FDECL(output_final_dump_html_title, (const char *));
++E int FDECL(output_final_dump_html_end, (int));
++E void FDECL(set_dump_css, (char *));
++E boolean FDECL(should_query_htmldump_disclose_option, (int,char *));
++#endif /*HTMLDUMP*/
+ 
+ /* ### dbridge.c ### */
+ 
+@@ -285,6 +298,9 @@
+ E int FDECL(zapdir_to_glyph, (int,int,int));
+ E int FDECL(glyph_at, (XCHAR_P,XCHAR_P));
+ E void NDECL(set_wall_state);
++#ifdef HTMLDUMP
++E int FDECL(output_html_screen, (FILE *));
++#endif /*HTMLDUMP*/
+ 
+ /* ### do.c ### */
+ 
+@@ -1405,6 +1421,10 @@
+ E int FDECL(add_autopickup_exception, (const char *));
+ E void NDECL(free_autopickup_exceptions);
+ #endif /* AUTOPICKUP_EXCEPTIONS */
++#ifdef HTMLDUMP
++E void NDECL(disablegraphics);
++E void NDECL(restoregraphics);
++#endif /*HTMLDUMP*/
+ 
+ /* ### pager.c ### */
+ 
+@@ -1889,6 +1909,9 @@
+ E void NDECL(losespells);
+ E int NDECL(dovspell);
+ E void FDECL(initialspell, (struct obj *));
++#ifdef HTMLDUMP
++E int FDECL(output_html_spells, (FILE *)) ;
++#endif /*HTMLDUMP*/
+ 
+ /* ### steal.c ### */
+ 
+@@ -2246,6 +2269,9 @@
+ E int FDECL(weapon_hit_bonus, (struct obj *));
+ E int FDECL(weapon_dam_bonus, (struct obj *));
+ E void FDECL(skill_init, (const struct def_skill *));
++#ifdef HTMLDUMP
++E int FDECL(output_html_skills, (FILE *));
++#endif /* HTMLDUMP */
+ 
+ /* ### were.c ### */
+ 
+diff -aurN nethack-3.4.3/include/flag.h nethack-3.4.3-htmldump-0.3/include/flag.h
+--- nethack-3.4.3/include/flag.h	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/include/flag.h	2003-12-22 10:33:35.000000000 +0900
+@@ -280,6 +280,15 @@
+ #define MAX_ALTKEYHANDLER 25
+ 	char	 altkeyhandler[MAX_ALTKEYHANDLER];
+ #endif
++#ifdef HTMLDUMP
++	boolean	 auto_htmldump_name; /* automatical setting filename for dump html */
++#define NUM_HTMLDUMP_DISCLOSURE_OPTIONS		11
++#define HTMLDUMP_PROMPT_DEFAULT_YES	DISCLOSE_PROMPT_DEFAULT_YES
++#define HTMLDUMP_PROMPT_DEFAULT_NO	DISCLOSE_PROMPT_DEFAULT_NO
++#define HTMLDUMP_YES_WITHOUT_PROMPT	DISCLOSE_YES_WITHOUT_PROMPT
++#define HTMLDUMP_NO_WITHOUT_PROMPT	DISCLOSE_NO_WITHOUT_PROMPT
++	char	 htmldump_disclose[NUM_HTMLDUMP_DISCLOSURE_OPTIONS + 1];
++#endif
+ };
+ 
+ /*
+diff -aurN nethack-3.4.3/src/botl.c nethack-3.4.3-htmldump-0.3/src/botl.c
+--- nethack-3.4.3/src/botl.c	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/src/botl.c	2003-12-22 08:57:36.000000000 +0900
+@@ -16,8 +16,13 @@
+ 	"Overloaded"
+ };
+ 
++#ifdef HTMLDUMP
++STATIC_DCL void FDECL(bot1, (FILE *));
++STATIC_DCL void FDECL(bot2, (FILE *));
++#else /*HTMLDUMP*/
+ STATIC_DCL void NDECL(bot1);
+ STATIC_DCL void NDECL(bot2);
++#endif /*HTMLDUMP*/
+ #endif /* OVL0 */
+ 
+ /* MAXCO must hold longest uncompressed status line, and must be larger
+@@ -166,7 +171,12 @@
+ #endif
+ 
+ STATIC_OVL void
++#ifdef HTMLDUMP
++bot1(fp)
++FILE *fp ;
++#else /*HTMLDUMP*/
+ bot1()
++#endif /*HTMLDUMP*/
+ {
+ 	char newbot1[MAXCO];
+ 	register char *nb;
+@@ -215,6 +225,12 @@
+ 	if (flags.showscore)
+ 	    Sprintf(nb = eos(nb), " S:%ld", botl_score());
+ #endif
++#ifdef HTMLDUMP
++	if ( fp ) {
++		fputs(newbot1, fp) ;
++		return ;
++	}
++#endif /*HTMLDUMP*/
+ 	curs(WIN_STATUS, 1, 0);
+ 	putstr(WIN_STATUS, 0, newbot1);
+ }
+@@ -243,7 +259,12 @@
+ }
+ 
+ STATIC_OVL void
++#ifdef HTMLDUMP
++bot2(fp)
++FILE *fp ;
++#else /*HTMLDUMP*/
+ bot2()
++#endif /*HTMLDUMP*/
+ {
+ 	char  newbot2[MAXCO];
+ 	register char *nb;
+@@ -292,6 +313,12 @@
+ 	if(Slimed)         Sprintf(nb = eos(nb), " Slime");
+ 	if(cap > UNENCUMBERED)
+ 		Sprintf(nb = eos(nb), " %s", enc_stat[cap]);
++#ifdef HTMLDUMP
++	if ( fp ) {
++		fputs(newbot2, fp) ;
++		return ;
++	}
++#endif /*HTMLDUMP*/
+ 	curs(WIN_STATUS, 1, 1);
+ 	putstr(WIN_STATUS, 0, newbot2);
+ }
+@@ -299,11 +326,27 @@
+ void
+ bot()
+ {
++#ifdef HTMLDUMP
++	bot1((FILE *)0);
++	bot2((FILE *)0);
++#else /*HTMLDUMP*/
+ 	bot1();
+ 	bot2();
++#endif /*PUTHTML*/
+ 	flags.botl = flags.botlx = 0;
+ }
+ 
++#ifdef HTMLDUMP
++int
++output_html_bot(FILE *fp)
++{
++	bot1(fp);
++	fputs("\n", fp) ;
++	bot2(fp);
++	return 0;
++}
++#endif /*HTMLDUMP*/
++
+ #endif /* OVL0 */
+ 
+ /*botl.c*/
+diff -aurN nethack-3.4.3/src/cmd.c nethack-3.4.3-htmldump-0.3/src/cmd.c
+--- nethack-3.4.3/src/cmd.c	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/src/cmd.c	2003-12-22 11:55:40.000000000 +0900
+@@ -6,6 +6,13 @@
+ #include "func_tab.h"
+ /* #define DEBUG */	/* uncomment for debugging */
+ 
++#if defined(HTMLDUMP) && defined(UNIX)
++#include <pwd.h>
++#endif /*HTMLDUMP&&UNIX*/
++#if defined(HTMLDUMP) && defined(TTY_GRAPHICS)
++#include "wintty.h"
++#endif /*HTMLDUMP&&TTY_GRAPHICS*/
++
+ /*
+  * Some systems may have getchar() return EOF for various reasons, and
+  * we should not quit before seeing at least NR_OF_EOFS consecutive EOFs.
+@@ -769,6 +776,9 @@
+ static const char
+ 	have_been[]  = "have been ",
+ 	have_never[] = "have never ", never[] = "never ";
++#ifdef HTMLDUMP
++	static FILE *html_fp = (FILE *)0 ;
++#endif /*HTMLDUMP*/
+ 
+ #define enl_msg(prefix,present,past,suffix) \
+ 			enlght_line(prefix, final ? past : present, suffix)
+@@ -785,6 +795,12 @@
+ {
+ 	char buf[BUFSZ];
+ 
++#ifdef HTMLDUMP
++	if ( html_fp ) {
++		fprintf(html_fp, "<DD class=\"nhEL\">%s%s%s.</DD>\n", start, middle, end) ;
++		return ;
++	}
++#endif /*HTMLDUMP*/
+ 	Sprintf(buf, "%s%s%s.", start, middle, end);
+ 	putstr(en_win, 0, buf);
+ }
+@@ -833,9 +849,18 @@
+ 	int ltmp;
+ 	char buf[BUFSZ];
+ 
++#ifdef HTMLDUMP
++	if ( !html_fp ) {
++#endif /*HTMLDUMP*/
+ 	en_win = create_nhwindow(NHW_MENU);
+ 	putstr(en_win, 0, final ? "Final Attributes:" : "Current Attributes:");
+ 	putstr(en_win, 0, "");
++#ifdef HTMLDUMP
++	} else {
++		en_win = 0 ;
++		fprintf(html_fp, "<DT>%s Attributes:</DT>\n<DD>\n<DL>\n", (final)?"Final":"Current") ;
++	}
++#endif /*HTMLDUMP*/
+ 
+ #ifdef ELBERETH
+ 	if (u.uevent.uhand_of_elbereth) {
+@@ -1121,11 +1146,24 @@
+ 	if (p) enl_msg(You_, "have been killed ", p, buf);
+     }
+ 
++#ifdef HTMLDUMP
++	if ( html_fp ) {
++		fputs("</DL>\n<BR><BR>\n</DD>\n", html_fp) ;
++		return ;
++	}
++#endif /*HTMLDUMP*/
+ 	display_nhwindow(en_win, TRUE);
+ 	destroy_nhwindow(en_win);
+ 	return;
+ }
+ 
++#ifndef HTMLDUMP
++#define add_menu_view(a1,a2,a3,a4,a5,attr,str,a6)	add_menu((a1), (a2), (a3), (a4), (a5), (attr), (str), (a6))
++#else
++#define add_menu_view(a1,a2,a3,a4,a5,attr,str,a6)	if ( html_fp ) { fprintf(html_fp, ((attr)!=ATR_NONE)?"<DT class=\"nhEL\">%s</DT>\n":"<DD class=\"nhEL\">%s</DD>\n", (str)) ; \
++					} else { add_menu((a1), (a2), (a3), (a4), (a5), (attr), (str), (a6)) ; }
++#endif /*HTMLDUMP*/
++
+ /*
+  * Courtesy function for non-debug, non-explorer mode players
+  * to help refresh them about who/what they are.
+@@ -1151,62 +1189,76 @@
+ 			tabbed_deity_fmtstr : untabbed_deity_fmtstr; 
+ 	any.a_void = 0;
+ 	buf[0] = buf2[0] = '\0';
++#ifdef HTMLDUMP
++	if ( html_fp ) {
++		fputs("<DT>Base Attributes:</DT>\n<DD>\n<DL>\n", html_fp) ;
++	} else {
++#endif /*HTMLDUMP*/
+ 	tmpwin = create_nhwindow(NHW_MENU);
+ 	start_menu(tmpwin);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Starting", FALSE);
++#ifdef HTMLDUMP
++	}
++#endif /*HTMLDUMP*/
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Starting", FALSE);
+ 
+ 	/* Starting name, race, role, gender */
+ 	Sprintf(buf, fmtstr, "name", plname);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 	Sprintf(buf, fmtstr, "race", urace.noun);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 	Sprintf(buf, fmtstr, "role",
+ 		(flags.initgend && urole.name.f) ? urole.name.f : urole.name.m);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 	Sprintf(buf, fmtstr, "gender", genders[flags.initgend].adj);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 
+ 	/* Starting alignment */
+ 	Sprintf(buf, fmtstr, "alignment", align_str(u.ualignbase[A_ORIGINAL]));
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 
+ 	/* Current name, race, role, gender */
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", FALSE);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Current", FALSE);
++#ifdef HTMLDUMP
++	if ( !html_fp )
++#endif /*HTMLDUMP*/
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Current", FALSE);
+ 	Sprintf(buf, fmtstr, "race", Upolyd ? youmonst.data->mname : urace.noun);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 	if (Upolyd) {
+ 	    Sprintf(buf, fmtstr, "role (base)",
+ 		(u.mfemale && urole.name.f) ? urole.name.f : urole.name.m);
+-	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	    add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 	} else {
+ 	    Sprintf(buf, fmtstr, "role",
+ 		(flags.female && urole.name.f) ? urole.name.f : urole.name.m);
+-	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	    add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 	}
+ 	/* don't want poly_gender() here; it forces `2' for non-humanoids */
+ 	genidx = is_neuter(youmonst.data) ? 2 : flags.female;
+ 	Sprintf(buf, fmtstr, "gender", genders[genidx].adj);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 	if (Upolyd && (int)u.mfemale != genidx) {
+ 	    Sprintf(buf, fmtstr, "gender (base)", genders[u.mfemale].adj);
+-	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	    add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 	}
+ 
+ 	/* Current alignment */
+ 	Sprintf(buf, fmtstr, "alignment", align_str(u.ualign.type));
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 
+ 	/* Deity list */
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", FALSE);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Deities", FALSE);
++#ifdef HTMLDUMP
++	if ( !html_fp )
++#endif /*HTMLDUMP*/
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Deities", FALSE);
+ 	Sprintf(buf2, deity_fmtstr, align_gname(A_CHAOTIC),
+ 	    (u.ualignbase[A_ORIGINAL] == u.ualign.type
+ 		&& u.ualign.type == A_CHAOTIC) ? " (s,c)" :
+ 	    (u.ualignbase[A_ORIGINAL] == A_CHAOTIC)       ? " (s)" :
+ 	    (u.ualign.type   == A_CHAOTIC)       ? " (c)" : "");
+ 	Sprintf(buf, fmtstr, "Chaotic", buf2);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 
+ 	Sprintf(buf2, deity_fmtstr, align_gname(A_NEUTRAL),
+ 	    (u.ualignbase[A_ORIGINAL] == u.ualign.type
+@@ -1214,7 +1266,7 @@
+ 	    (u.ualignbase[A_ORIGINAL] == A_NEUTRAL)       ? " (s)" :
+ 	    (u.ualign.type   == A_NEUTRAL)       ? " (c)" : "");
+ 	Sprintf(buf, fmtstr, "Neutral", buf2);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 
+ 	Sprintf(buf2, deity_fmtstr, align_gname(A_LAWFUL),
+ 	    (u.ualignbase[A_ORIGINAL] == u.ualign.type &&
+@@ -1222,8 +1274,14 @@
+ 	    (u.ualignbase[A_ORIGINAL] == A_LAWFUL)        ? " (s)" :
+ 	    (u.ualign.type   == A_LAWFUL)        ? " (c)" : "");
+ 	Sprintf(buf, fmtstr, "Lawful", buf2);
+-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
++	add_menu_view(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 
++#ifdef HTMLDUMP
++	if ( html_fp ) {
++		fputs("</DL>\n<BR><BR>\n</DD>\n", html_fp) ;
++		return FALSE ;
++	}
++#endif /*HTMLDUMP*/
+ 	end_menu(tmpwin, "Base Attributes");
+ 	n = select_menu(tmpwin, PICK_NONE, &selected);
+ 	destroy_nhwindow(tmpwin);
+@@ -1257,10 +1315,18 @@
+ 	char buf[BUFSZ];
+ 	int ngenocided;
+ 
++#ifdef HTMLDUMP
++	if ( !html_fp ) {
++#endif /*HTMLDUMP*/
+ 	/* Create the conduct window */
+ 	en_win = create_nhwindow(NHW_MENU);
+ 	putstr(en_win, 0, "Voluntary challenges:");
+ 	putstr(en_win, 0, "");
++#ifdef HTMLDUMP
++	} else {
++		fputs("<DT>Voluntary challenges:</DT>\n<DD>\n<DL>\n", html_fp) ;
++	}
++#endif /*HTMLDUMP*/
+ 
+ 	if (!u.uconduct.food)
+ 	    enl_msg(You_, "have gone", "went", " without food");
+@@ -1336,6 +1402,12 @@
+ 			" for any artifacts");
+ 	}
+ 
++#ifdef HTMLDUMP
++	if ( html_fp ) {
++		fputs("</DL>\n<BR><BR>\n</DD>\n", html_fp) ;
++		return ;
++	}
++#endif /*HTMLDUMP*/
+ 	/* Pop up the window and wait for a key */
+ 	display_nhwindow(en_win, TRUE);
+ 	destroy_nhwindow(en_win);
+@@ -1482,6 +1554,10 @@
+ 	{"enhance", "advance or check weapons skills", enhance_weapon_skill,
+ 							TRUE},
+ 	{"force", "force a lock", doforce, FALSE},
++#ifdef HTMLDUMP
++	{"html map", "dump map to HTML", output_screen_html, TRUE},
++	{"html status", "dump status to HTML", output_normal_dump_html, TRUE},
++#endif /*HTMLDUMP*/
+ 	{"invoke", "invoke an object's powers", doinvoke, TRUE},
+ 	{"jump", "jump to a location", dojump, FALSE},
+ 	{"loot", "loot a box on the floor", doloot, FALSE},
+@@ -2552,4 +2628,770 @@
+ }
+ #endif
+ 
++#ifdef HTMLDUMP
++extern const char *killed_by_prefix[];
++STATIC_DCL int FDECL(output_final_dump_html_puts, (const char *)) ;
++STATIC_DCL int FDECL(output_dump_html_status, (int)) ;
++STATIC_DCL void FDECL(set_htmlfile_name, (const char *)) ;
++STATIC_DCL void NDECL(set_auto_htmlfile_name) ;
++STATIC_DCL void NDECL(set_last_message_to_html) ;
++STATIC_DCL int FDECL(output_html_last_message, (FILE *)) ;
++STATIC_DCL int FDECL(output_html_header, (FILE *)) ;
++STATIC_DCL int FDECL(output_html_footer, (FILE *)) ;
++STATIC_DCL int FDECL(output_html_objectlist, (FILE *, struct obj *, boolean)) ;
++STATIC_DCL int FDECL(output_html_container, (FILE *,  struct obj *, boolean, boolean)) ;
++STATIC_DCL int FDECL(output_html_pets, (FILE *)) ;
++STATIC_OVL boolean FDECL(yn_function_htmldump_disclose_option, (char *, int)) ;
++static char htmlname_buf[BUFSZ] ;
++static char htmlbuf[6000] ;
++static char *html_css_name = (char*)0 ;
++static int html_counter = 0 ;
++
++int
++output_screen_html()
++{
++	FILE *fp = (FILE *)0;
++	int  ret = 0;
++#ifdef UNIX
++	int  status;
++#endif /* UNIX */
++
++	set_htmlfile_name("Please input HTML file name for screen dump:") ;
++	if ( !*htmlname_buf ) return 0;
++
++#ifdef UNIX
++	if (fork()) {
++		wait(&status);
++		ret = WEXITSTATUS(status);
++	} else {
++		struct passwd *pwd;
++
++		seteuid(getuid());
++		setegid(getgid());
++		pwd = getpwuid(getuid());
++		if (pwd && pwd->pw_dir) chdir(pwd->pw_dir);
++#endif /* UNIX */
++
++	fp = fopen(htmlname_buf, "w") ;
++
++	if (fp) {
++		disablegraphics();
++
++		if (!ret) ret = output_html_header(fp);
++		if (!ret) ret = output_html_screen(fp);
++		if (!ret) ret = output_html_footer(fp);
++
++		restoregraphics();
++	} else {
++		ret = 1;
++	}
++
++#ifdef UNIX
++
++		exit(ret);
++
++	} /* if (fork()) */
++
++	if (!ret) docrt();
++
++#endif /* UNIX */
++
++	if (fp) fclose(fp);
++	*htmlname_buf = '\0' ;
++
++	if (ret)
++		pline("Failure to the HTML file of screen dump.");
++	else
++		pline("HTML file saved.");
++
++	return ret;
++}
++
++
++
++int
++output_normal_dump_html()
++{
++	FILE *fp = (FILE *)0;
++	int  ret = 0;
++	boolean ask;
++#ifdef UNIX
++	int  status;
++#endif /* UNIX */
++
++	/*
++	 * set last message in htmlbuf...
++	 * without output result of set_htmlfile_name
++	 */
++	*htmlbuf = '\0' ;
++	set_last_message_to_html() ;
++
++	set_htmlfile_name("Please input HTML file name for status dump:") ;
++	if ( !*htmlname_buf ) return 0;
++
++#ifdef UNIX
++	if (fork()) {
++		wait(&status);
++		ret = WEXITSTATUS(status);
++	} else {
++		struct passwd *pwd;
++
++		seteuid(getuid());
++		setegid(getgid());
++		pwd = getpwuid(getuid());
++		if (pwd && pwd->pw_dir) chdir(pwd->pw_dir);
++#endif /* UNIX */
++
++	fp = fopen(htmlname_buf, "w") ;
++	if ( !fp ) return 1;
++
++	if (!ret) ret = output_html_header(fp) ;
++	if (!ret) ret = fputs("<DL>\n", fp) ;
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump screen?", 'm');
++	if ( ask && !ret ) {
++		ret = fputs("<DT>Screen:</DT>\n<DD>\n", fp) ;
++		if ( ret >= 0 ) ret = 0 ;
++		disablegraphics();
++		if (!ret) ret = output_html_screen(fp) ;
++		restoregraphics();
++		if (!ret) {
++			ret = fputs("<BR><BR>\n</DD>\n", fp) ;
++			if ( ret >= 0 ) ret = 0 ;
++		}
++	}
++
++	html_fp = fp ;
++	if (!ret) ret = output_dump_html_status(0);
++	html_fp = (FILE *)0 ;
++
++	/** output last message */
++	ask = yn_function_htmldump_disclose_option("Do you want to dump last message and etc?", 't');
++	if ( ask && !ret ) ret = output_html_last_message(fp) ;
++
++	if (!ret) ret = fputs("</DL>\n", fp) ;
++	if (!ret) ret = output_html_footer(fp) ;
++
++#ifdef UNIX
++		exit(ret);
++	} /* if (fork()) */
++	if (!ret) docrt();
++#endif /* UNIX */
++
++	if ( fp ) fclose(fp) ;
++	*htmlname_buf = '\0' ;
++
++	if (ret)
++		pline("Failure to the HTML file of status dump.");
++	else
++		pline("HTML file saved.");
++
++	return ret;
++}
++
++
++
++int
++output_final_dump_html_start(how)
++int how;
++{
++	FILE *fp = 0;
++	int  ret = 0;
++	int final = (how >= PANICKED ? 1 : 2) ;
++	boolean ask ;
++#ifdef UNIX
++	int  status;
++#endif /* UNIX */
++
++	/*
++	 * set last message in htmlbuf...
++	 * without output result of set_htmlfile_name
++	 */
++	*htmlbuf = '\0' ;
++	set_last_message_to_html() ;
++
++	*htmlname_buf = '\0' ;
++	set_htmlfile_name("Please input HTML file name for result dump:") ;
++	if ( !*htmlname_buf ) return 0;
++
++#ifdef UNIX
++	if (fork()) {
++		wait(&status);
++		ret = WEXITSTATUS(status);
++	} else {
++		struct passwd *pwd;
++
++		seteuid(getuid());
++		setegid(getgid());
++		pwd = getpwuid(getuid());
++		if (pwd && pwd->pw_dir) chdir(pwd->pw_dir);
++#endif /* UNIX */
++
++	fp = fopen(htmlname_buf, "w") ;
++	if ( !fp ) return 1;
++
++	ret = output_html_header(fp) ;
++	if (!ret) ret = fputs("<DL>\n", fp) ;
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump screen?", 'm');
++	if ( ask && !ret ) {
++		ret = fputs("<DT>Screen:</DT>\n<DD>\n", fp) ;
++		if ( ret >= 0 ) ret = 0 ;
++		disablegraphics();
++		display_self() ;
++		if (!ret) ret = output_html_screen(fp) ;
++		restoregraphics();
++		if (!ret) {
++			ret = fputs("<BR><BR>\n</DD>\n", fp) ;
++			if ( ret >= 0 ) ret = 0 ;
++		}
++	}
++
++	html_fp = fp ;
++	if (!ret) ret = output_dump_html_status(final);
++	html_fp = (FILE *)0 ;
++
++#if 0 /*DEFERRED*/
++	ask = yn_function_htmldump_disclose_option("Do you want to dump an account of creatures vanquished?", 'v');
++	if (ask) {
++		fputs("<BR><BR></DD>\n<DT>Vanquished creaturesÅF</DT>\n<DD>", fp) ;
++		htmldump_vanquished();
++	}
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump a list of species genocided?", 'g');
++	if (ask) {
++		fputs("<BR><BR></DD>\n<DT>Genocided speciesÅF</DT>\n<DD>", fp) ;
++		htmldump_genocided();
++	}
++#endif /*DEFERRED*/
++
++	/** output last message */
++	ask = yn_function_htmldump_disclose_option("Do you want to dump last message and etc?", 't');
++	if ( ask && !ret ) ret = output_html_last_message(fp) ;
++
++#ifdef UNIX
++		exit(ret);
++	} /* if (fork()) */
++	if (!ret) docrt();
++#endif /* UNIX */
++
++	if ( ret ) pline("Failure to the HTML file of final status dump.");
++
++	if ( fp ) fclose(fp) ;
++	*htmlbuf = '\0' ;
++
++	/* Cause of death */
++	output_final_dump_html_puts("<DD class=\"nhCAUSE\"><B>") ;
++	output_final_dump_html_puts(plname) ;
++	output_final_dump_html_puts(", ") ;
++	if ( killer_format==KILLED_BY_AN || killer_format== KILLED_BY )
++		output_final_dump_html_puts(killed_by_prefix[how]);
++	if ( killer_format==KILLED_BY_AN )
++		output_final_dump_html_puts(an(killer));
++	else if ( killer_format==NO_KILLER_PREFIX || killer_format== KILLED_BY )
++		output_final_dump_html_puts(killer);
++	output_final_dump_html_puts(".</B><BR><BR></DD>\n") ;
++
++	return ret ;
++}
++
++int
++output_final_dump_html_title(title)
++const char *title;
++{
++	if ( !output_final_dump_html_puts("<DD><BR><BR></DD>\n<DT class=\"nhMSG\">") )
++	    if ( !output_final_dump_html_puts(title) )
++		return output_final_dump_html_puts("</DT>\n") ;
++	return 1 ;
++}
++
++int
++output_final_dump_html_mesg(mesg)
++const char *mesg;
++{
++	if ( !output_final_dump_html_puts("<DD class=\"nhMSG\">") )
++	    if ( !output_final_dump_html_puts(mesg) )
++		return output_final_dump_html_puts("</DD>\n") ;
++	return 1 ;
++}
++
++int
++output_final_dump_html_puts(str)
++const char *str ;
++{
++	int ret = 0 ;
++
++	if ( *htmlname_buf && htmlbuf ) {
++		int slen = strlen(str) ;
++		if ( strlen(htmlbuf) + slen > sizeof(htmlbuf) ) {
++			/* Overflow error of a game over message
++			 * Overflow three screen text (80Å~25Å~3=6000byte)
++			 */
++			ret = -1 ;
++		} else
++			strcat(htmlbuf, str) ;
++	}
++
++	return ret ;
++}
++
++int
++output_final_dump_html_end(how)
++int how;
++{
++	FILE *fp = 0;
++	int ret = 0;
++	int final = (how >= PANICKED ? 1 : 2) ;
++	boolean ask ;
++#ifdef UNIX
++	int  status;
++#endif /* UNIX */
++
++	if ( !*htmlname_buf ) return 0 ;
++
++#ifdef UNIX
++	if (fork()) {
++		wait(&status);
++		ret = WEXITSTATUS(status);
++	} else {
++		struct passwd *pwd;
++
++		seteuid(getuid());
++		setegid(getgid());
++		pwd = getpwuid(getuid());
++		if (pwd && pwd->pw_dir) chdir(pwd->pw_dir);
++#endif /* UNIX */
++
++	fp = fopen(htmlname_buf, "a") ;
++	if ( !fp ) return 1;
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump final message?", 't');
++	if ( ask && *htmlbuf ) {
++		ret = fputs("<DT>Final messages</DT>\n", fp) ;
++		if ( ret>=0 ) ret = fputs(htmlbuf, fp) ;
++		if ( ret>=0 ) ret = fputs("<DD><BR><BR></DD>\n", fp) ;
++	}
++
++	if (!ret) ret = fputs("</DL>", fp) ;
++	if (ret>=0) ret = output_html_footer(fp) ;
++
++#ifdef UNIX
++		exit(ret);
++	} /* if (fork()) */
++#endif /* UNIX */
++
++	if ( fp ) fclose(fp) ;
++	*htmlname_buf = '\0' ;
++
++	if ( ret ) pline("Failure to the HTML file of final status dump.");
++	return ret ;
++}
++
++
++
++void
++set_dump_css(op)
++char *op;
++{
++	static char buf[40] ;
++
++	if ( op && *op && strlen(op) < 40 ) {
++		strcpy(buf, op) ;
++		html_css_name = buf ;
++	} else {
++		html_css_name = (char *)0 ;
++	}
++}
++
++
++
++void
++set_htmlfile_name(mesg)
++const char *mesg;
++{
++	if ( iflags.auto_htmldump_name ) {
++		int i = 0 ;
++		FILE *fp ;
++		do {
++			set_auto_htmlfile_name() ;
++			fp = fopen(htmlname_buf, "r") ;
++			if ( !fp ) break ;
++			fclose(fp) ;
++		} while( ++i < 1000 ) ;
++		if ( !fp ) return ;
++		pline("Failure auto setting filename of HTML.") ;
++	}
++
++	getlin(mesg, htmlname_buf);
++	if( htmlname_buf[0] == '\033' ) htmlname_buf[0] = 0;
++}
++
++
++void
++set_auto_htmlfile_name()
++{
++	htmlname_buf[0] = '\0' ;
++#ifdef VMS
++	Sprintf(htmlname_buf, "[.html]%d%s%03d", getuid(), plnamem, html_counter);
++	regularize(htmlname_buf+7);
++	Strcat(htmlname_buf, ";1");
++#else
++# if defined(MICRO) && !defined(WIN32)
++	Strcpy(htmlname_buf, SAVEP);
++#  ifdef AMIGA
++	strncat(htmlname_buf, bbs_id, PATHLEN);
++#  endif
++	{
++		int i = strlen(SAVEP);
++		char buf[4] ;
++		Sprintf(buf, "%03d", html_counter) ;
++#  ifdef AMIGA
++		(void)strncat(htmlname_buf, plname, FILENAME - i - 7);
++#  else
++		(void)strncat(htmlname_buf, plname, 5);
++#  endif
++		(void)strcat(htmlname_buf, buf);
++		regularize(htmlname_buf+i);
++	}
++	Strcat(htmlname_buf, ".htm");
++# else
++#  if defined(WIN32)
++	Sprintf(htmlname_buf, "%s-%s%03d.html",get_username(0), plname, html_counter);
++#  else
++	Sprintf(htmlname_buf, "%d-%s%03d.html", (int)getuid(), plname, html_counter);
++	regularize(htmlname_buf);	/* avoid . or / in name */
++#  endif /* WIN32 */
++# endif	/* MICRO */
++#endif /* VMS   */
++	html_counter = (html_counter + 1) % 1000 ;
++}
++
++
++void
++set_last_message_to_html()
++{
++#ifdef TTY_GRAPHICS
++	int i ;
++	struct WinDesc *cw = wins[WIN_MESSAGE];
++	i = cw->maxcol ;
++	do {
++		if ( cw->data[i] && strlen(htmlbuf) + strlen(cw->data[i]) + 10 > sizeof(htmlbuf) ) break ;
++		if ( cw->data[i] && strcmp(cw->data[i], "") ) {
++			strcat(htmlbuf, "<DD class=\"nhMSG\">") ;
++			strcat(htmlbuf, cw->data[i]) ;
++			strcat(htmlbuf, "</DD>\n") ;
++		}
++		i = (i + 1) % cw->rows;
++	} while ( i != cw->maxcol) ;
++#endif /*TTY_GRAPHICS*/
++}
++
++
++int
++output_html_last_message(fp)
++FILE *fp;
++{
++	int ret = 0 ;
++	if ( htmlbuf && *htmlbuf ) {
++		if (!ret) ret = fputs("<DT>Last messages:</DT>\n", fp) ;
++		if (ret>=0) ret = fputs(htmlbuf, fp) ;
++		if (ret>=0) ret = fputs("<DD><BR><BR></DD>\n", fp) ;
++		if (ret>=0) ret = 0 ;
++	}
++
++	return ret ;
++}
++
++int
++output_html_header(fp)
++FILE *fp;
++{
++	int ret = 0 ;
++	char buf[BUFSZ];
++
++	if (!fp) return 1;
++
++	ret = fputs("<HTML>\n<HEAD>\n", fp) ;
++	if ( html_css_name ) {
++		if ( ret>=0)
++			ret = fprintf(fp, "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n", html_css_name) ;
++	} else {
++		if ( ret>=0) ret = fputs("<STYLE>\n"
++			"<!--\n"
++			"	.nhBody { background-color:#202020;color:white; }\n"
++			"	DT { font-weight:bold; }\n"
++			"	.nhScreen { background-color:black; }\n"
++			"	.nhPet { background-color:#A8A8A8; }\n"
++			"	.nhPlayer { border-bottom:2px solid white; }\n"
++			"	.nhVer { color:#A8A854;text-align:left; }\n"
++			"	.nhEL { color:white;text-align:left; }\n"
++			"	.nhMSG { color:white;text-align:left; }\n"
++			"	.nhCAUSE { color:pink;text-align:left; }\n"
++			"	.nh0 { color:#A8A8A8; }\n"  /* CLR_BLACK          */
++			"	.nh1 { color:#A80000; }\n"  /* CLR_RED            */
++			"	.nh2 { color:#00A800; }\n"  /* CLR_GREEN          */
++			"	.nh3 { color:#A8A800; }\n"  /* CLR_BROWN          */
++			"	.nh4 { color:#5454FC; }\n"  /* CLR_BLUE           */
++			"	.nh5 { color:#A800A8; }\n"  /* CLR_MAGENTA        */
++			"	.nh6 { color:#00A8A8; }\n"  /* CLR_CYAN           */
++			"	.nh7 { color:#A8A8A8; }\n"  /* CLR_GRAY           */
++			"	.nh8 { color:#A8A8A8; }\n"  /* NO_COLOR           */
++			"	.nh9 { color:#FC5454; }\n"  /* CLR_ORANGE         */
++			"	.nh10 { color:#54FC54; }\n" /* CLR_BRIGHT_GREEN   */
++			"	.nh11 { color:#FCFC54; }\n" /* CLR_YELLOW         */
++			"	.nh12 { color:#0000FC; }\n" /* CLR_BRIGHT_BLUE    */
++			"	.nh13 { color:#FC00FC; }\n" /* CLR_BRIGHT_MAGENTA */
++			"	.nh14 { color:#00FCFC; }\n" /* CLR_BRIGHT_CYAN    */
++			"	.nh15 { color:#FCFCFC; }\n" /* CLR_WHITE          */
++			"-->\n"
++			"</STYLE>\n", fp) ;
++	}
++	if ( ret>=0) ret = fputs("</HEAD>\n<BODY class=\"nhBody\">\n", fp) ;
++
++
++	if ( ret>=0 ) ret = fprintf(fp, "<DIV class=\"nhVer\">[%s]</DIV>\n", getversionstring(buf)) ;
++
++	return (ret<0)?1:0;
++}
++
++
++
++int
++output_html_footer(fp)
++FILE *fp;
++{
++	int ret = 0 ;
++
++	if (!fp) return 1;
++
++	ret = fputs("</BODY>\n</HTML>\n", fp) ;
++
++	return (ret<0)?1:0;
++}
++
++
++
++int
++output_dump_html_status(final)
++int final;
++{
++	int ret = 0 ;
++	boolean ask ;
++
++	if (!html_fp) return 1;
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump charactor status?", 'e');
++	if ( ask ) {
++		(void)minimal_enlightenment();
++
++		if (final || wizard || discover) enlightenment(final);
++	}
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump voluntary challenges?", 'c');
++	if ( ask ) show_conduct(final);
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump skills list?", 'k');
++	if ( ask && ret>=0 ) ret = output_html_skills(html_fp);
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump spells list?", 's');
++	if ( ask && ret>=0 ) ret = output_html_spells(html_fp);
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump pets list?", 'p');
++	if ( ask && ret>=0 ) ret = output_html_pets(html_fp);
++
++	ask = yn_function_htmldump_disclose_option("Do you want to dump items list?", 'i');
++	if ( ask ) {
++		if (ret>=0) ret = fputs("<DT>Inventory:</DT>\n<DD>\n", html_fp) ;
++		if (ret>=0) ret = output_html_objectlist(html_fp, invent, (final)?TRUE:FALSE) ;
++		if (ret>=0) ret = fputs("<BR><BR>\n</DD>\n<DD>", html_fp) ;
++		if (ret>=0) ret = output_html_container(html_fp, invent, (final)?TRUE:FALSE, TRUE);
++		if (ret>=0) ret = fputs("<BR><BR>\n</DD>\n", html_fp) ;
++	}
++
++	if (ret<0 && html_fp) {
++		fclose(html_fp) ;
++		html_fp = (FILE*)0 ;
++	}
++	return ((ret<0)?1:0) ;
++}
++
++
++
++int
++output_html_objectlist(fp, list, identified)
++FILE *fp;
++struct obj *list;
++boolean identified;
++{
++#ifdef WIZARD
++	static char venom_inv[] = { VENOM_CLASS, 0 };
++#endif
++	struct obj *otmp ;
++	char *invlet = flags.inv_order;
++	int classcount;
++	int ret = 0 ;
++
++	ret = fputs("<DL>", fp) ;
++	if (ret<0) return -1;
++nextclass:
++	classcount = 0;
++	for(otmp = list; otmp; otmp = otmp->nobj) {
++		if (!flags.sortpack || otmp->oclass == *invlet) {
++			if (flags.sortpack && !classcount) {
++				fprintf(fp, "<DT>%s</DT>\n", let_to_name(*invlet, FALSE)) ;
++				classcount++;
++			}
++			if (identified) {
++				makeknown(otmp->otyp);
++				otmp->known = otmp->bknown =
++				otmp->dknown = otmp->rknown = 1;
++			}
++			ret = fputs("<DD>", fp) ;
++			if (ret<0) return -1;
++			if ( otmp->where == OBJ_INVENT )
++				fprintf(fp, "%c - ", otmp->invlet) ;
++			fprintf(fp, "<FONT class=\"nh%d\">%s</FONT></DD>\n"
++				, objects[otmp->otyp].oc_color, doname(otmp)) ;
++		}
++	}
++	if (flags.sortpack) {
++		if (*++invlet) goto nextclass;
++#ifdef WIZARD
++		if (--invlet != venom_inv) {
++			invlet = venom_inv;
++			goto nextclass;
++		}
++#endif
++	}
++	ret = fputs("</DL>\n", fp) ;
++	if (ret<0) return -1;
++
++	return 0;
++}
++
++
++
++int
++output_html_container(fp, list, identified, all_containers)
++FILE *fp;
++struct obj *list;
++boolean identified, all_containers;
++{
++	register struct obj *box ;
++	int ret = 0 ;
++
++	for (box = list; box; box = box->nobj) {
++	    if (Is_container(box) && box->otyp != BAG_OF_TRICKS) {
++		if (identified) {
++		    makeknown(box->otyp);
++		    box->known = box->bknown =
++		    box->dknown = box->rknown = 1;
++		}
++		if (box->cobj) {
++		    ret = fprintf(fp, "<DL>\n<DT>Contents of %s</DT>\n", the(doname(box)));
++		    if (ret<0) return -1;
++		    ret = fputs("<DD>\n", fp) ;
++		    if (ret<0) return -1;
++		    ret = output_html_objectlist(fp, box->cobj, identified) ;
++		    if (ret) return -1;
++		    if (all_containers)
++			ret = output_html_container(fp, box->cobj, identified, TRUE);
++		    if (ret) return -1;
++		    ret = fputs("</DD>\n</DL>", fp) ;
++		    if (ret<0) return -1;
++		} else {
++		    ret = fprintf(fp, "%s is empty.", The(xname(box)));
++		    if (ret<0) return -1;
++		}
++	    }
++	    if (!all_containers)
++		break;
++	}
++
++	return 0 ;
++}
++
++
++
++int
++output_html_pets(fp)
++FILE *fp;
++{
++	int ret = 0 ;
++	register struct monst *mtmp;
++	boolean flag = FALSE ;
++
++	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) if ( mtmp->mtame ) flag = TRUE ;
++
++	if ( flag ) {
++		if (ret>=0) ret = fputs("<DT>PetsÅF</DT>\n<DD>\n<DL>\n", html_fp) ;
++		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
++			if ( mtmp->mtame ) {
++				fprintf(fp, "<DD><FONT class=\"nh%d\">%s</FONT>%s</DD>\n",
++					mtmp->data->mcolor,
++					(x_monnam(mtmp, ARTICLE_THE, (char*)0, SUPPRESS_IT, TRUE)),
++					(mtmp == u.usteed) ? " (Riding)" : "") ;
++			}
++		}
++		if (ret>=0) ret = fputs("</DL>\n<BR><BR>\n</DD>\n", html_fp) ;
++	}
++
++	if (ret<0) return -1;
++
++	return 0;
++}
++
++
++STATIC_OVL boolean
++yn_function_htmldump_disclose_option(text, category)
++char *text;
++int category;
++{
++	char c = 0, defquery;
++	boolean ask = should_query_htmldump_disclose_option(category, &defquery);
++
++	if (ask) c = yn_function(text, ynchars, defquery) ;
++	return ((!ask && defquery == 'y' ) || (ask && c == 'y')) ;
++}
++
++
++boolean
++should_query_htmldump_disclose_option(category, defquery)
++int category;
++char *defquery;
++{
++    int idx;
++    char *dop = index(htmldump_disclosure_options, category);
++
++    if (dop && defquery) {
++	idx = dop - htmldump_disclosure_options;
++	if (idx < 0 || idx > (NUM_HTMLDUMP_DISCLOSURE_OPTIONS - 1)) {
++	    impossible(
++		   "should_query_htmldump_disclose_option: bad disclosure index %d %c",
++		       idx, category);
++	    *defquery = HTMLDUMP_PROMPT_DEFAULT_YES;
++	    return TRUE;
++	}
++	if (iflags.htmldump_disclose[idx] == HTMLDUMP_YES_WITHOUT_PROMPT) {
++	    *defquery = 'y';
++	    return FALSE;
++	} else if (iflags.htmldump_disclose[idx] == HTMLDUMP_NO_WITHOUT_PROMPT) {
++	    *defquery = 'n';
++	    return FALSE;
++	} else if (iflags.htmldump_disclose[idx] == HTMLDUMP_PROMPT_DEFAULT_YES) {
++	    *defquery = 'y';
++	    return TRUE;
++	} else if (iflags.htmldump_disclose[idx] == HTMLDUMP_PROMPT_DEFAULT_NO) {
++	    *defquery = 'n';
++	    return TRUE;
++	}
++    }
++    if (defquery)
++	impossible("should_query_htmldump_disclose_option: bad category %c", category);
++    else
++	impossible("should_query_htmldump_disclose_option: null defquery");
++    return TRUE;
++}
++#endif /*HTMLDUMP*/
++
+ /*cmd.c*/
+diff -aurN nethack-3.4.3/src/decl.c nethack-3.4.3-htmldump-0.3/src/decl.c
+--- nethack-3.4.3/src/decl.c	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/src/decl.c	2003-12-22 11:35:17.000000000 +0900
+@@ -77,6 +77,23 @@
+ 
+ const char disclosure_options[] = "iavgc";
+ 
++#ifdef HTMLDUMP
++const char htmldump_disclosure_options[] = "hmeckspivgt";
++/*
++ * h ... last Htmldump
++ * m ... Map screen
++ * e ... Enlightenment list
++ * c ... Conduct list
++ * k ... sKills list
++ * s ... Spells list
++ * p ... Pets list
++ * i ... Inventory
++ * v ... Vanquished monster count list (DEFERRED)
++ * g ... Genocided monster list (DEFERRED)
++ * t ... last message Text
++ */
++#endif /*HTMLDUMP*/
++
+ #if defined(MICRO) || defined(WIN32)
+ char hackdir[PATHLEN];		/* where rumors, help, record are */
+ # ifdef MICRO
+diff -aurN nethack-3.4.3/src/display.c nethack-3.4.3-htmldump-0.3/src/display.c
+--- nethack-3.4.3/src/display.c	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/src/display.c	2003-12-22 08:57:36.000000000 +0900
+@@ -2193,4 +2193,131 @@
+     return idx;
+ }
+ 
++#ifdef HTMLDUMP
++int
++output_html_screen(fp)
++FILE *fp;
++{
++	register int prev_color, def_color, x, y ;
++	boolean reverse_flag ;
++	int ret = 0 ;
++
++	docrt();
++
++#ifdef TEXTCOLOR
++	prev_color = def_color = 7 ;
++#else
++	prev_color = def_color = NO_COLOR ;
++#endif
++	ret = fprintf(fp, "<TABLE><TR><TD class=\"nhScreen\"><PRE><FONT class=\"nh%d\">", def_color) ;
++	if (ret<0) return 1;
++
++	for (y = 0; y < ROWNO; y++) {
++		register gbuf_entry *gptr = &gbuf[y][(int)gbuf_start[y]];
++		if ( gbuf_stop[y] == 0 && y > 0 ) {
++			fputs("\n", fp) ;
++			continue ;
++		}
++		for (x=0; x < gbuf_start[y]; x++) {
++			ret = fputs(" ", fp) ;
++			if (ret<0) return 0;
++		}
++		for (; x <= gbuf_stop[y]; gptr++, x++) {
++			uchar ch;
++			unsigned sp ;
++			int glyph = gptr->glyph ;
++			int color, ochar ;
++
++			mapglyph(glyph, &ochar, &color, &sp, x, y) ;
++			ch = (char)ochar ;
++/*
++	sp == 0x00
++		| MG_CORPSE	0x01	corpse
++		| MG_INVIS	0x02	invisible monster
++		| MG_DETECT	0x04	detective monster
++		| MG_PET	0x08	taming monster
++		| MG_RIDDEN	0x10	ridden monster
++*/
++			if ( x == u.ux && y == u.uy ) {
++				if ( u.usteed ) {
++					ch = monsyms[u.usteed->data->mlet] ;
++#ifdef TEXTCOLOR
++					color = u.usteed->data->mcolor ;
++#endif
++				} else {
++					ch = monsyms[youmonst.data->mlet] ;
++#ifdef TEXTCOLOR
++					color = youmonst.data->mcolor ;
++#endif
++				}
++			}
++			reverse_flag = FALSE ;
++			if ( ( ((sp & MG_PET) && iflags.hilite_pet) || ((sp & MG_DETECT) && iflags.use_inverse) ) ) {
++				reverse_flag = TRUE ;
++				switch(color) {
++				case CLR_WHITE:
++				case CLR_GRAY:
++				case NO_COLOR:
++				case CLR_BLACK:
++					color = -1 ;
++				}
++			}
++			if ( color != prev_color ) {
++				if ( ch == ' ' ) {
++					color = prev_color ;
++				} else if ( color != def_color ) {
++					if ( prev_color != def_color ) ret = fputs("</FONT>", fp) ;
++					if ( color >= 0 )
++						ret = fprintf(fp, "<FONT class=\"nh%d\">", color) ;
++					else
++						ret = fputs("<FONT color=\"black\">", fp) ;
++				} else {
++					ret = fputs("</FONT>", fp) ;
++				}
++				if (ret<0) return 1;
++			}
++			if ( reverse_flag ) {
++				ret = fputs("<SPAN class='nhPet'>", fp) ;
++			} else if ( x == u.ux && y == u.uy ) {
++				ret = fputs("<SPAN class='nhPlayer'>", fp) ;
++			}
++			if (ret<0) return 1;
++			switch( ch ) {
++			case '&':
++				ret = fputs("&amp;", fp) ;
++				break ;
++			case '<':
++				ret = fputs("&lt;", fp) ;
++				break ;
++			case '>':
++				ret = fputs("&gt;", fp) ;
++				break ;
++			case '"':
++				ret = fputs("&quot;", fp) ;
++				break ;
++			default:
++				ret = fprintf(fp, "%c", ch) ;
++			}
++			if (ret<0) return 1;
++			if ( reverse_flag || ( x == u.ux && y == u.uy ) ) {
++				ret = fputs("</SPAN>", fp) ;
++			}
++			if (ret<0) return 1;
++			prev_color = color ;
++		}
++		ret = fputs("\n", fp) ;
++		if (ret<0) return 1;
++	}
++
++	if ( prev_color != def_color ) ret = fputs("</FONT>", fp) ;
++	if (ret<0) return 1;
++	ret = output_html_bot(fp) ;
++	if (ret) return 1;
++
++	ret = fprintf(fp, "\n</FONT></PRE></TD></TR></TABLE>\n") ;
++	if (ret<0) return 1;
++	return 0;
++}
++#endif /*HTMLDUMP*/
++
+ /*display.c*/
+diff -aurN nethack-3.4.3/src/end.c nethack-3.4.3-htmldump-0.3/src/end.c
+--- nethack-3.4.3/src/end.c	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/src/end.c	2003-12-22 11:29:36.000000000 +0900
+@@ -65,6 +65,10 @@
+ # endif
+ #endif
+ 
++#ifdef HTMLDUMP
++int	htmldump_flag = 0;
++#endif /*HTMLDUMP*/
++
+ /*
+  * The order of these needs to match the macros in hack.h.
+  */
+@@ -356,6 +360,21 @@
+ 	char	qbuf[QBUFSZ];
+ 	boolean ask;
+ 
++#ifdef HTMLDUMP
++	int htmldump_tmpflag = 0 ;
++
++	/* It performs at the head so that a question may not be outputted to the last message. */
++	ask = should_query_htmldump_disclose_option('h', &defquery);
++	if (!done_stopprint) {
++		if (ask)
++			c = yn_function("Do you want to output your status to html?", ynqchars, defquery) ;
++		if ((!ask && defquery == 'y' ) || (ask && c == 'y'))
++		    (void) output_final_dump_html_start(how) ;
++		if (ask && c == 'q') done_stopprint++;
++		htmldump_tmpflag = 1 ;
++	}
++#endif /*HTMLDUMP*/
++
+ 	if (invent) {
+ 	    if(taken)
+ 		Sprintf(qbuf,"Do you want to see what you had when you %s?",
+@@ -405,6 +424,10 @@
+ 		show_conduct(how >= PANICKED ? 1 : 2);
+ 	    if (c == 'q') done_stopprint++;
+ 	}
++
++#ifdef HTMLDUMP
++	htmldump_flag = htmldump_tmpflag ;
++#endif /*HTMLDUMP*/
+ }
+ 
+ /* try to get the player back in a viable state after being killed */
+@@ -523,6 +546,11 @@
+ 			otmp->oartifact ? artifact_name(xname(otmp), &dummy) :
+ 				OBJ_NAME(objects[otmp->otyp]),
+ 			value, currency(value), points);
++#ifdef HTMLDUMP
++		if ( htmldump_flag )
++		    output_final_dump_html_mesg(pbuf) ;
++		if ( !done_stopprint )
++#endif /*HTMLDUMP*/
+ 		putstr(endwin, 0, pbuf);
+ 	    }
+ 	}
+@@ -770,14 +798,25 @@
+ 		/* don't bother counting to see whether it should be plural */
+ 	}
+ 
+-	if (!done_stopprint) {
++	if (!done_stopprint
++#ifdef HTMLDUMP
++		|| htmldump_flag
++#endif /*HTMLDUMP*/
++	) {
+ 	    Sprintf(pbuf, "%s %s the %s...", Goodbye(), plname,
+ 		   how != ASCENDED ?
+ 		      (const char *) ((flags.female && urole.name.f) ?
+ 		         urole.name.f : urole.name.m) :
+ 		      (const char *) (flags.female ? "Demigoddess" : "Demigod"));
++#ifdef HTMLDUMP
++	    if ( !done_stopprint ) {
++#endif /*HTMLDUMP*/
+ 	    putstr(endwin, 0, pbuf);
+ 	    putstr(endwin, 0, "");
++#ifdef HTMLDUMP
++	    }
++	    if ( htmldump_flag ) output_final_dump_html_mesg(pbuf) ;
++#endif /*HTMLDUMP*/
+ 	}
+ 
+ 	if (how == ESCAPED || how == ASCENDED) {
+@@ -815,19 +854,36 @@
+ 		    mtmp = mtmp->nmon;
+ 		}
+ 		if (!done_stopprint) putstr(endwin, 0, pbuf);
++#ifdef HTMLDUMP
++		if ( htmldump_flag )
++		    output_final_dump_html_mesg(pbuf) ;
++#endif /*HTMLDUMP*/
+ 		pbuf[0] = '\0';
+ 	    } else {
+ 		if (!done_stopprint) Strcat(pbuf, " ");
+ 	    }
+-	    if (!done_stopprint) {
++	    if (!done_stopprint
++#ifdef HTMLDUMP
++		|| htmldump_flag
++#endif /*HTMLDUMP*/
++	    ) {
+ 		Sprintf(eos(pbuf), "%s with %ld point%s,",
+ 			how==ASCENDED ? "went to your reward" :
+ 					"escaped from the dungeon",
+ 			u.urexp, plur(u.urexp));
++#ifdef HTMLDUMP
++	    if ( htmldump_flag )
++	    	output_final_dump_html_mesg(pbuf) ;
++	    if ( !done_stopprint )
++#endif /*HTMLDUMP*/
+ 		putstr(endwin, 0, pbuf);
+ 	    }
+ 
+-	    if (!done_stopprint)
++	    if (!done_stopprint
++#ifdef HTMLDUMP
++		|| htmldump_flag
++#endif /*HTMLDUMP*/
++	    )
+ 		artifact_score(invent, FALSE, endwin);	/* list artifacts */
+ 
+ 	    /* list valuables here */
+@@ -854,11 +910,19 @@
+ 				"%8ld worthless piece%s of colored glass,",
+ 				count, plur(count));
+ 		    }
++#ifdef HTMLDUMP
++		    if ( htmldump_flag )
++			output_final_dump_html_mesg(pbuf) ;
++#endif /*HTMLDUMP*/
+ 		    putstr(endwin, 0, pbuf);
+ 		}
+ 	    }
+ 
+-	} else if (!done_stopprint) {
++	} else if (!done_stopprint
++#ifdef HTMLDUMP
++		    || htmldump_flag
++#endif /*HTMLDUMP*/
++	) {
+ 	    /* did not escape or ascend */
+ 	    if (u.uz.dnum == 0 && u.uz.dlevel <= 0) {
+ 		/* level teleported out of the dungeon; `how' is DIED,
+@@ -878,25 +942,55 @@
+ 
+ 	    Sprintf(eos(pbuf), " with %ld point%s,",
+ 		    u.urexp, plur(u.urexp));
++#ifdef HTMLDUMP
++	    if ( htmldump_flag )
++		output_final_dump_html_mesg(pbuf) ;
++	    if ( !done_stopprint )
++#endif /*HTMLDUMP*/
+ 	    putstr(endwin, 0, pbuf);
+ 	}
+ 
+-	if (!done_stopprint) {
++	if (!done_stopprint
++#ifdef HTMLDUMP
++		|| htmldump_flag
++#endif /*HTMLDUMP*/
++	) {
+ 	    Sprintf(pbuf, "and %ld piece%s of gold, after %ld move%s.",
+ 		    umoney, plur(umoney), moves, plur(moves));
++#ifdef HTMLDUMP
++	    if ( htmldump_flag )
++	    	output_final_dump_html_mesg(pbuf) ;
++	    if ( !done_stopprint )
++#endif /*HTMLDUMP*/
+ 	    putstr(endwin, 0, pbuf);
+ 	}
+-	if (!done_stopprint) {
++	if (!done_stopprint
++#ifdef HTMLDUMP
++		|| htmldump_flag
++#endif /*HTMLDUMP*/
++	) {
+ 	    Sprintf(pbuf,
+ 	     "You were level %d with a maximum of %d hit point%s when you %s.",
+ 		    u.ulevel, u.uhpmax, plur(u.uhpmax), ends[how]);
++#ifdef HTMLDUMP
++	    if ( htmldump_flag )
++	    	output_final_dump_html_mesg(pbuf) ;
++		if ( !done_stopprint ) {
++#endif /*HTMLDUMP*/
+ 	    putstr(endwin, 0, pbuf);
+ 	    putstr(endwin, 0, "");
++#ifdef HTMLDUMP
++	    }
++#endif /*HTMLDUMP*/
+ 	}
+ 	if (!done_stopprint)
+ 	    display_nhwindow(endwin, TRUE);
+ 	if (endwin != WIN_ERR)
+ 	    destroy_nhwindow(endwin);
++#ifdef HTMLDUMP
++	if ( htmldump_flag )
++	    output_final_dump_html_end(how) ;
++#endif /*HTMLDUMP*/
+ 
+ 	/* "So when I die, the first thing I will see in Heaven is a
+ 	 * score list?" */
+diff -aurN nethack-3.4.3/src/options.c nethack-3.4.3-htmldump-0.3/src/options.c
+--- nethack-3.4.3/src/options.c	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/src/options.c	2003-12-22 11:26:31.000000000 +0900
+@@ -80,6 +80,9 @@
+ #else
+ 	{"DECgraphics", (boolean *)0, FALSE, SET_IN_FILE},
+ #endif
++#ifdef HTMLDUMP
++	{"dump_autoname", &iflags.auto_htmldump_name, FALSE, SET_IN_FILE},
++#endif /*HTMLDUMP*/
+ 	{"eight_bit_tty", &iflags.wc_eight_bit_input, FALSE, SET_IN_GAME},	/*WC*/
+ #ifdef TTY_GRAPHICS
+ 	{"extmenu", &iflags.extmenu, FALSE, SET_IN_GAME},
+@@ -224,6 +227,13 @@
+ 						SET_IN_GAME },
+ 	{ "dogname",  "the name of your (first) dog (e.g., dogname:Fang)",
+ 						PL_PSIZ, DISP_IN_GAME },
++#ifdef HTMLDUMP
++	{ "dump_css",  "the filename of cascading style sheet for dump html files",
++						40, SET_IN_FILE },
++	{ "dump_disclose", "the kinds of information to disclose at dumped html",
++						sizeof(iflags.htmldump_disclose) * 2,
++						SET_IN_FILE },
++#endif /*HTMLDUMP*/
+ 	{ "dungeon",  "the symbols to use in drawing the dungeon map",
+ 						MAXDCHARS+1, SET_IN_FILE },
+ 	{ "effects",  "the symbols to use in drawing special effects",
+@@ -540,6 +550,11 @@
+ 
+ 	for (i = 0; i < NUM_DISCLOSURE_OPTIONS; i++)
+ 		flags.end_disclose[i] = DISCLOSE_PROMPT_DEFAULT_NO;
++#ifdef HTMLDUMP
++	iflags.htmldump_disclose[0] = HTMLDUMP_PROMPT_DEFAULT_YES;
++	for (i = 1; i < NUM_HTMLDUMP_DISCLOSURE_OPTIONS; i++)
++		iflags.htmldump_disclose[i] = HTMLDUMP_YES_WITHOUT_PROMPT;
++#endif /*HTMLDUMP*/
+ 	switch_graphics(ASCII_GRAPHICS);	/* set default characters */
+ #if defined(UNIX) && defined(TTY_GRAPHICS)
+ 	/*
+@@ -1799,6 +1814,77 @@
+ 		if (badopt) badoption(opts);
+ 		return;
+ 	}
++#ifdef HTMLDUMP
++        fullname = "dump_css";
++        if (match_optname(opts, fullname, 8, TRUE)) {
++            if (negated) 
++                bad_negation(fullname, FALSE);
++            else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
++                set_dump_css(op);
++            return;
++        }
++
++	/* things to disclose at dumped html */
++        fullname = "dump_disclose";
++	if (match_optname(opts, fullname, 8, TRUE)) {
++		boolean badopt = FALSE;
++		int idx, prefix_val;
++
++		op = string_for_opt(opts, TRUE);
++		if (op && negated) {
++			bad_negation(fullname, TRUE);
++			return;
++		}
++		/* "disclose" without a value means "all with prompting"
++		   and negated means "none without prompting" */
++		if (!op || !strcmpi(op, "all") || !strcmpi(op, "none")) {
++			if (op && !strcmpi(op, "none")) negated = TRUE;
++			iflags.htmldump_disclose[0] = negated ?
++						HTMLDUMP_NO_WITHOUT_PROMPT :
++						HTMLDUMP_PROMPT_DEFAULT_YES;
++			for (num = 1; num < NUM_HTMLDUMP_DISCLOSURE_OPTIONS; num++)
++			    iflags.htmldump_disclose[num] = negated ?
++						HTMLDUMP_NO_WITHOUT_PROMPT :
++						HTMLDUMP_YES_WITHOUT_PROMPT;
++			return;
++		}
++
++		num = 0;
++		prefix_val = -1;
++		while (*op && num < sizeof iflags.htmldump_disclose - 1) {
++			register char c, *dop;
++			static char valid_settings[] = {
++				HTMLDUMP_PROMPT_DEFAULT_YES,
++				HTMLDUMP_PROMPT_DEFAULT_NO,
++				HTMLDUMP_YES_WITHOUT_PROMPT,
++				HTMLDUMP_NO_WITHOUT_PROMPT,
++				'\0'
++			};
++			c = lowc(*op);
++			dop = index(htmldump_disclosure_options, c);
++			if (dop) {
++				idx = dop - htmldump_disclosure_options;
++				if (idx < 0 || idx > NUM_HTMLDUMP_DISCLOSURE_OPTIONS - 1) {
++				    impossible("bad htmldump disclosure index %d %c", idx, c);
++				    continue;
++				}
++				if (prefix_val != -1) {
++				    iflags.htmldump_disclose[idx] = prefix_val;
++				    prefix_val = -1;
++				} else
++				    iflags.htmldump_disclose[idx] = HTMLDUMP_YES_WITHOUT_PROMPT;
++			} else if (index(valid_settings, c)) {
++				prefix_val = c;
++			} else if (c == ' ') {
++				/* do nothing */
++			} else
++				badopt = TRUE;
++			op++;
++		}
++		if (badopt) badoption(opts);
++		return;
++	}
++#endif /*HTMLDUMP*/
+ 
+ 	/* scores:5t[op] 5a[round] o[wn] */
+ 	if (match_optname(opts, "scores", 4, TRUE)) {
+@@ -3857,6 +3943,91 @@
+ 	return 1;
+ }
+ 
++#ifdef HTMLDUMP
++static int DECgraphics = 0;
++static int IBMgraphics = 0;
++static int MACgraphics = 0;
++
++static enum {DEC = 0x01, IBM = 0x02, MAC = 0x04} graphicsBits;
++
++void
++disablegraphics()
++{
++  int i;
++
++  graphicsBits = 0;
++  DECgraphics = IBMgraphics = MACgraphics = 0;
++  for (i = 0; boolopt[i].name ; i++)
++  {
++    if (graphicsBits == (DEC|IBM|MAC) ) break;
++    if ( strcmp(boolopt[i].name, "DECgraphics") == 0 ) {
++      if ( boolopt[i].addr && *boolopt[i].addr ) {
++        DECgraphics = 1;
++        parseoptions("!DECgraphics", FALSE, FALSE);
++      }
++      graphicsBits |= DEC;
++      continue;
++    }
++    if ( strcmp(boolopt[i].name, "IBMgraphics") == 0 ) {
++      if ( boolopt[i].addr && *boolopt[i].addr ) {
++        IBMgraphics = 1;
++        parseoptions("!IBMgraphics", FALSE, FALSE);
++      }
++      graphicsBits |= IBM;
++      continue;
++    }
++    if ( strcmp(boolopt[i].name, "Macgraphics") == 0 ) {
++      if ( boolopt[i].addr && *boolopt[i].addr ) {
++        MACgraphics = 1;
++        parseoptions("!Macgraphics", FALSE, FALSE);
++      }
++      graphicsBits |= MAC;
++      continue;
++    }
++  }
++
++  (void) doredraw();
++}
++
++void
++restoregraphics()
++{
++  int i;
++
++  if (!(DECgraphics || IBMgraphics || MACgraphics)) return;
++  graphicsBits = 0;
++  for (i = 0; boolopt[i].name ; i++)
++  {
++    if (graphicsBits == (DEC|IBM|MAC) ) break;
++    if (strcmp(boolopt[i].name, "DECgraphics") == 0) {
++      if (DECgraphics) {
++        parseoptions("DECgraphics", FALSE, FALSE);
++      }
++      graphicsBits |= DEC;
++      continue;
++    }
++    if (strcmp(boolopt[i].name, "IBMgraphics") == 0) {
++      if (IBMgraphics) {
++        parseoptions("IBMgraphics", FALSE, FALSE);
++      }
++      graphicsBits |= IBM;
++      continue;
++    }
++    if (strcmp(boolopt[i].name, "Macgraphics") == 0) {
++      if (MACgraphics) {
++        parseoptions("Macgraphics", FALSE, FALSE);
++      }
++      graphicsBits |= MAC;
++      continue;
++    }
++  }
++
++  (void) doredraw();
++
++  return;
++}
++#endif /*HTMLDUMP*/
++
+ #endif	/* OPTION_LISTS_ONLY */
+ 
+ /*options.c*/
+diff -aurN nethack-3.4.3/src/spell.c nethack-3.4.3-htmldump-0.3/src/spell.c
+--- nethack-3.4.3/src/spell.c	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/src/spell.c	2003-12-22 08:57:36.000000000 +0900
+@@ -1261,4 +1261,35 @@
+ 	return;
+ }
+ 
++#ifdef HTMLDUMP
++int
++output_html_spells(fp)
++FILE *fp;
++{
++	int ret = 0, i ;
++
++	if (spellid(0) == NO_SPELL) return 0 ;
++
++	if (ret>=0) ret = fputs("<DT>SpellsÅF</DT>\n<DD>\n"
++				"<TABLE>\n"
++				"<TR><TH align=left>Name</TH><TH align=right>Level</TH>"
++				"<TH align=left>Category</TH><TH align=right>Fail</TH></TR>\n"
++				, fp) ;
++
++	for (i = 0; i < MAXSPELL && spellid(i) != NO_SPELL; i++) {
++		if (ret>=0) ret = fprintf(fp,
++			"<TR><TD align=left>%s</TD><TD align=right>%d%s</TD>"
++			"<TD>%s</TD><TD align=right>%d%%</TD></TR>\n",
++			spellname(i), spellev(i),
++			spellknow(i) ? "&nbsp;" : "*",
++			spelltypemnemonic(spell_skilltype(spellid(i))),
++			100 - percent_success(i)
++		);
++	}
++	if (ret>=0) ret = fputs("</TABLE>\n<BR><BR>\n</DD>\n", fp) ;
++
++	return ret ;
++}
++#endif /*HTMLDUMP*/
++
+ /*spell.c*/
+diff -aurN nethack-3.4.3/src/weapon.c nethack-3.4.3-htmldump-0.3/src/weapon.c
+--- nethack-3.4.3/src/weapon.c	2003-12-08 08:39:12.000000000 +0900
++++ nethack-3.4.3-htmldump-0.3/src/weapon.c	2003-12-22 11:23:26.000000000 +0900
+@@ -1314,6 +1314,71 @@
+     obj->owornmask &= ~W_WEP;
+ }
+ 
++#ifdef HTMLDUMP
++int
++output_html_skills(fp)
++FILE *fp;
++{
++	int ret = 0 ;
++	int pass, i, maxxed_cnt;
++	char sklnambuf[BUFSZ];
++
++	ret = fputs("<DT>Skills:</DT>\n<DD>\n"
++		"<TABLE cellspacing=\"0\" cellpadding=\"0\">\n"
++		"<TR height=\"0\"><TH width=\"20%\"></TH>"
++		"<TH width=\"60%\"></TH>"
++		"<TH width=\"20%\"></TH>", fp) ;
++#ifdef WIZARD
++	if ( wizard ) {
++		if (ret >= 0) ret = fputs("<TH></TH><TH></TH>", fp) ;
++	}
++#endif
++	if (ret >= 0) ret = fputs("</TR>\n", fp) ;
++
++	for (pass = 0; pass < SIZE(skill_ranges); pass++) {
++		maxxed_cnt = 0;
++		for (i = skill_ranges[pass].first; i <= skill_ranges[pass].last; i++) {
++			if ( P_SKILL(i) <= P_UNSKILLED ) continue;
++			maxxed_cnt++;
++		}
++		if (!maxxed_cnt) continue;
++
++		for (i = skill_ranges[pass].first; i <= skill_ranges[pass].last; i++) {
++			/* Print headings for skill types */
++			if (i == skill_ranges[pass].first)
++				if (ret >= 0) ret = fprintf(fp, "<TR><TD colspan=\"3\">%s</TD></TR>\n", skill_ranges[pass].name) ;
++
++			if ( P_RESTRICTED(i) ) continue;
++			if ( P_SKILL(i) <= P_UNSKILLED ) continue;
++
++			if ( ret >= 0 ) {
++				(void) skill_level_name(i, sklnambuf);
++				ret = fprintf(fp, "<TR><TD noWrap>%s</TD><TD noWrap>%s</TD><TD noWrap>&nbsp;%s</TD>"
++					, can_advance(i, FALSE) ? "" : could_advance(i) ? "*" : peaked_skill(i) ? "#" : ""
++					, P_NAME(i)
++					, sklnambuf
++					) ;
++			}
++#ifdef WIZARD
++			if ( wizard ) {
++				if (ret >= 0) {
++					ret = fprintf(fp, "<TD noWrap>%5d</TD><TD noWrap>(%4d)</TD>"
++						, P_ADVANCE(i)
++						, practice_needed_to_advance(P_SKILL(i)));
++				}
++			}
++#endif
++			if (ret >= 0) ret = fputs("</TR>\n", fp) ;
++		}
++	}
++	if ( ret >= 0 ) ret = fputs("</TABLE>\n<BR><BR>\n</DD>\n", fp) ;
++
++	if ( ret < 0 ) return -1;
++
++	return 0;
++}
++#endif /*HTMLDUMP*/
++
+ #endif /* OVLB */
+ 
+ /*weapon.c*/

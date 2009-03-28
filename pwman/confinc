@@ -1,0 +1,3 @@
+am__doit:
+	@echo done
+.PHONY: am__doit

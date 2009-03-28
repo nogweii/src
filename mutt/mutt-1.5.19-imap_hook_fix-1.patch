@@ -1,0 +1,50 @@
+Submitted By:            William Immendorf <will.immendorf@gmail.com>
+Date:                    Jan 27 2009 3:35 PM CST
+Initial Package Version: 1.5.19
+Upstream Status:         From upstream.
+Origin:                  Reformated version of the IMAP hook fix from http://dev.mutt.org/hg/mutt/rev/10e224e86f0b.
+Description:             Fixes an infinite recursive loop
+
+diff -Naur mutt-1.5.19-orig/hook.c mutt-1.5.19/hook.c
+--- mutt-1.5.19-orig/hook.c	2009-01-05 13:20:53.000000000 -0600
++++ mutt-1.5.19/hook.c	2009-01-26 16:48:22.000000000 -0600
+@@ -460,11 +460,19 @@
+ #ifdef USE_SOCKET
+ void mutt_account_hook (const char* url)
+ {
++  /* parsing commands with URLs in an account hook can cause a recursive
++   * call. We just skip processing if this occurs. Typically such commands
++   * belong in a folder-hook -- perhaps we should warn the user. */
++  static int inhook = 0;
++
+   HOOK* hook;
+   BUFFER token;
+   BUFFER err;
+   char buf[STRING];
+ 
++  if (inhook)
++    return;
++
+   err.data = buf;
+   err.dsize = sizeof (buf);
+   memset (&token, 0, sizeof (token));
+@@ -476,14 +484,19 @@
+ 
+     if ((regexec (hook->rx.rx, url, 0, NULL, 0) == 0) ^ hook->rx.not)
+     {
++      inhook = 1;
++
+       if (mutt_parse_rc_line (hook->command, &token, &err) == -1)
+       {
+ 	FREE (&token.data);
+ 	mutt_error ("%s", err.data);
+ 	mutt_sleep (1);
+ 
++        inhook = 0;
+ 	return;
+       }
++
++      inhook = 0;
+     }
+   }
+ 

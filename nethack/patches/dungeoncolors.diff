@@ -1,0 +1,212 @@
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/include/config.h nethack-3.4.3-dungeoncolors/include/config.h
+--- nethack-3.4.3-orig/include/config.h	2003-12-10 14:43:36.000000000 +0200
++++ nethack-3.4.3-dungeoncolors/include/config.h	2003-12-10 13:58:28.000000000 +0200
+@@ -348,6 +348,8 @@
+  * bugs left here.
+  */
+ 
++#define USER_DUNGEONCOLOR
++
+ /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+ /*#define AUTOPICKUP_EXCEPTIONS */ /* exceptions to autopickup */
+ 
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/include/extern.h nethack-3.4.3-dungeoncolors/include/extern.h
+--- nethack-3.4.3-orig/include/extern.h	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-dungeoncolors/include/extern.h	2003-12-10 13:59:29.000000000 +0200
+@@ -457,6 +457,9 @@
+ #ifdef REINCARNATION
+ E void FDECL(assign_rogue_graphics, (BOOLEAN_P));
+ #endif
++#ifdef USER_DUNGEONCOLOR
++E void FDECL(assign_colors, (uchar *,int,int,int));
++#endif
+ 
+ /* ### dungeon.c ### */
+ 
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/include/rm.h nethack-3.4.3-dungeoncolors/include/rm.h
+--- nethack-3.4.3-orig/include/rm.h	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-dungeoncolors/include/rm.h	2003-12-10 14:00:14.000000000 +0200
+@@ -226,6 +226,9 @@
+ extern const struct symdef defsyms[MAXPCHARS];	/* defaults */
+ extern uchar showsyms[MAXPCHARS];
+ extern const struct symdef def_warnsyms[WARNCOUNT];
++#ifdef USER_DUNGEONCOLOR
++extern uchar showsymcolors[MAXPCHARS];
++#endif
+ 
+ /*
+  * Graphics sets for display symbols
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/README.dungeoncolors nethack-3.4.3-dungeoncolors/README.dungeoncolors
+--- nethack-3.4.3-orig/README.dungeoncolors	1970-01-01 02:00:00.000000000 +0200
++++ nethack-3.4.3-dungeoncolors/README.dungeoncolors	2003-12-10 14:41:44.000000000 +0200
+@@ -0,0 +1,69 @@
++
++ This is Dungeoncolors patch v1.2 for nethack v3.4.3
++
++ This patch allows the user to change the colors of the dungeon
++ features and traps, by defining them in the configuration file.
++
++ This patch works in all window ports that use character graphics,
++ and has been tested on the TTY, X11, and Qt ports.
++
++ Changing the colors can be done with putting the following lines
++ into the configuration file:
++
++DUNGEONCOLOR= 0  7  7  7  7  7  7  7  7  7 \
++              7  7  7  3  3  3  3  6  2  7 \
++              7  7  7  7  3  3  7  7  11 7 \
++              4  4  6  1  3  3  3  3  6  7 \
++              4
++
++TRAPCOLORS= 6 6 7 3 6 1 7 12 4 9 0 0 3 3 5 5 13 7 7 12 12 10
++
++ ``DUNGEONCOLOR'' are in the same order as ``DUNGEON'', and
++ ``TRAPCOLORS'' as ``TRAPS''
++
++And here's another set of colors for the dungeon, with unlit
++corridors darker than lit, and white stairs, just like Slash'em.
++
++DUNGEONCOLOR= 0  7  7  7  7  7  7  7  7  7 \
++              7  7  7  3  3  3  3  6  2  7 \
++              0  7  15 15 3  3  7  7  11 7 \
++              4  4  6  1  3  3  3  3  6  7 \
++              4
++
++
++
++ The colors are:
++
++  0 black
++  1 red
++  2 green
++  3 brown
++  4 blue
++  5 magenta
++  6 cyan
++  7 gray
++  8 "no color"
++  9 orange
++ 10 light green
++ 11 yellow
++ 12 light blue
++ 13 light magenta
++ 14 light cyan
++ 15 white
++
++
++ CHANGES:
++
++ v1.2:
++  - updated to 3.4.3 codebase
++
++ v1.1:
++  - updated to 3.4.2 codebase
++
++ v0.1:
++  - first version.
++
++
++--
++ Pasi Kallinen
++ pkalli@cs.joensuu.fi
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/drawing.c nethack-3.4.3-dungeoncolors/src/drawing.c
+--- nethack-3.4.3-orig/src/drawing.c	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-dungeoncolors/src/drawing.c	2003-12-10 14:05:42.000000000 +0200
+@@ -24,6 +24,10 @@
+ uchar monsyms[MAXMCLASSES] = DUMMY; /* the current monster display symbols */
+ uchar warnsyms[WARNCOUNT]  = DUMMY;  /* the current warning display symbols */
+ 
++#ifdef USER_DUNGEONCOLOR
++uchar showsymcolors[MAXPCHARS] = DUMMY; /* current feature display colors */
++#endif
++
+ /* Default object class symbols.  See objclass.h. */
+ const char def_oc_syms[MAXOCLASSES] = {
+ /* 0*/	'\0',		/* placeholder for the "random class" */
+@@ -651,6 +655,21 @@
+ 		       graph_chars[i] : defsyms[i+offset].sym);
+ }
+ 
++#ifdef USER_DUNGEONCOLOR
++void
++assign_colors(graph_colors, glth, maxlen, offset)
++register uchar *graph_colors;
++int glth, maxlen, offset;
++{
++    register int i;
++
++    for (i = 0; i < maxlen; i++)
++	showsymcolors[i+offset] =
++	    (((i < glth) && (graph_colors[i] < CLR_MAX)) ?
++	     graph_colors[i] : defsyms[i+offset].color);
++}
++#endif
++
+ void
+ switch_graphics(gr_set_flag)
+ int gr_set_flag;
+@@ -659,6 +678,9 @@
+ 	default:
+ 	case ASCII_GRAPHICS:
+ 	    assign_graphics((uchar *)0, 0, MAXPCHARS, 0);
++#ifdef USER_DUNGEONCOLOR
++	    assign_colors((uchar *)0, 0, MAXPCHARS, 0);
++#endif
+ #ifdef PC9800
+ 	    if (ascgraphics_mode_callback) (*ascgraphics_mode_callback)();
+ #endif
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/files.c nethack-3.4.3-dungeoncolors/src/files.c
+--- nethack-3.4.3-orig/src/files.c	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-dungeoncolors/src/files.c	2003-12-10 14:07:29.000000000 +0200
+@@ -1810,6 +1810,16 @@
+ 	    len = get_uchars(fp, buf, bufp, translate, FALSE,
+ 			     MAXECHARS, "EFFECTS");
+ 	    assign_graphics(translate, len, MAXECHARS, MAXDCHARS+MAXTCHARS);
++#ifdef USER_DUNGEONCOLOR
++	} else if (match_varname(buf, "DUNGEONCOLOR", 10)) {
++	    len = get_uchars(fp, buf, bufp, translate, FALSE,
++			     MAXDCHARS, "DUNGEONCOLOR");
++	    assign_colors(translate, len, MAXDCHARS, 0);
++	} else if (match_varname(buf, "TRAPCOLORS", 7)) {
++	    len = get_uchars(fp, buf, bufp, translate, FALSE,
++			     MAXTCHARS, "TRAPCOLORS");
++	    assign_colors(translate, len, MAXTCHARS, MAXDCHARS);
++#endif
+ 
+ 	} else if (match_varname(buf, "OBJECTS", 3)) {
+ 	    /* oc_syms[0] is the RANDOM object, unused */
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/mapglyph.c nethack-3.4.3-dungeoncolors/src/mapglyph.c
+--- nethack-3.4.3-orig/src/mapglyph.c	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-dungeoncolors/src/mapglyph.c	2003-12-10 14:21:37.000000000 +0200
+@@ -25,7 +25,11 @@
+ 
+ #ifdef TEXTCOLOR
+ #define zap_color(n)  color = iflags.use_color ? zapcolors[n] : NO_COLOR
++#ifndef USER_DUNGEONCOLOR
+ #define cmap_color(n) color = iflags.use_color ? defsyms[n].color : NO_COLOR
++#else
++#define cmap_color(n) color = iflags.use_color ? showsymcolors[n] : NO_COLOR
++#endif
+ #define obj_color(n)  color = iflags.use_color ? objects[n].oc_color : NO_COLOR
+ #define mon_color(n)  color = iflags.use_color ? mons[n].mcolor : NO_COLOR
+ #define invis_color(n) color = NO_COLOR
+@@ -126,8 +130,19 @@
+ 	    /* provide a visible difference if normal and lit corridor
+ 	     * use the same symbol */
+ 	    if (iflags.use_color &&
++#ifndef USER_DUNGEONCOLOR
+ 		offset == S_litcorr && ch == showsyms[S_corr])
+ 		color = CLR_WHITE;
++#else
++		offset == S_litcorr && ch == showsyms[S_corr] &&
++		    showsymcolors[S_corr] == showsymcolors[S_litcorr]) {
++	if (showsymcolors[S_corr] != CLR_WHITE) {
++	    color = showsymcolors[S_litcorr] = CLR_WHITE;
++	} else {
++	    color = showsymcolors[S_litcorr] = CLR_GRAY;
++	}
++    }
++#endif /* USER_DUNGEONCOLOR */
+ 	    else
+ #endif
+ 	    cmap_color(offset);

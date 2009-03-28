@@ -1,0 +1,92 @@
+diff -u -r mutt-1.5.11-orig/PATCHES mutt-1.5.11-echo/PATCHES
+--- mutt-1.5.11-orig/PATCHES	2005-08-15 09:16:00.000000000 +0100
++++ mutt-1.5.11-echo/PATCHES	2006-03-06 01:06:30.000000000 +0000
+@@ -0,0 +1 @@
++patch-1.5.11.as.echo.1
+diff -u -r mutt-1.5.11-orig/doc/manual.xml.head mutt-1.5.11-echo/doc/manual.xml.head
+--- mutt-1.5.11-orig/doc/manual.xml.head	2005-09-06 17:46:44.000000000 +0100
++++ mutt-1.5.11-echo/doc/manual.xml.head	2006-03-06 01:06:30.000000000 +0000
+@@ -2557,6 +2557,22 @@
+
+ </sect2>
+
++<sect2 id="echo">
++<title>Echoing text in the message line</title>
++
++<para>
++Usage: <literal>echo</literal> <emphasis>text</emphasis>
++</para>
++
++<para>
++This command can be used to display a line of text in the same way
++that warning or informational messages are displayed.  This is useful
++within macros to provide visual feedback that an operation has been
++completed.
++</para>
++
++</sect2>
++
+ <sect2 id="exec">
+ <title>Executing functions</title>
+
+diff -u -r mutt-1.5.11-orig/init.h mutt-1.5.11-echo/init.h
+--- mutt-1.5.11-orig/init.h	2005-09-15 15:19:54.000000000 +0100
++++ mutt-1.5.11-echo/init.h	2006-03-06 01:06:30.000000000 +0000
+@@ -2998,6 +2998,7 @@
+   { "color",		mutt_parse_color,	0 },
+   { "uncolor",		mutt_parse_uncolor,	0 },
+ #endif
++  { "echo",		mutt_parse_echo,	0 },
+   { "exec",		mutt_parse_exec,	0 },
+   { "fcc-hook",		mutt_parse_hook,	M_FCCHOOK },
+   { "fcc-save-hook",	mutt_parse_hook,	M_FCCHOOK | M_SAVEHOOK },
+diff -u -r mutt-1.5.11-orig/keymap.c mutt-1.5.11-echo/keymap.c
+--- mutt-1.5.11-orig/keymap.c	2005-09-07 09:19:43.000000000 +0100
++++ mutt-1.5.11-echo/keymap.c	2006-03-06 01:06:30.000000000 +0000
+@@ -955,6 +955,22 @@
+   return 0;
+ }
+
++/* echo some text in the status line */
++int mutt_parse_echo (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
++{
++  int r = 0;
++
++  mutt_extract_token (buf, s, 0);
++  if (MoreArgs (s))
++  {
++    strfcpy (err->data, _("echo: too many arguments"), err->dsize);
++    r = -1;
++  }
++  else
++    mutt_message (buf->data);
++  return (r);
++}
++
+ /*
+  * prompts the user to enter a keystroke, and displays the octal value back
+  * to the user.
+diff -u -r mutt-1.5.11-orig/OPS mutt-1.5.11-echo/OPS
+--- mutt-1.5.11-orig/OPS	2005-07-24 17:56:42.000000000 +0100
++++ mutt-1.5.11-echo/OPS	2006-03-06 01:06:30.000000000 +0000
+@@ -56,6 +56,7 @@
+ OP_DISPLAY_ADDRESS "display full address of sender"
+ OP_DISPLAY_HEADERS "display message and toggle header weeding"
+ OP_DISPLAY_MESSAGE "display a message"
++OP_ECHO_TEXT "echo text in status line"
+ OP_EDIT_MESSAGE "edit the raw message"
+ OP_EDITOR_BACKSPACE "delete the char in front of the cursor"
+ OP_EDITOR_BACKWARD_CHAR "move the cursor one character to the left"
+diff -u -r mutt-1.5.11-orig/protos.h mutt-1.5.11-echo/protos.h
+--- mutt-1.5.11-orig/protos.h	2005-09-07 09:19:43.000000000 +0100
++++ mutt-1.5.11-echo/protos.h	2006-03-06 01:06:30.000000000 +0000
+@@ -318,6 +318,7 @@
+ int mutt_needs_mailcap (BODY *);
+ int mutt_num_postponed (int);
+ int mutt_parse_bind (BUFFER *, BUFFER *, unsigned long, BUFFER *);
++int mutt_parse_echo (BUFFER *, BUFFER *, unsigned long, BUFFER *);
+ int mutt_parse_exec (BUFFER *, BUFFER *, unsigned long, BUFFER *);
+ int mutt_parse_color (BUFFER *, BUFFER *, unsigned long, BUFFER *);
+ int mutt_parse_uncolor (BUFFER *, BUFFER *, unsigned long, BUFFER *);
+
+

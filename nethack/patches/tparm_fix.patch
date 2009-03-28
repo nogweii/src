@@ -1,0 +1,15 @@
+diff -Naur nethack-3.4.3-tparm_fix/win/tty/termcap.c nethack-3.4.3/win/tty/termcap.c
+--- nethack-3.4.3-tparm_fix/win/tty/termcap.c	2009-03-22 13:20:25.000000000 -0400
++++ nethack-3.4.3/win/tty/termcap.c	2009-03-22 13:24:14.000000000 -0400
+@@ -835,9 +835,11 @@
+ 
+ #include <curses.h>
+ 
++/*
+ #ifndef LINUX
+ extern char *tparm();
+ #endif
++*/
+ 
+ #  ifndef COLOR_BLACK	/* trust include file */
+ #   ifndef _M_UNIX	/* guess BGR */

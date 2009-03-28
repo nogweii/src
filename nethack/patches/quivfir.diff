@@ -1,0 +1,113 @@
+diff -dur nethack-3.4.3/dat/opthelp nethack-3.4.3-quivfired/dat/opthelp
+--- nethack-3.4.3/dat/opthelp	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-quivfired/dat/opthelp	2007-04-24 20:29:31.000000000 +0300
+@@ -77,6 +77,11 @@
+                display effect.  on MSDOS without the termcap
+                lib, whether or not to pause for visual effect.    [TRUE]
+ 
++Boolean option if QUIVER_FIRED was set at compile time:
++quiver_fired   when using the f (fire) command and no ammunition
++               is quivered, prompt for ammunition to quiver, then 
++               fire it.                                           [FALSE]
++
+ Boolean option if USE_TILES was set at compile time (MSDOS protected mode only):
+ preload_tiles  control whether tiles get pre-loaded into RAM at the
+                start of the game.  Doing so enhances performance
+diff -dur nethack-3.4.3/doc/Guidebook.mn nethack-3.4.3-quivfired/doc/Guidebook.mn
+--- nethack-3.4.3/doc/Guidebook.mn	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-quivfired/doc/Guidebook.mn	2007-04-24 20:29:51.000000000 +0300
+@@ -2054,6 +2054,9 @@
+ .lp pushweapon
+ Using the `w' (wield) command when already wielding
+ something pushes the old item into your alternate weapon slot (default off).
++.lp quiver_fired
++Using the 'f' (fire) command when nothing is quivered, prompts for ammunition 
++to quiver, then fires it (default off).
+ .lp race
+ Selects your race (for example, ``race:human'').  Default is random.
+ Cannot be set with the `O' command.
+diff -dur nethack-3.4.3/doc/Guidebook.tex nethack-3.4.3-quivfired/doc/Guidebook.tex
+--- nethack-3.4.3/doc/Guidebook.tex	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-quivfired/doc/Guidebook.tex	2007-04-24 20:30:08.000000000 +0300
+@@ -2515,6 +2515,10 @@
+ \item[\ib{pushweapon}]
+ Using the `w' (wield) command when already wielding
+ something pushes the old item into your alternate weapon slot (default off).
++%.lp
++\item[\ib{quiver_fired}]
++Using the 'f' (fire) command when nothing is quivered, prompts for ammunition 
++to quiver, then fires it (default off).
+ %.Ip
+ \item[\ib{race}]
+ Selects your race (for example, ``{\tt race:human}'').  Default is random.
+diff -dur nethack-3.4.3/doc/Guidebook.txt nethack-3.4.3-quivfired/doc/Guidebook.txt
+--- nethack-3.4.3/doc/Guidebook.txt	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-quivfired/doc/Guidebook.txt	2007-04-24 20:30:23.000000000 +0300
+@@ -2652,6 +2652,10 @@
+             pushes  the  old  item into your alternate weapon slot (default
+             off).
+ 
++          quiver_fired
++            Using the 'f' (fire) command when nothing is quivered, prompts
++            for ammunition to quiver, then fires it (default off).
++
+           race
+             Selects your race (for example,  ``race:human'').   Default  is
+             random.  Cannot be set with the `O' command.
+diff -dur nethack-3.4.3/include/flag.h nethack-3.4.3-quivfired/include/flag.h
+--- nethack-3.4.3/include/flag.h	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-quivfired/include/flag.h	2007-04-24 20:30:28.000000000 +0300
+@@ -216,6 +216,9 @@
+ 	boolean lan_mail;	/* mail is initialized */
+ 	boolean lan_mail_fetched; /* mail is awaiting display */
+ #endif
++#ifdef QUIVER_FIRED
++	boolean quiver_fired;	/* quiver with f command */
++#endif
+ /*
+  * Window capability support.
+  */
+diff -dur nethack-3.4.3/src/dothrow.c nethack-3.4.3-quivfired/src/dothrow.c
+--- nethack-3.4.3/src/dothrow.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-quivfired/src/dothrow.c	2007-04-24 20:30:41.000000000 +0300
+@@ -300,8 +300,16 @@
+ 		if (!flags.autoquiver) {
+ 			/* Don't automatically fill the quiver */
+ 			You("have no ammunition readied!");
+-			return(dothrow());
++#ifdef QUIVER_FIRED
++			if (iflags.quiver_fired)
++			  dowieldquiver(); /* quiver_fired */
++			if (!uquiver)
++#endif
++			  return(dothrow());
+ 		}
++#ifdef QUIVER_FIRED
++		else { /* quiver_fired */
++#endif
+ 		autoquiver();
+ 		if (!uquiver) {
+ 			You("have nothing appropriate for your quiver!");
+@@ -310,6 +318,9 @@
+ 			You("fill your quiver:");
+ 			prinv((char *)0, uquiver, 0L);
+ 		}
++#ifdef QUIVER_FIRED
++		} /* quiver_fired */
++#endif
+ 	}
+ 
+ 	/*
+diff -dur nethack-3.4.3/src/options.c nethack-3.4.3-quivfired/src/options.c
+--- nethack-3.4.3/src/options.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-quivfired/src/options.c	2007-04-24 20:30:52.000000000 +0300
+@@ -148,6 +148,9 @@
+ 	{"prayconfirm", &flags.prayconfirm, TRUE, SET_IN_GAME},
+ 	{"preload_tiles", &iflags.wc_preload_tiles, TRUE, DISP_IN_GAME},	/*WC*/
+ 	{"pushweapon", &flags.pushweapon, FALSE, SET_IN_GAME},
++#ifdef QUIVER_FIRED
++	{"quiver_fired", &iflags.quiver_fired, FALSE, SET_IN_GAME},
++#endif
+ #if defined(MICRO) && !defined(AMIGA)
+ 	{"rawio", &iflags.rawio, FALSE, DISP_IN_GAME},
+ #else

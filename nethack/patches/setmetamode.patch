@@ -1,0 +1,23 @@
+diff -Nur nethack-3.4.3/sys/unix/nethack.sh nethack-3.4.3-alt/sys/unix/nethack.sh
+--- nethack-3.4.3/sys/unix/nethack.sh	2003-12-07 18:39:13.000000000 -0500
++++ nethack-3.4.3-alt/sys/unix/nethack.sh	2009-03-20 21:59:06.000000000 -0400
+@@ -56,6 +56,10 @@
+ 	fi
+ fi
+ 
++# Alt-key as 'meta'
++if [ "$TERM" == "linux" ]
++	then setmetamode meta > /dev/null
++fi
+ 
+ cd $HACKDIR
+ case $1 in
+@@ -66,3 +70,8 @@
+ 		exec $HACK "$@" $MAXNROFPLAYERS
+ 		;;
+ esac
++
++# Change alt key back
++if [ "$TERM" == "linux" ]
++	then setmetamode esc > /dev/null
++fi

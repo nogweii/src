@@ -1,0 +1,132 @@
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/dat/opthelp nethack-3.4.3-winedge/dat/opthelp
+--- nethack-3.4.3-orig/dat/opthelp	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-winedge/dat/opthelp	2003-12-10 06:26:16.000000000 +0200
+@@ -82,6 +82,9 @@
+                start of the game.  Doing so enhances performance
+                of the tile graphics, but uses more memory.        [TRUE]
+ 
++Boolean option if WIN_EDGE was set at compile time (tty interface only):
++win_edge       align menus and text windows left instead of right [FALSE]
++
+ Any Boolean option can be negated by prefixing it with a '!' or 'no'.
+ 
+ 
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/doc/Guidebook.mn nethack-3.4.3-winedge/doc/Guidebook.mn
+--- nethack-3.4.3-orig/doc/Guidebook.mn	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-winedge/doc/Guidebook.mn	2003-12-10 06:27:44.000000000 +0200
+@@ -2157,6 +2157,8 @@
+ Select which windowing system to use, such as ``tty'' or ``X11''
+ (default depends on version).
+ Cannot be set with the `O' command.
++.lp win_edge
++Align menus and text windows in tty left instead of right. (default off)
+ .hn 2
+ Window Port Customization options
+ .pg
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/doc/Guidebook.tex nethack-3.4.3-winedge/doc/Guidebook.tex
+--- nethack-3.4.3-orig/doc/Guidebook.tex	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-winedge/doc/Guidebook.tex	2003-12-10 06:29:10.000000000 +0200
+@@ -2640,6 +2640,9 @@
+ Select which windowing system to use, such as ``{\tt tty}'' or ``{\tt X11}''
+ (default depends on version).
+ Cannot be set with the `{\tt O}' command.
++%.lp
++\item[\ib{win_edge}]
++Align menus and text windows in tty left instead of right. (default off)
+ \elist
+ 
+ %.hn 2
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/doc/Guidebook.txt nethack-3.4.3-winedge/doc/Guidebook.txt
+--- nethack-3.4.3-orig/doc/Guidebook.txt	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-winedge/doc/Guidebook.txt	2003-12-10 06:30:20.000000000 +0200
+@@ -2808,6 +2808,10 @@
+             ``X11''  (default  depends on version).  Cannot be set with the
+             `O' command.
+ 
++          win_edge
++            Align menus and text windows in tty left instead of right.
++            (default off)
++
+           9.5.  Window Port Customization options
+ 
+                Here are explanations of the various options that  are  used
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/include/config.h nethack-3.4.3-winedge/include/config.h
+--- nethack-3.4.3-orig/include/config.h	2003-12-09 17:26:08.000000000 +0200
++++ nethack-3.4.3-winedge/include/config.h	2003-12-10 06:41:53.000000000 +0200
+@@ -348,6 +348,10 @@
+  * bugs left here.
+  */
+ 
++#ifdef TTY_GRAPHICS
++# define WIN_EDGE	/* windows aligned left&top */
++#endif
++
+ /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+ /*#define AUTOPICKUP_EXCEPTIONS */ /* exceptions to autopickup */
+ 
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/include/flag.h nethack-3.4.3-winedge/include/flag.h
+--- nethack-3.4.3-orig/include/flag.h	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-winedge/include/flag.h	2003-12-10 06:30:54.000000000 +0200
+@@ -183,6 +183,9 @@
+ 	char prevmsg_window;	/* type of old message window to use */
+ 	boolean  extmenu;	/* extended commands use menu interface */
+ #endif
++#ifdef WIN_EDGE
++	boolean  win_edge;	/* are the menus aligned left&top */
++#endif
+ #ifdef MFLOPPY
+ 	boolean  checkspace;	/* check disk space before writing files */
+ 				/* (in iflags to allow restore after moving
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/options.c nethack-3.4.3-winedge/src/options.c
+--- nethack-3.4.3-orig/src/options.c	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-winedge/src/options.c	2003-12-10 06:31:26.000000000 +0200
+@@ -193,6 +193,11 @@
+ #else
+ 	{"use_inverse",   &iflags.wc_inverse, FALSE, SET_IN_GAME},		/*WC*/
+ #endif
++#ifdef WIN_EDGE
++	{"win_edge", &iflags.win_edge, FALSE, SET_IN_GAME},
++#else
++	{"win_edge", (boolean *)0, TRUE, SET_IN_FILE},
++#endif
+ 	{"verbose", &flags.verbose, TRUE, SET_IN_GAME},
+ 	{"wraptext", &iflags.wc2_wraptext, FALSE, SET_IN_GAME},
+ 	{(char *)0, (boolean *)0, FALSE, 0}
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/util/makedefs.c nethack-3.4.3-winedge/util/makedefs.c
+--- nethack-3.4.3-orig/util/makedefs.c	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-winedge/util/makedefs.c	2003-12-10 06:34:17.000000000 +0200
+@@ -771,6 +771,9 @@
+ #ifdef WALLIFIED_MAZE
+ 		"walled mazes",
+ #endif
++#ifdef WIN_EDGE
++		"win_edge",
++#endif
+ #ifdef ZEROCOMP
+ 		"zero-compressed save files",
+ #endif
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/win/tty/wintty.c nethack-3.4.3-winedge/win/tty/wintty.c
+--- nethack-3.4.3-orig/win/tty/wintty.c	2003-12-09 17:23:52.000000000 +0200
++++ nethack-3.4.3-winedge/win/tty/wintty.c	2003-12-10 06:33:04.000000000 +0200
+@@ -1529,11 +1529,19 @@
+ 	/* avoid converting to uchar before calculations are finished */
+ 	cw->offx = (uchar) (int)
+ 	    max((int) 10, (int) (ttyDisplay->cols - cw->maxcol - 1));
+-	if(cw->type == NHW_MENU)
++	if(cw->type == NHW_MENU
++#ifdef WIN_EDGE
++	    || iflags.win_edge
++#endif
++	)
+ 	    cw->offy = 0;
+ 	if(ttyDisplay->toplin == 1)
+ 	    tty_display_nhwindow(WIN_MESSAGE, TRUE);
+-	if(cw->offx == 10 || cw->maxrow >= (int) ttyDisplay->rows) {
++	if(cw->offx == 10 || cw->maxrow >= (int) ttyDisplay->rows
++#ifdef WIN_EDGE
++	    || iflags.win_edge
++#endif
++	) {
+ 	    cw->offx = 0;
+ 	    if(cw->offy) {
+ 		tty_curs(window, 1, 0);

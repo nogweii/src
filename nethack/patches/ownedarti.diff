@@ -1,0 +1,280 @@
+diff -bruNX ignore.txt ..\official/include/config.h ./include/config.h
+--- ..\official/include/config.h	Mon Dec  8 01:39:14 2003
++++ ./include/config.h	Mon Jul 19 21:42:22 2004
+@@ -351,6 +351,8 @@
+ /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+ /*#define AUTOPICKUP_EXCEPTIONS */ /* exceptions to autopickup */
+ 
++#define ARTI_WITH_OWNER	/* Wishing for artifact may bring the artifact with a hostile owner */
++
+ /* End of Section 5 */
+ 
+ #include "global.h"	/* Define everything else according to choices above */
+diff -bruNX ignore.txt ..\official/src/mplayer.c ./src/mplayer.c
+--- ..\official/src/mplayer.c	Mon Dec  8 01:39:14 2003
++++ ./src/mplayer.c	Tue Jul 20 10:10:38 2004
+@@ -115,6 +115,9 @@
+ register boolean special;
+ {
+ 	register struct monst *mtmp;
++#ifdef ARTI_WITH_OWNER
++	register boolean ascending = special && (In_endgame(&u.uz) || u.uhave.amulet);
++#endif
+ 	char nam[PL_NSIZ];
+ 
+ 	if(!is_mplayer(ptr))
+@@ -123,7 +126,9 @@
+ 	if(MON_AT(x, y))
+ 		(void) rloc(m_at(x, y), FALSE); /* insurance */
+ 
++#ifndef ARTI_WITH_OWNER
+ 	if(!In_endgame(&u.uz)) special = FALSE;
++#endif
+ 
+ 	if ((mtmp = makemon(ptr, x, y, NO_MM_FLAGS)) != 0) {
+ 	    short weapon = rn2(2) ? LONG_SWORD : rnd_class(SPEAR, BULLWHIP);
+@@ -137,10 +142,17 @@
+ 	    int quan;
+ 	    struct obj *otmp;
+ 
++#ifndef ARTI_WITH_OWNER
+ 	    mtmp->m_lev = (special ? rn1(16,15) : rnd(16));
+ 	    mtmp->mhp = mtmp->mhpmax = d((int)mtmp->m_lev,10) +
+ 					(special ? (30 + rnd(30)) : 30);
+ 	    if(special) {
++#else
++		mtmp->m_lev = (special ? (ascending ? rn1(16,15) : min(30, u.ulevel + rn1(4,4))) : rnd(16));
++	    mtmp->mhp = mtmp->mhpmax = d((int)mtmp->m_lev,10) +
++					(ascending ? (30 + rnd(30)) : 30);
++	    if(ascending) {
++#endif
+ 	        get_mplname(mtmp, nam);
+ 	        mtmp = christen_monst(mtmp, nam);
+ 		/* that's why they are "stuck" in the endgame :-) */
+@@ -226,10 +238,18 @@
+ 
+ 	    if (weapon != STRANGE_OBJECT) {
+ 		otmp = mksobj(weapon, TRUE, FALSE);
++#ifndef ARTI_WITH_OWNER
+ 		otmp->spe = (special ? rn1(5,4) : rn2(4));
++#else
++		otmp->spe = (ascending ? rn1(5,4) : rn2(4));
++#endif
+ 		if (!rn2(3)) otmp->oerodeproof = 1;
+ 		else if (!rn2(2)) otmp->greased = 1;
++#ifndef ARTI_WITH_OWNER
+ 		if (special && rn2(2))
++#else
++		if (In_endgame(&u.uz) && rn2(2))
++#endif
+ 		    otmp = mk_artifact(otmp, A_NONE);
+ 		/* mplayers knew better than to overenchant Magicbane */
+ 		if (otmp->oartifact == ART_MAGICBANE)
+@@ -237,7 +257,11 @@
+ 		(void) mpickobj(mtmp, otmp);
+ 	    }
+ 
++#ifndef ARTI_WITH_OWNER
+ 	    if(special) {
++#else
++	    if(ascending) {
++#endif
+ 		if (!rn2(10))
+ 		    (void) mongets(mtmp, rn2(3) ? LUCKSTONE : LOADSTONE);
+ 		mk_mplayer_armor(mtmp, armor);
+diff -bruNX ignore.txt ..\official/src/objnam.c ./src/objnam.c
+--- ..\official/src/objnam.c	Mon Dec  8 01:39:14 2003
++++ ./src/objnam.c	Tue Jul 20 19:24:52 2004
+@@ -2689,6 +2689,8 @@
+ 		}
+ 	}
+ 
++#ifndef ARTI_WITH_OWNER
++
+ 	/* more wishing abuse: don't allow wishing for certain artifacts */
+ 	/* and make them pay; charge them for the wish anyway! */
+ 	if ((is_quest_artifact(otmp) ||
+@@ -2704,6 +2706,183 @@
+ 		  something,
+ 		  makeplural(body_part(HAND)));
+ 	}
++#else
++	/* more wishing abuse: don't allow wishing for the quest artifact */
++	/* otherwise an increasing propability that the artifact returns */
++	/* with its previous owner */
++	if (is_quest_artifact(otmp)
++#ifdef WIZARD
++		&& !wizard
++#endif
++	    ) {
++	    artifact_exists(otmp, ONAME(otmp), FALSE);
++	    obfree(otmp, (struct obj *) 0);
++	    otmp = &zeroobj;
++	    pline("For a moment, you feel %s in your %s, but it disappears!",
++		  something,
++		  makeplural(body_part(HAND)));
++	} else if(otmp->oartifact && rn2(nartifact_exist()) > 1)
++#ifdef WIZARD
++	if(wizard && yn("Force the wish to succeed?") == 'n')
++#endif
++	{
++		int pm, strategy = NEED_HTH_WEAPON;
++		struct monst *mtmp;
++		struct obj *otmp2 = (struct obj *) 0; /* You can use otmp2 to give the owner some other item you want to.
++											     Used here to give ammunition for the Longbow of Diana. */
++
++		switch(otmp->oartifact){
++			case ART_EXCALIBUR:
++				pm=PM_KNIGHT;
++				break;
++			case ART_STORMBRINGER:
++				pm=PM_RANGER;
++				break;
++			case ART_MJOLLNIR:
++				pm=PM_VALKYRIE;
++				break;
++			case ART_CLEAVER:
++				pm=PM_BARBARIAN;
++				break;
++			case ART_GRIMTOOTH:
++				pm=PM_ROGUE;
++				break;
++			case ART_ORCRIST:
++				pm=PM_RANGER;
++				break;
++			case ART_STING:
++				pm=PM_ROGUE;
++				break;
++			case ART_MAGICBANE:
++				pm=PM_WIZARD;
++				break;
++			case ART_FROST_BRAND:
++				if(u.ualign.type == A_NEUTRAL)
++#ifdef TOURIST
++					pm=PM_TOURIST;
++#else
++					pm=PM_VALKYRIE;
++#endif
++				else pm=PM_KNIGHT;
++				break;
++			case ART_FIRE_BRAND:
++				if(u.ualign.type == A_NEUTRAL)
++					pm=PM_BARBARIAN;
++				else pm=PM_ARCHEOLOGIST;
++				break;
++			case ART_DRAGONBANE:
++				if(u.ualign.type == A_NEUTRAL)
++				pm=PM_HEALER;
++				else pm=PM_PRIEST;
++				break;
++			case ART_DEMONBANE:
++				pm=PM_CAVEMAN;
++				break;
++			case ART_WEREBANE:
++				if(u.ualign.type == A_NEUTRAL)
++				pm=PM_BARBARIAN;
++				else pm=PM_CAVEMAN;
++				break;
++			case ART_GRAYSWANDIR:
++				pm=PM_ARCHEOLOGIST;
++				break;
++			case ART_GIANTSLAYER:
++				pm=PM_BARBARIAN;
++				break;
++			case ART_OGRESMASHER:
++				pm=PM_VALKYRIE;
++				break;
++			case ART_TROLLSBANE:
++				pm=PM_PRIEST;
++				break;
++			case ART_VORPAL_BLADE:
++#ifdef TOURIST
++				pm=PM_TOURIST;
++#else
++				pm=PM_HEALER;
++#endif
++				break;
++			case ART_SNICKERSNEE:
++				pm=PM_SAMURAI;
++				break;
++			case ART_SUNSWORD:
++				pm=PM_ARCHEOLOGIST;
++				break;
++			case ART_ORB_OF_DETECTION:
++				pm=PM_ARCHEOLOGIST;
++				break;
++			case ART_HEART_OF_AHRIMAN:
++				pm=PM_BARBARIAN;
++				break;
++			case ART_SCEPTRE_OF_MIGHT:
++				pm=PM_CAVEMAN;
++				break;
++			case ART_STAFF_OF_AESCULAPIUS:
++				pm=PM_HEALER;
++				break;
++			case ART_MAGIC_MIRROR_OF_MERLIN:
++				pm=PM_KNIGHT;
++				break;
++			case ART_EYES_OF_THE_OVERWORLD:
++				pm=PM_MONK;
++				break;
++			case ART_MITRE_OF_HOLINESS:
++				pm=PM_PRIEST;
++				break;
++			case ART_LONGBOW_OF_DIANA:
++				pm=PM_RANGER;
++				otmp2 = mksobj(ARROW, TRUE, FALSE);
++				otmp2->quan = (long) rn1(20, 10);
++				otmp2->owt = weight(otmp2);
++				otmp2->blessed = otmp2->cursed = 0;
++				otmp2->spe = rn2(3);
++				strategy = NEED_RANGED_WEAPON;
++				break;
++			case ART_MASTER_KEY_OF_THIEVERY:
++				pm=PM_ROGUE;
++				break;
++			case ART_TSURUGI_OF_MURAMASA:
++				pm=PM_SAMURAI;
++				break;
++#ifdef TOURIST
++			case ART_YENDORIAN_EXPRESS_CARD:
++				pm=PM_TOURIST;
++				break;
++#endif
++			case ART_ORB_OF_FATE:
++				pm=PM_VALKYRIE;
++				break;
++			case ART_EYE_OF_THE_AETHIOPICA:
++				pm=PM_WIZARD;
++				break;
++			default:
++				impossible("Unknown artifact!");
++				break;
++		}
++		if(pm==PM_CAVEMAN && rn2(2)) pm=PM_CAVEWOMAN;
++		if(pm==PM_PRIEST  && rn2(2)) pm=PM_PRIESTESS;
++		mtmp = mk_mplayer(&mons[pm], u.ux, u.uy, TRUE);
++		if(Blind) {
++		    if (Hallucination)
++				pline("What's this with fried onions?");
++			else
++				You("hear a small explosion and smell smoke.");
++			You("hear somebody say: Did you think that I would relinquish the %s so easily?", artiname(otmp->oartifact));
++		} else {
++		    if (Hallucination)
++				pline("Nice colors, but the sound could have been more mellow.");
++			else
++				pline("There is a puff of smoke and somebody appears!");
++			pline("%s says: Did you think that I would relinquish the %s so easily?", Monnam(mtmp), artiname(otmp->oartifact));
++		}
++		(void) mpickobj(mtmp, otmp);
++		if (otmp2) (void) mpickobj(mtmp, otmp2);
++   	    otmp = &zeroobj;
++		m_dowear(mtmp, TRUE);
++		mtmp->weapon_check = strategy;
++		mon_wield_item(mtmp);
++	}
++#endif /*ARTI_WITH_OWNER */
+ 
+ 	if (halfeaten && otmp->oclass == FOOD_CLASS) {
+ 		if (otmp->otyp == CORPSE)

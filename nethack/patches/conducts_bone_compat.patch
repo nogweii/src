@@ -1,0 +1,232 @@
+diff -Nurd nethack-3.4.3-conducts/include/extern.h nethack-3.4.3-conbon/include/extern.h
+--- nethack-3.4.3-conducts/include/extern.h	2005-01-18 01:13:16.000000000 +0100
++++ nethack-3.4.3-conbon/include/extern.h	2005-01-20 08:58:00.000000000 +0100
+@@ -609,8 +609,8 @@
+ E char *FDECL(fname_decode, (CHAR_P, char *, char *, int));
+ E const char *FDECL(fqname, (const char *, int, int));
+ E FILE *FDECL(fopen_datafile, (const char *,const char *,int));
+-E boolean FDECL(uptodate, (int,const char *));
+-E void FDECL(store_version, (int));
++E boolean FDECL(uptodate, (int,const char *,int));
++E void FDECL(store_version, (int, int));
+ #ifdef MFLOPPY
+ E void NDECL(set_lock_and_bones);
+ #endif
+@@ -2116,7 +2116,7 @@
+ E boolean FDECL(comp_times, (long));
+ #endif
+ E boolean FDECL(check_version, (struct version_info *,
+-				const char *,BOOLEAN_P));
++				const char *,BOOLEAN_P,BOOLEAN_P));
+ E unsigned long FDECL(get_feature_notice_ver, (char *));
+ E unsigned long NDECL(get_current_feature_ver);
+ #ifdef RUNTIME_PORT_ID
+diff -Nurd nethack-3.4.3-conducts/include/you.h nethack-3.4.3-conbon/include/you.h
+--- nethack-3.4.3-conducts/include/you.h	2005-01-18 00:03:30.000000000 +0100
++++ nethack-3.4.3-conbon/include/you.h	2005-01-20 08:58:00.000000000 +0100
+@@ -377,4 +377,9 @@
+ 
+ #define Upolyd (u.umonnum != u.umonster)
+ 
++#ifdef ELBERETH
++#define FAKEBONEDIFF (sizeof(long)*7+sizeof(time_t)*2)
++#else
++#define FAKEBONEDIFF (sizeof(long)*6+sizeof(time_t)*2)
++#endif
+ #endif	/* YOU_H */
+diff -Nurd nethack-3.4.3-conducts/src/bones.c nethack-3.4.3-conbon/src/bones.c
+--- nethack-3.4.3-conducts/src/bones.c	2005-01-08 02:29:48.000000000 +0100
++++ nethack-3.4.3-conbon/src/bones.c	2005-01-20 12:01:48.000000000 +0100
+@@ -342,7 +342,7 @@
+ 	     * this code would have to know the size of the version
+ 	     * information itself.
+ 	     */
+-	    store_version(fd);
++	    store_version(fd,1);
+ 	    bwrite(fd, (genericptr_t) &c, sizeof c);
+ 	    bwrite(fd, (genericptr_t) bonesid, (unsigned) c);	/* DD.nnn */
+ 	    savefruitchn(fd, COUNT_SAVE);
+@@ -360,12 +360,15 @@
+ 	}
+ #endif /* MFLOPPY */
+ 
+-	store_version(fd);
++	store_version(fd,1);
+ 	bwrite(fd, (genericptr_t) &c, sizeof c);
+ 	bwrite(fd, (genericptr_t) bonesid, (unsigned) c);	/* DD.nnn */
+ 	savefruitchn(fd, WRITE_SAVE | FREE_SAVE);
+ 	update_mlstmv();	/* update monsters for eventual restoration */
+ 	savelev(fd, ledger_no(&u.uz), WRITE_SAVE | FREE_SAVE);
++	Sprintf(whynot, "VERSION_SANITY2 off by %d (fake signature)", FAKEBONEDIFF);
++	bwrite(fd, (genericptr_t) whynot, strlen(whynot));
++	/* Earmark the bones so Hearse can purge them if something goes wrong. */
+ 	bclose(fd);
+ 	commit_bonesfile(&u.uz);
+ 	compress_bonesfile();
+@@ -391,7 +394,7 @@
+ 	fd = open_bonesfile(&u.uz, &bonesid);
+ 	if (fd < 0) return(0);
+ 
+-	if ((ok = uptodate(fd, bones)) == 0) {
++	if ((ok = uptodate(fd, bones, 1)) == 0) {
+ #ifdef WIZARD
+ 	    if (!wizard)
+ #endif
+diff -Nurd nethack-3.4.3-conducts/src/dungeon.c nethack-3.4.3-conbon/src/dungeon.c
+--- nethack-3.4.3-conducts/src/dungeon.c	2005-01-08 02:29:48.000000000 +0100
++++ nethack-3.4.3-conbon/src/dungeon.c	2005-01-20 08:58:00.000000000 +0100
+@@ -684,7 +684,7 @@
+ 	 * mix with the raw messages that might be already on the screen
+ 	 */
+ 	if (iflags.window_inited) clear_nhwindow(WIN_MAP);
+-	if (!check_version(&vers_info, DUNGEON_FILE, TRUE))
++	if (!check_version(&vers_info, DUNGEON_FILE, TRUE, 0))
+ 	    panic("Dungeon description not valid.");
+ 
+ 	/*
+diff -Nurd nethack-3.4.3-conducts/src/files.c nethack-3.4.3-conbon/src/files.c
+--- nethack-3.4.3-conducts/src/files.c	2005-01-08 02:29:48.000000000 +0100
++++ nethack-3.4.3-conbon/src/files.c	2005-01-20 08:58:00.000000000 +0100
+@@ -931,7 +931,7 @@
+ 	uncompress(fq_save);
+ 	if ((fd = open_savefile()) < 0) return fd;
+ 
+-	if (!uptodate(fd, fq_save)) {
++	if (!uptodate(fd, fq_save, 0)) {
+ 	    (void) close(fd),  fd = -1;
+ 	    (void) delete_savefile();
+ 	}
+@@ -954,7 +954,7 @@
+ #endif
+     uncompress(SAVEF);
+     if ((fd = open_savefile()) >= 0) {
+-	if (uptodate(fd, filename)) {
++	if (uptodate(fd, filename, 0)) {
+ 	    char tplname[PL_NSIZ];
+ 	    mread(fd, (genericptr_t) tplname, PL_NSIZ);
+ 	    result = strdup(tplname);
+diff -Nurd nethack-3.4.3-conducts/src/restore.c nethack-3.4.3-conbon/src/restore.c
+--- nethack-3.4.3-conducts/src/restore.c	2005-01-08 02:29:49.000000000 +0100
++++ nethack-3.4.3-conbon/src/restore.c	2005-01-20 08:58:00.000000000 +0100
+@@ -523,7 +523,7 @@
+ 			playwoRAMdisk();
+ 			/* Rewind save file and try again */
+ 			(void) lseek(fd, (off_t)0, 0);
+-			(void) uptodate(fd, (char *)0);	/* skip version */
++			(void) uptodate(fd, (char *)0, 0);	/* skip version */
+ 			return dorecover(fd);	/* 0 or 1 */
+ 		} else {
+ # endif
+@@ -631,7 +631,7 @@
+ #else
+ 	(void) lseek(fd, (off_t)0, 0);
+ #endif
+-	(void) uptodate(fd, (char *)0);		/* skip version info */
++	(void) uptodate(fd, (char *)0, 0);		/* skip version info */
+ #ifdef STORE_PLNAME_IN_FILE
+ 	mread(fd, (genericptr_t) plname, PL_NSIZ);
+ #endif
+diff -Nurd nethack-3.4.3-conducts/src/save.c nethack-3.4.3-conbon/src/save.c
+--- nethack-3.4.3-conducts/src/save.c	2005-01-08 02:29:49.000000000 +0100
++++ nethack-3.4.3-conbon/src/save.c	2005-01-20 08:58:00.000000000 +0100
+@@ -202,7 +202,7 @@
+ 	}
+ #endif /* MFLOPPY */
+ 
+-	store_version(fd);
++	store_version(fd,0);
+ #ifdef STORE_PLNAME_IN_FILE
+ 	bwrite(fd, (genericptr_t) plname, PL_NSIZ);
+ #endif
+@@ -381,7 +381,7 @@
+ 
+ 		    (void) write(fd, (genericptr_t) &currlev, sizeof(currlev));
+ 		    save_savefile_name(fd);
+-		    store_version(fd);
++		    store_version(fd,0);
+ #ifdef STORE_PLNAME_IN_FILE
+ 		    bwrite(fd, (genericptr_t) plname, PL_NSIZ);
+ #endif
+diff -Nurd nethack-3.4.3-conducts/src/sp_lev.c nethack-3.4.3-conbon/src/sp_lev.c
+--- nethack-3.4.3-conducts/src/sp_lev.c	2005-01-08 02:29:49.000000000 +0100
++++ nethack-3.4.3-conbon/src/sp_lev.c	2005-01-20 08:58:00.000000000 +0100
+@@ -2640,7 +2640,7 @@
+ 	if (!fd) return FALSE;
+ 
+ 	Fread((genericptr_t) &vers_info, sizeof vers_info, 1, fd);
+-	if (!check_version(&vers_info, name, TRUE))
++	if (!check_version(&vers_info, name, TRUE, 0))
+ 	    goto give_up;
+ 
+ 	Fread((genericptr_t) &c, sizeof c, 1, fd); /* c Header */
+diff -Nurd nethack-3.4.3-conducts/src/version.c nethack-3.4.3-conbon/src/version.c
+--- nethack-3.4.3-conducts/src/version.c	2005-01-08 02:29:49.000000000 +0100
++++ nethack-3.4.3-conbon/src/version.c	2005-01-20 08:58:00.000000000 +0100
+@@ -65,10 +65,11 @@
+ #endif
+ 
+ boolean
+-check_version(version_data, filename, complain)
++check_version(version_data, filename, complain, bone)
+ struct version_info *version_data;
+ const char *filename;
+ boolean complain;
++boolean bone;
+ {
+ 	if (
+ #ifdef VERSION_COMPATIBILITY
+@@ -89,7 +90,8 @@
+ 			  (VERSION_FEATURES & ~IGNORED_FEATURES) ||
+ #endif
+ 		   version_data->entity_count != VERSION_SANITY1 ||
+-		   version_data->struct_sizes != VERSION_SANITY2) {
++		   (version_data->struct_sizes^VERSION_SANITY2)&(-1<<(bone?10:0)))
++		   /* 1KB: size of "struct you" is irrelevant for bones */ {
+ 	    if (complain)
+ 		pline("Configuration incompatibility for file \"%s\".",
+ 		      filename);
+@@ -101,7 +103,7 @@
+ /* this used to be based on file date and somewhat OS-dependant,
+    but now examines the initial part of the file's contents */
+ boolean
+-uptodate(fd, name)
++uptodate(fd, name, bones)
+ int fd;
+ const char *name;
+ {
+@@ -118,7 +120,7 @@
+ 	}
+ 	return FALSE;
+     }
+-    if (!check_version(&vers_info, name, verbose)) {
++    if (!check_version(&vers_info, name, verbose, bones)) {
+ 	if (verbose) wait_synch();
+ 	return FALSE;
+     }
+@@ -126,17 +128,23 @@
+ }
+ 
+ void
+-store_version(fd)
++store_version(fd, bone)
+ int fd;
++int bone;
+ {
+-	const static struct version_info version_data = {
++	const static struct version_info version_data_real = {
+ 			VERSION_NUMBER, VERSION_FEATURES,
+ 			VERSION_SANITY1, VERSION_SANITY2
+ 	};
++	const static struct version_info version_data_fake = {
++			VERSION_NUMBER, VERSION_FEATURES,
++			VERSION_SANITY1, VERSION_SANITY2-FAKEBONEDIFF
++	};
+ 
+ 	bufoff(fd);
+ 	/* bwrite() before bufon() uses plain write() */
+-	bwrite(fd,(genericptr_t)&version_data,(unsigned)(sizeof version_data));
++	bwrite(fd,(genericptr_t)&(bone?version_data_fake:version_data_real),
++		(unsigned)(sizeof version_data_real));
+ 	bufon(fd);
+ 	return;
+ }

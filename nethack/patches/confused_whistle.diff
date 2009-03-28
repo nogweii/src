@@ -1,0 +1,69 @@
+diff -Naur nethack-3.4.3/include/extern.h nethack-whistle/include/extern.h
+--- nethack-3.4.3/include/extern.h	2003-12-08 10:39:13.000000000 +1100
++++ nethack-whistle/include/extern.h	2007-05-02 10:38:28.000000000 +1000
+@@ -1931,6 +1931,7 @@
+ E boolean FDECL(goodpos, (int,int,struct monst *,unsigned));
+ E boolean FDECL(enexto, (coord *,XCHAR_P,XCHAR_P,struct permonst *));
+ E boolean FDECL(enexto_core, (coord *,XCHAR_P,XCHAR_P,struct permonst *,unsigned));
++E boolean FDECL(teleok, (int,int,BOOLEAN_P));
+ E void FDECL(teleds, (int,int,BOOLEAN_P));
+ E boolean FDECL(safe_teleds, (BOOLEAN_P));
+ E boolean FDECL(teleport_pet, (struct monst *,BOOLEAN_P));
+diff -Naur nethack-3.4.3/src/apply.c nethack-whistle/src/apply.c
+--- nethack-3.4.3/src/apply.c	2003-12-08 10:39:13.000000000 +1100
++++ nethack-whistle/src/apply.c	2007-05-02 10:50:23.000000000 +1000
+@@ -326,6 +326,34 @@
+ 	if(obj->cursed && !rn2(2)) {
+ 		You("produce a high-pitched humming noise.");
+ 		wake_nearby();
++	} else if (Confusion) {
++		int pet_cnt = 0;
++		struct monst *pet = NULL;
++		coord cc;
++
++		pline("Being confused, you accidentally suck in through %s.",
++			the(xname(obj)));
++
++		if (!level.flags.noteleport) {
++		    /* select a random pet to move you next to */	
++		    for(mtmp = fmon; mtmp; mtmp = nextmon) {
++		        nextmon = mtmp->nmon;
++		        if (DEADMONSTER(mtmp)) continue;
++		        if (mtmp->mtame) {
++		   	    pet_cnt++;
++			    if (!rn2(pet_cnt)) pet = mtmp;
++		        }
++		    }
++
++		
++   		    if (pet_cnt > 0 &&
++                        enexto(&cc, pet->mx, pet->my, youmonst.data) &&
++			teleok(cc.x, cc.y, TRUE)) {
++
++			teleds(cc.x, cc.y, FALSE);
++		        makeknown(obj->otyp);
++		    }
++		}
+ 	} else {
+ 		int pet_cnt = 0;
+ 		You(whistle_str, Hallucination ? "normal" : "strange");
+diff -Naur nethack-3.4.3/src/teleport.c nethack-whistle/src/teleport.c
+--- nethack-3.4.3/src/teleport.c	2003-12-08 10:39:13.000000000 +1100
++++ nethack-whistle/src/teleport.c	2007-05-02 10:38:12.000000000 +1000
+@@ -5,7 +5,6 @@
+ #include "hack.h"
+ 
+ STATIC_DCL boolean FDECL(tele_jump_ok, (int,int,int,int));
+-STATIC_DCL boolean FDECL(teleok, (int,int,BOOLEAN_P));
+ STATIC_DCL void NDECL(vault_tele);
+ STATIC_DCL boolean FDECL(rloc_pos_ok, (int,int,struct monst *));
+ STATIC_DCL void FDECL(mvault_tele, (struct monst *));
+@@ -214,7 +213,7 @@
+ 	return TRUE;
+ }
+ 
+-STATIC_OVL boolean
++boolean
+ teleok(x, y, trapok)
+ register int x, y;
+ boolean trapok;

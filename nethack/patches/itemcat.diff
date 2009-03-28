@@ -1,0 +1,804 @@
+Additional Item Categories Patch, Version 5.2 (for nethack 3.4.3)
+Fri 11, 2004 (C) Stanislav Traykov [terms of use: NetHack GPL]
+
+Thanks to M. Drew Streib, Pasi Kallinen and Keiran for suggestions!
+
+DESCRIPTION:
+
+This patch adds additional item categories for selection in
+drop/put_in/take_out menus:
+
+I - Unidentified Items
+        selects all unidentified* items.
+
+Q - Auto-picked Items
+        selects all items that you would pick-up (if auto-pickup
+        had been on). It honours auto-pickup exceptions if you
+        have that option compiled.
+
+In main inventory menus (drop, put_in):
+
+P - Items just Picked up
+        or
+P - Items just taken out
+        selects all items except gold, that were part of the last
+        pick-up/take-out operation. If the last operation didn't succeed
+        (cannot lift anymore) or only gold was picked up, it is not counted.
+
+Z - Inverse selection
+
+If option like_swimming is set:
+
+r - Items known to be Rustprone
+        this helps quickly dropping/stashing items before taking a bath, but
+        won't help with some special items if they are not known (eg.
+        gauntlets of power, if not already rusty).
+
+_____________
+* as of version 5.0, items whose only unknown property is their blessed/
+  uncursed/cursed status will be counted as identified. If you wish to
+  select ALL not_fully_identified items, use the 'I' and 'X' categories
+  together (or see below).
+
+INSTRUCTIONS:
+
+After applying the patch, you can #define any of the following in config.h:
+
+#define ITEMCAT
+        to enable the I and r categories (unidentified, rustprone)
+
+#define ITEMCAT_JP
+        to enable the P category (items just...)
+
+#define ITEMCAT_AP
+        to enable the Q category (auto-picked)
+
+#define ITEMCAT_NEG
+        to enable the Z category (inverse selection)
+
+#define ITEMCAT_OLDSTYLE
+        if you don't like the 5.0-style 'I' category selection.
+
+Additionally, add the line
+
+OPTIONS=like_swimming
+
+in your nethack configuration file, if you'd like the 'r' category to appear
+by default.
+
+CHANGES:
+
+Jun 13, V 5.2
+      inverse selection - cosmetic stuff, 'A' interaction
+Jun 11, V 5.1
+      new category: Inverse selection
+Jun 11, V 5.0
+      new category autopicked items
+      change behaviour of 'I' to exclude "almost" identified items (!bknown)
+Dec 13, V 4.2 (for nethack 3.4.3)
+      rediff against new release
+Dec 8, V 4.2
+      bugfix: variable declaration in pick_obj() caused problems
+      with some compilers [Jukka Lahtinen]
+Oct 9, V 4.1
+      minor bugfix: alphabetical ordering of like_swimming
+Oct 8, V 4
+      jp usability improvements
+Oct 4, V 3
+      corrects some bugs and now supports P - Items just Picked up
+
+diff -ruX exclude nethack-3.4.3/dat/opthelp nethack-3.4.3_itemcat2/dat/opthelp
+--- nethack-3.4.3/dat/opthelp	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/dat/opthelp	2004-06-11 02:10:38.000000000 +0200
+@@ -51,6 +51,10 @@
+ 
+ There are further boolean options controlled by compilation flags.
+ 
++Boolean option if ITEMCAT was set at compile time:
++like_swimming   allow category "Items known to be Rustprone" in
++                selection menus                                   [FALSE]
++
+ Boolean option if INSURANCE was set at compile time:
+ checkpoint save game state after each level change, for possible  [TRUE]
+            recovery after program crash
+diff -ruX exclude nethack-3.4.3/doc/Guidebook.mn nethack-3.4.3_itemcat2/doc/Guidebook.mn
+--- nethack-3.4.3/doc/Guidebook.mn	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/doc/Guidebook.mn	2004-06-11 02:10:38.000000000 +0200
+@@ -1874,6 +1874,8 @@
+ Ignore interrupt signals, including breaks (default off).
+ .lp legacy
+ Display an introductory message when starting the game (default on).
++.lp like_swimming
++Allow category ``Items known to be Rustprone'' in selection menus.
+ .lp lit_corridor
+ Show corridor squares seen by night vision or a light source held by your
+ character as lit (default off).
+diff -ruX exclude nethack-3.4.3/doc/Guidebook.tex nethack-3.4.3_itemcat2/doc/Guidebook.tex
+--- nethack-3.4.3/doc/Guidebook.tex	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/doc/Guidebook.tex	2004-06-11 02:10:38.000000000 +0200
+@@ -2321,6 +2321,9 @@
+ \item[\ib{legacy}]
+ Display an introductory message when starting the game (default on).
+ %.lp
++\item[\ib{like\_swimming}]
++Allow category ``Items known to be Rustprone'' in selection menus.
++%.lp
+ \item[\ib{lit\_corridor}]
+ Show corridor squares seen by night vision or a light source held by your
+ character as lit (default off).
+diff -ruX exclude nethack-3.4.3/include/extern.h nethack-3.4.3_itemcat2/include/extern.h
+--- nethack-3.4.3/include/extern.h	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/include/extern.h	2004-06-11 02:10:38.000000000 +0200
+@@ -1483,6 +1483,13 @@
+ E int FDECL(in_container, (struct obj *));
+ E int FDECL(out_container, (struct obj *));
+ #endif
++#ifdef ITEMCAT_JP
++E void FDECL(jpick_free, (struct obj *));
++#endif
++#ifdef ITEMCAT_AP
++E int FDECL(is_autopicked, (struct obj *));
++#endif
++
+ E int FDECL(pickup, (int));
+ E int FDECL(pickup_object, (struct obj *, long, BOOLEAN_P));
+ E int FDECL(query_category, (const char *, struct obj *, int,
+diff -ruX exclude nethack-3.4.3/include/flag.h nethack-3.4.3_itemcat2/include/flag.h
+--- nethack-3.4.3/include/flag.h	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/include/flag.h	2004-06-11 02:10:38.000000000 +0200
+@@ -155,6 +155,9 @@
+  */
+ 
+ struct instance_flags {
++#ifdef ITEMCAT
++        boolean  like_swimming; /* category r - Items known to be Rustprone */
++#endif /* ITEMCAT */
+ 	boolean  cbreak;	/* in cbreak mode, rogue format */
+ 	boolean  DECgraphics;	/* use DEC VT-xxx extended character set */
+ 	boolean  echo;		/* 1 to echo characters */
+diff -ruX exclude nethack-3.4.3/include/hack.h nethack-3.4.3_itemcat2/include/hack.h
+--- nethack-3.4.3/include/hack.h	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/include/hack.h	2004-06-11 02:10:38.000000000 +0200
+@@ -169,6 +169,16 @@
+ #define BUC_UNCURSED 0x200
+ #define BUC_UNKNOWN  0x400
+ #define BUC_ALLBKNOWN (BUC_BLESSED|BUC_CURSED|BUC_UNCURSED)
++#ifdef ITEMCAT
++#define UNIDENTIFIED 0x800
++#define RUSTPRONE    0x1000
++#endif
++#ifdef ITEMCAT_JP
++#define JUSTPICKED   0x2000
++#endif
++#ifdef ITEMCAT_AP
++#define AUTOPICKED   0x4000
++#endif
+ #define ALL_TYPES_SELECTED -2
+ 
+ /* Flags to control find_mid() */
+diff -ruX exclude nethack-3.4.3/include/objclass.h nethack-3.4.3_itemcat2/include/objclass.h
+--- nethack-3.4.3/include/objclass.h	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/include/objclass.h	2004-06-11 02:10:38.000000000 +0200
+@@ -70,6 +70,14 @@
+ /* primary damage: fire/rust/--- */
+ /* is_flammable(otmp), is_rottable(otmp) in mkobj.c */
+ #define is_rustprone(otmp)	(objects[otmp->otyp].oc_material == IRON)
++#ifdef ITEMCAT
++/* is rustprone, and rust matters (is displayed in inventory listing) */
++#define is_rustprone2(otmp)     (is_rustprone(otmp) && (otmp->oclass==WEAPON_CLASS || otmp->oclass==ARMOR_CLASS || otmp->oclass==TOOL_CLASS || otmp->oclass==WAND_CLASS || otmp->oclass==RING_CLASS || otmp->oclass==BALL_CLASS || otmp->oclass==CHAIN_CLASS))
++/* rustproneness should not be immediately visible */
++#define hide_rust(otmp)         ((otmp->otyp==GAUNTLETS_OF_POWER || otmp->otyp==KICKING_BOOTS) && !otmp->oeroded)
++/* object is known to be rustprone and is NOT known to be rustproof */
++#define is_known_rustprone(otmp)	(is_rustprone2(otmp) && !(otmp->rknown && otmp->oerodeproof) && (!hide_rust(otmp) || objects[otmp->otyp].oc_name_known))
++#endif /* ITEMCAT */
+ 
+ /* secondary damage: rot/acid/acid */
+ #define is_corrodeable(otmp)	(objects[otmp->otyp].oc_material == COPPER || objects[otmp->otyp].oc_material == IRON)
+diff -ruX exclude nethack-3.4.3/include/obj.h nethack-3.4.3_itemcat2/include/obj.h
+--- nethack-3.4.3/include/obj.h	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/include/obj.h	2004-06-11 02:10:38.000000000 +0200
+@@ -303,4 +303,21 @@
+ #define CONTAINED_TOO	0x1
+ #define BURIED_TOO	0x2
+ 
++#ifdef ITEMCAT
++#ifdef ITEMCAT_OLDSTYLE
++#   ifdef MAIL
++#   define BKNOWN(otmp) (otmp->bknown || otmp->otyp == SCR_MAIL)
++#   else
++#   define BKNOWN(otmp) (otmp->bknown)
++#   endif
++#else
++#   define BKNOWN(otmp) (1)
++#endif
++
++/* faster version of not_fully_identified() for item selection
++ * (invent.c/pickup.c) */
++#define NOT_IDENTIFIED_ITEMCAT(otmp) (otmp->oclass != COIN_CLASS && !(otmp->known && otmp->dknown && BKNOWN(otmp) && objects[otmp->otyp].oc_name_known) || (otmp->oartifact && undiscovered_artifact(otmp->oartifact)) || (!otmp->rknown && ((otmp->oclass == ARMOR_CLASS || otmp->oclass == WEAPON_CLASS || is_weptool(otmp) || otmp->oclass == BALL_CLASS)) && (is_rustprone(otmp) || is_corrodeable(otmp) || is_flammable(otmp))))
++
++#endif /* ITEMCAT */
++
+ #endif /* OBJ_H */
+diff -ruX exclude nethack-3.4.3/src/do.c nethack-3.4.3_itemcat2/src/do.c
+--- nethack-3.4.3/src/do.c	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/src/do.c	2004-06-13 01:44:37.000000000 +0200
+@@ -647,7 +647,11 @@
+ #endif
+     menu_item *pick_list;
+     boolean all_categories = TRUE;
++#ifndef ITEMCAT_NEG
+     boolean drop_everything = FALSE;
++#else
++    int drop_everything = 0;
++#endif
+ 
+ #ifndef GOLDOBJ
+     if (u.ugold) {
+@@ -667,18 +671,43 @@
+ 	all_categories = FALSE;
+ 	n = query_category("Drop what type of items?",
+ 			invent,
+-			UNPAID_TYPES | ALL_TYPES | CHOOSE_ALL |
+-			BUC_BLESSED | BUC_CURSED | BUC_UNCURSED | BUC_UNKNOWN,
++			UNPAID_TYPES | ALL_TYPES | CHOOSE_ALL
++#ifdef ITEMCAT_JP
++                        | JUSTPICKED
++#endif
++#ifdef ITEMCAT_AP
++                        | AUTOPICKED
++#endif
++#ifdef ITEMCAT
++                        | UNIDENTIFIED | RUSTPRONE
++#endif
++			| BUC_BLESSED | BUC_CURSED | BUC_UNCURSED | BUC_UNKNOWN,
+ 			&pick_list, PICK_ANY);
+ 	if (!n) goto drop_done;
+ 	for (i = 0; i < n; i++) {
++#ifdef ITEMCAT_NEG
++	    if (pick_list[i].item.a_int == 'Z')
++                drop_everything|=2;
++#endif
+ 	    if (pick_list[i].item.a_int == ALL_TYPES_SELECTED)
+ 		all_categories = TRUE;
+ 	    else if (pick_list[i].item.a_int == 'A')
++#ifndef ITEMCAT_NEG
+ 		drop_everything = TRUE;
++#else
++		drop_everything|=1;
++#endif
+ 	    else
+ 		add_valid_menu_class(pick_list[i].item.a_int);
+ 	}
++#ifdef ITEMCAT_NEG
++        switch(drop_everything) {
++                case 3:
++                        return 0;
++                case 2:
++                        drop_everything=0;
++        }
++#endif
+ 	free((genericptr_t) pick_list);
+     } else if (flags.menu_style == MENU_COMBINATION) {
+ 	unsigned ggoresults = 0;
+diff -ruX exclude nethack-3.4.3/src/invent.c nethack-3.4.3_itemcat2/src/invent.c
+--- nethack-3.4.3/src/invent.c	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/src/invent.c	2004-06-11 02:10:38.000000000 +0200
+@@ -532,6 +532,11 @@
+ freeinv(obj)
+ register struct obj *obj;
+ {
++#ifdef ITEMCAT_JP
++/* this is a very uncritical thing so we do it here. if the jpicklist was
++ * persistent, this should have been in extract_nobj() itself */
++        jpick_free(obj);
++#endif /* ITEMCAT_JP */
+ 	extract_nobj(obj, &invent);
+ 	freeinv_core(obj);
+ 	update_inventory();
+@@ -1861,6 +1866,21 @@
+ 		if (list->oclass != COIN_CLASS && !list->bknown)
+ 		    count++;
+ 		break;
++#ifdef ITEMCAT
++            case UNIDENTIFIED:
++                if (NOT_IDENTIFIED_ITEMCAT(list))
++                    count++;
++                break;
++            case RUSTPRONE:
++                if (list->oclass != COIN_CLASS && is_known_rustprone(list))
++                    count++;
++                break;
++#endif /* ITEMCAT */
++#ifdef ITEMCAT_AP
++            case AUTOPICKED:
++                count+=is_autopicked(list);
++                break;
++#endif
+ 	    default:
+ 		impossible("need count of curse status %d?", type);
+ 		return 0;
+diff -ruX exclude nethack-3.4.3/src/options.c nethack-3.4.3_itemcat2/src/options.c
+--- nethack-3.4.3/src/options.c	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/src/options.c	2004-06-11 02:10:38.000000000 +0200
+@@ -113,6 +113,9 @@
+ #endif
+ 	{"large_font", &iflags.obsolete, FALSE, SET_IN_FILE},	/* OBSOLETE */
+ 	{"legacy", &flags.legacy, TRUE, DISP_IN_GAME},
++#ifdef ITEMCAT
++	{"like_swimming", &iflags.like_swimming, FALSE, SET_IN_GAME},
++#endif /* ITEMCAT */
+ 	{"lit_corridor", &flags.lit_corridor, FALSE, SET_IN_GAME},
+ 	{"lootabc", &iflags.lootabc, FALSE, SET_IN_GAME},
+ #ifdef MAC_GRAPHICS_ENV
+diff -ruX exclude nethack-3.4.3/src/pickup.c nethack-3.4.3_itemcat2/src/pickup.c
+--- nethack-3.4.3/src/pickup.c	2003-12-08 00:39:13.000000000 +0100
++++ nethack-3.4.3_itemcat2/src/pickup.c	2004-06-13 01:08:53.000000000 +0200
+@@ -39,6 +39,14 @@
+ STATIC_DCL boolean FDECL(able_to_loot, (int, int));
+ STATIC_DCL boolean FDECL(mon_beside, (int, int));
+ 
++#ifdef ITEMCAT_JP
++char *ctg_justpicked="Items just Picked up";
++char *ctg_justremoved="Items just taken out";
++char **jpick_ctg=&ctg_justpicked;
++STATIC_PTR int FDECL(is_justpicked,(struct obj *));
++#define DESTROY_JPICK(j) while(*(j)) { struct jpick *next=(*(j))->next_pick; free((genericptr_t) *(j)); *(j)=next; }
++#endif
++
+ /* define for query_objlist() and autopickup() */
+ #define FOLLOW(curr, flags) \
+     (((flags) & BY_NEXTHERE) ? (curr)->nexthere : (curr)->nobj)
+@@ -87,6 +95,61 @@
+ 	}
+ }
+ 
++#ifdef ITEMCAT_AP
++int
++is_autopicked(obj)
++register struct obj *obj;
++{
++        const char *otypes = flags.pickup_types;
++#ifndef AUTOPICKUP_EXCEPTIONS
++        if (!*otypes || index(otypes, obj->oclass))
++#else
++        if ((!*otypes || index(otypes, obj->oclass) ||
++                        is_autopickup_exception(obj, TRUE)) &&
++                        !is_autopickup_exception(obj, FALSE))
++#endif
++                return 1;
++        return 0;
++}
++#endif /* ITEMCAT_AP */
++#ifdef ITEMCAT_JP
++/* just picked items llist */
++struct jpick {
++        struct obj *o;
++        struct jpick *next_pick;
++};
++static NEARDATA struct jpick *jpick_head=(struct jpick *)0;
++STATIC_PTR int
++is_justpicked(obj)
++register struct obj *obj;
++{
++        struct jpick *list=jpick_head;
++        while(list) {
++                if(obj==list->o)
++                        return 1;
++                list=list->next_pick;
++        }
++        return 0;
++}
++void
++jpick_free(obj)
++register struct obj *obj;
++{
++        struct jpick **p=&jpick_head;
++        struct jpick *next;
++
++        while(*p) {
++                next=(*p)->next_pick;
++                if(obj==(*p)->o) {
++                        free((genericptr_t) *p);
++                        *p=next;
++                        break;
++                }
++                p=&(*p)->next_pick;
++        }
++}
++#endif /* ITEMCAT_JP */
++
+ #ifndef GOLDOBJ
+ int
+ collect_obj_classes(ilets, otmp, here, incl_gold, filter, itemcount)
+@@ -324,24 +387,53 @@
+ allow_category(obj)
+ struct obj *obj;
+ {
++#ifdef ITEMCAT_NEG
++    int result=0;
++    int itemcat_negate=(index(valid_menu_classes,'Z') != (char *)0);
++#define Return result = 
++#else
++#define Return return
++#endif
+     if (Role_if(PM_PRIEST)) obj->bknown = TRUE;
+     if (((index(valid_menu_classes,'u') != (char *)0) && obj->unpaid) ||
+ 	(index(valid_menu_classes, obj->oclass) != (char *)0))
+-	return TRUE;
++	Return TRUE;
+     else if (((index(valid_menu_classes,'U') != (char *)0) &&
+ 	(obj->oclass != COIN_CLASS && obj->bknown && !obj->blessed && !obj->cursed)))
+-	return TRUE;
++	Return TRUE;
+     else if (((index(valid_menu_classes,'B') != (char *)0) &&
+ 	(obj->oclass != COIN_CLASS && obj->bknown && obj->blessed)))
+-	return TRUE;
++	Return TRUE;
+     else if (((index(valid_menu_classes,'C') != (char *)0) &&
+ 	(obj->oclass != COIN_CLASS && obj->bknown && obj->cursed)))
+-	return TRUE;
++	Return TRUE;
+     else if (((index(valid_menu_classes,'X') != (char *)0) &&
+ 	(obj->oclass != COIN_CLASS && !obj->bknown)))
+-	return TRUE;
++	Return TRUE;
++#ifdef ITEMCAT
++    else if (((index(valid_menu_classes,'I') != (char *)0) &&
++        NOT_IDENTIFIED_ITEMCAT(obj)))
++        Return TRUE;
++    else if (((index(valid_menu_classes,'r') != (char *)0) &&
++        (obj->oclass != COIN_CLASS && is_known_rustprone(obj))))
++        Return TRUE;
++#endif /* ITEMCAT */
++#ifdef ITEMCAT_JP
++    else if (((index(valid_menu_classes,'P') != (char *)0) &&
++        (is_justpicked(obj))))
++        Return TRUE;
++#endif
++#ifdef ITEMCAT_AP
++    else if (((index(valid_menu_classes,'Q') != (char *)0) &&
++        (is_autopicked(obj))))
++        Return TRUE;
++#endif
+     else
+-	return FALSE;
++	Return FALSE;
++#ifdef ITEMCAT_NEG
++    return itemcat_negate?(!result):result;
++#undef Return
++#endif
+ }
+ 
+ #if 0 /* not used */
+@@ -390,6 +482,9 @@
+ 	boolean autopickup = what > 0;
+ 	struct obj *objchain;
+ 	int traverse_how;
++#ifdef ITEMCAT_JP
++        struct jpick *jtmp=jpick_head;
++#endif
+ 
+ 	if (what < 0)		/* pick N of something */
+ 	    count = -what;
+@@ -443,6 +538,10 @@
+ 		if (OBJ_AT(u.ux,u.uy) && flags.run && flags.run != 8 && !flags.nopick) nomul(0);
+ 	}
+ 
++#ifdef ITEMCAT_JP
++        jpick_head=(struct jpick *) 0;
++#endif
++
+ 	add_valid_menu_class(0);	/* reset */
+ 	if (!u.uswallow) {
+ 		objchain = level.objects[u.ux][u.uy];
+@@ -528,7 +627,19 @@
+ 				   FALSE,
+ #endif
+ 				   &via_menu)) {
+-		    if (!via_menu) return (0);
++		    if (!via_menu)
++#ifdef ITEMCAT_JP
++                    {
++                            if(jpick_head) {
++                                    jpick_ctg=&ctg_justpicked;
++                                    DESTROY_JPICK(&jtmp)
++                            } else
++                                    jpick_head=jtmp;
++                            return (0);
++                    }
++#else
++                            return (0);
++#endif /* ITEMCAT_JP */
+ 		    n = query_objlist("Pick up what?",
+ 				  objchain,
+ 				  traverse_how|(selective ? 0 : INVORDER_SORT),
+@@ -592,6 +703,13 @@
+ 		/* see whether there's anything else here, after auto-pickup is done */
+ 		if (autopickup) check_here(n_picked > 0);
+ 	}
++#ifdef ITEMCAT_JP
++        if(jpick_head) {
++                jpick_ctg=&ctg_justpicked;
++                DESTROY_JPICK(&jtmp)
++        } else
++                jpick_head=jtmp;
++#endif
+ 	return (n_tried > 0);
+ }
+ 
+@@ -796,6 +914,19 @@
+ 	boolean collected_type_name;
+ 	char invlet;
+ 	int ccount;
++#ifdef ITEMCAT
++        boolean do_unident = FALSE;
++        boolean do_rustprone = FALSE;
++#endif
++#ifdef ITEMCAT_JP
++        boolean do_justpicked = FALSE;
++#endif
++#ifdef ITEMCAT_AP
++        boolean do_autopicked = FALSE;
++#endif
++#ifdef ITEMCAT_NEG
++        boolean do_invsel = FALSE;
++#endif
+ 	boolean do_unpaid = FALSE;
+ 	boolean do_blessed = FALSE, do_cursed = FALSE, do_uncursed = FALSE,
+ 	    do_buc_unknown = FALSE;
+@@ -821,6 +952,27 @@
+ 	    num_buc_types++;
+ 	}
+ 
++#ifdef ITEMCAT
++        if ((qflags & UNIDENTIFIED) && count_buc(olist, UNIDENTIFIED))
++            do_unident = TRUE;
++
++        if (iflags.like_swimming && (qflags & RUSTPRONE) && count_buc(olist, RUSTPRONE))
++            do_rustprone = TRUE;
++
++#endif
++#ifdef ITEMCAT_JP
++        if ((qflags & JUSTPICKED) && jpick_head!=(struct jpick *) 0)
++            do_justpicked = TRUE;
++#endif
++#ifdef ITEMCAT_AP
++        if ((qflags & AUTOPICKED) && count_buc(olist, AUTOPICKED))
++            do_autopicked = TRUE;
++#endif
++#ifdef ITEMCAT_NEG
++        if (how!=PICK_ONE)
++            do_invsel = TRUE;
++#endif
++
+ 	ccount = count_categories(olist, qflags);
+ 	/* no point in actually showing a menu for a single category */
+ 	if (ccount == 1 && !do_unpaid && num_buc_types <= 1 && !(qflags & BILLED_TYPES)) {
+@@ -905,6 +1057,48 @@
+ 			"Auto-select every item being worn" :
+ 			"Auto-select every item", MENU_UNSELECTED);
+ 	}
++#ifdef ITEMCAT_JP
++        if (do_justpicked) {
++		invlet = 'P';
++		any.a_void = 0;
++		any.a_int = 'P';
++		add_menu(win, NO_GLYPH, &any, invlet, 0, ATR_NONE,
++			*jpick_ctg,
++			MENU_UNSELECTED);
++        }
++#endif /*ITEMCAT_JP*/
++#ifdef ITEMCAT
++	if (do_unident) {
++		invlet = 'I';
++		any.a_void = 0;
++		any.a_int = 'I';
++		add_menu(win, NO_GLYPH, &any, invlet, 0, ATR_NONE,
++			"Unidentified Items",
++			MENU_UNSELECTED);
++	}
++#endif /* ITEMCAT */
++#ifdef ITEMCAT_AP
++	if (do_autopicked) {
++		invlet = 'Q';
++		any.a_void = 0;
++		any.a_int = 'Q';
++		add_menu(win, NO_GLYPH, &any, invlet, 0, ATR_NONE,
++			"Auto-picked items",
++			MENU_UNSELECTED
++                        );
++	}
++#endif /* ITEMCAT_AP */
++#ifdef ITEMCAT_NEG
++	if (do_invsel) {
++		invlet = 'Z';
++		any.a_void = 0;
++		any.a_int = 'Z';
++		add_menu(win, NO_GLYPH, &any, invlet, 0, ATR_NONE,
++			"Inverse selection",
++			MENU_UNSELECTED
++                        );
++	}
++#endif /* ITEMCAT_AP */
+ 	/* items with b/u/c/unknown if there are any */
+ 	if (do_blessed) {
+ 		invlet = 'B';
+@@ -935,6 +1129,16 @@
+ 			"Items of unknown B/C/U status",
+ 			MENU_UNSELECTED);
+ 	}
++#ifdef ITEMCAT
++	if (iflags.like_swimming && do_rustprone) {
++		invlet = 'r';
++		any.a_void = 0;
++		any.a_int = 'r';
++		add_menu(win, NO_GLYPH, &any, invlet, 0, ATR_NONE,
++			"Items known to be Rustprone",
++			MENU_UNSELECTED);
++	}
++#endif /* ITEMCAT */
+ 	end_menu(win, qstr);
+ 	n = select_menu(win, how, pick_list);
+ 	destroy_nhwindow(win);
+@@ -1373,6 +1577,9 @@
+ pick_obj(otmp)
+ struct obj *otmp;
+ {
++#ifdef ITEMCAT_JP
++        struct jpick *pick;
++#endif
+ 	obj_extract_self(otmp);
+ 	if (!u.uswallow && otmp != uball && costly_spot(otmp->ox, otmp->oy)) {
+ 	    char saveushops[5], fakeshop[2];
+@@ -1394,7 +1601,18 @@
+ 	if (otmp->no_charge)	/* only applies to objects outside invent */
+ 	    otmp->no_charge = 0;
+ 	newsym(otmp->ox, otmp->oy);
+-	return addinv(otmp);	/* might merge it with other objects */
++#ifdef ITEMCAT_JP
++        otmp=addinv(otmp); /* might merge it with other objects */
++        if(otmp->oclass!=COIN_CLASS) {
++                pick=(struct jpick *) alloc(sizeof(struct jpick));
++                pick->next_pick=jpick_head;
++                pick->o=otmp;
++                jpick_head=pick;
++        }
++	return otmp;
++#else
++	return addinv(otmp);
++#endif /* ITEMCAT_JP */
+ }
+ 
+ /*
+@@ -1931,6 +2149,9 @@
+ 	boolean is_gold = (obj->oclass == COIN_CLASS);
+ 	int res, loadlev;
+ 	long count;
++#ifdef ITEMCAT_JP
++        struct jpick *pick;
++#endif
+ 
+ 	if (!current_container) {
+ 		impossible("<out> no current_container?");
+@@ -1985,6 +2206,14 @@
+ 		verbalize("You sneaky cad! Get out of here with that pick!");
+ 
+ 	otmp = addinv(obj);
++#ifdef ITEMCAT_JP
++        if(!is_gold) {
++                pick=(struct jpick *) alloc(sizeof(struct jpick));
++                pick->next_pick=jpick_head;
++                pick->o=otmp;
++                jpick_head=pick;
++        }
++#endif
+ 	loadlev = near_capacity();
+ 	prinv(loadlev ?
+ 	      (loadlev < MOD_ENCUMBER ?
+@@ -2186,6 +2415,14 @@
+ 				      FALSE,
+ #endif
+ 				      &menu_on_request)) {
++#ifdef ITEMCAT_JP
++                        /* normally one wouldn't use traditional + itemcat_jp,
++                         * so we don't make extra checks whether something
++                         * relevant was in fact picked up, just destroy the
++                         * list for consistency. */
++                        jpick_ctg=&ctg_justremoved;
++                        DESTROY_JPICK(&jpick_head)
++#endif
+ 			if (askchain((struct obj **)&current_container->cobj,
+ 				     (one_by_one ? (char *)0 : select),
+ 				     allflag, out_container,
+@@ -2311,14 +2548,33 @@
+     menu_item *pick_list;
+     int mflags, res;
+     long count;
++#ifdef ITEMCAT_JP
++    struct jpick *jtmp;
++#endif
+ 
+     if (retry) {
+ 	all_categories = (retry == -2);
+     } else if (flags.menu_style == MENU_FULL) {
+ 	all_categories = FALSE;
+ 	Sprintf(buf,"%s what type of objects?", put_in ? putin : takeout);
+-	mflags = put_in ? ALL_TYPES | BUC_ALLBKNOWN | BUC_UNKNOWN :
+-		          ALL_TYPES | CHOOSE_ALL | BUC_ALLBKNOWN | BUC_UNKNOWN;
++	mflags = put_in ? ALL_TYPES | BUC_ALLBKNOWN | BUC_UNKNOWN
++#ifdef ITEMCAT_JP
++                | JUSTPICKED
++#endif
++#ifdef ITEMCAT_AP
++                | AUTOPICKED
++#endif
++#ifdef ITEMCAT
++                | UNIDENTIFIED | RUSTPRONE
++#endif
++                        : ALL_TYPES | CHOOSE_ALL | BUC_ALLBKNOWN | BUC_UNKNOWN
++#ifdef ITEMCAT
++                | UNIDENTIFIED | RUSTPRONE
++#endif
++#ifdef ITEMCAT_AP
++                | AUTOPICKED
++#endif
++        ;
+ 	n = query_category(buf, put_in ? invent : container->cobj,
+ 			   mflags, &pick_list, PICK_ANY);
+ 	if (!n) return 0;
+@@ -2334,11 +2590,26 @@
+     }
+ 
+     if (loot_everything) {
++#ifdef ITEMCAT_NEG
++        if(index(valid_menu_classes,'Z') != (char *)0)
++            return 0;
++#endif
++#ifdef ITEMCAT_JP
++        jtmp=jpick_head;
++        jpick_head=(struct jpick *) 0;
++#endif
+ 	for (otmp = container->cobj; otmp; otmp = otmp2) {
+ 	    otmp2 = otmp->nobj;
+ 	    res = out_container(otmp);
+ 	    if (res < 0) break;
+ 	}
++#ifdef ITEMCAT_JP
++        if(jpick_head) {
++                jpick_ctg=&ctg_justremoved;
++                DESTROY_JPICK(&jtmp)
++        } else
++                jpick_head=jtmp;
++#endif
+     } else {
+ 	mflags = INVORDER_SORT;
+ 	if (put_in && flags.invlet_constant) mflags |= USE_INVLET;
+@@ -2348,6 +2619,12 @@
+ 			  all_categories ? allow_all : allow_category);
+ 	if (n) {
+ 		n_looted = n;
++#ifdef ITEMCAT_JP
++                if(!put_in) {
++                        jtmp=jpick_head;
++                        jpick_head=(struct jpick *) 0;
++                }
++#endif
+ 		for (i = 0; i < n; i++) {
+ 		    otmp = pick_list[i].item.a_obj;
+ 		    count = pick_list[i].count;
+@@ -2364,6 +2641,15 @@
+ 			break;
+ 		    }
+ 		}
++#ifdef ITEMCAT_JP
++                if(!put_in) {
++                        if(jpick_head) {
++                                jpick_ctg=&ctg_justremoved;
++                                DESTROY_JPICK(&jtmp)
++                        } else
++                                jpick_head=jtmp;
++                }
++#endif
+ 		free((genericptr_t)pick_list);
+ 	}
+     }

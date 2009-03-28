@@ -1,0 +1,6223 @@
+Binary files nethack-3.4.3-orig/dat/dungeon and nh343-nao/dat/dungeon differ
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/dat/opthelp nh343-nao/dat/opthelp
+--- nethack-3.4.3-orig/dat/opthelp	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/dat/opthelp	2008-03-18 20:51:13.000000000 +0000
+@@ -61,6 +61,19 @@
+ Boolean option if MFLOPPY was set at compile time:
+ checkspace check free disk space before writing files to disk     [TRUE]
+ 
++Boolean option if SHOW_BORN was set at compile time:
++showborn   show numbers of created monsters after the number
++           vanquished                                             [FALSE]
++
++Boolean option if PARANOID was set at compile time:
++paranoid_hit   ask for explicit 'yes' when hitting peacefuls      [FALSE]
++
++Boolean option if PARANOID was set at compile time:
++paranoid_quit  ask for explicit 'yes' when quitting               [FALSE]
++
++Boolean option if PARANOID was set at compile time:
++paranoid_remove always show menu with the T and R commands        [FALSE]
++
+ Boolean option if EXP_ON_BOTL was set at compile time:
+ showexp    display your accumulated experience points             [FALSE]
+ 
+@@ -82,6 +95,9 @@
+                start of the game.  Doing so enhances performance
+                of the tile graphics, but uses more memory.        [TRUE]
+ 
++Boolean option if WIN_EDGE was set at compile time (tty interface only):
++win_edge       align menus and text windows left instead of right [FALSE]
++
+ Any Boolean option can be negated by prefixing it with a '!' or 'no'.
+ 
+ 
+@@ -92,6 +108,9 @@
+ boulder       override the default boulder symbol with another default: [`]
+ disclose      the types of information you want offered at the end of the
+               game  [ni na nv ng nc]
++dumpfile      the name of the file where to dump the disclosure information
++              when the game ends (only if the patch has been compiled in)
++              [none]
+ fruit         the name of a fruit you enjoy eating  [slime mold]
+               (basically a whimsy which NetHack uses from time to time).
+ menustyle     user interface for selection of multiple objects:
+@@ -120,6 +139,11 @@
+ scores        the parts of the score list you wish to see when the game ends
+               You choose a combination of top scores, scores around the top
+               scores, and all of your own scores.  [!own/3 top/2 around]
++sortloot      controls the sortloot patch [none]:
++              full -- All pickup lists of items are sorted by item description
++              loot -- When inventory letters are shown, has no effect.
++                      Otherwise sorts by description
++              none -- Works the traditional way, like without the patch
+ suppress_alert disable various version-specific warnings about changes
+               in game play or the user interface, such as notification given
+               for the 'Q' command that quitting is now done via #quit
+Binary files nethack-3.4.3-orig/dat/quest.dat and nh343-nao/dat/quest.dat differ
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/dat/wizhelp nh343-nao/dat/wizhelp
+--- nethack-3.4.3-orig/dat/wizhelp	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/dat/wizhelp	2008-03-18 13:44:30.000000000 +0000
+@@ -16,6 +16,7 @@
+ #panic == panic test
+ #polyself == polymorph self
+ #seenv == show seen vectors
++#showkills == show numbers of monsters killed
+ #stats == show memory statistics
+ #timeout == look at timeout queue
+ #vision == show vision array
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/doc/Guidebook.mn nh343-nao/doc/Guidebook.mn
+--- nethack-3.4.3-orig/doc/Guidebook.mn	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/doc/Guidebook.mn	2008-03-18 20:51:13.000000000 +0000
+@@ -1770,6 +1770,12 @@
+ .lp dogname
+ Name your starting dog (ex. ``dogname:Fang'').
+ Cannot be set with the `O' command.
++.lp dumpfile
++The name of a file where the disclosure information is written when the
++game ends. You may use the macro %n that will be replaced with the name
++of your player character. The game must have write permissions to the
++directory where the file is written. Normally /tmp may be used for unix
++systems.
+ .lp dungeon
+ Set the graphics symbols for displaying the dungeon
+ (default \&``\ |--------||.-|++##.##<><>_|\e\e#{}.}..##\ #}'').
+@@ -2027,6 +2033,15 @@
+ The value of this option should be a string containing the
+ symbols for the various object types.  Any omitted types are filled in
+ at the end from the previous order.
++.lp paranoid_hit
++If true, asks you to type the word ``yes'' when hitting any peaceful
++monster, not just the letter ``y''.
++.lp paranoid_quit
++If true, asks you to type the word ``yes'' when quitting or entering
++Explore mode, not just the letter ``y''.
++.lp paranoid_remove
++If true, always show menu with the R and T commands even when there is
++only one item to remove or take off.
+ .lp perm_invent
+ If true, always display your current inventory in a window.  This only
+ makes sense for windowing system interfaces that implement this feature.
+@@ -2088,6 +2103,10 @@
+ Control what parts of the score list you are shown at the end (ex.
+ ``scores:5 top scores/4 around my score/own scores'').  Only the first
+ letter of each category (`t', `a', or `o') is necessary.
++.lp showborn
++When the game ends, show the number of each monster created
++in the "Vanquished creatures" list, if it differs from the
++number of those monsters killed.
+ .lp showexp
+ Show your accumulated experience points on bottom line (default off).
+ .lp showrace
+@@ -2098,6 +2117,18 @@
+ Show your approximate accumulated score on bottom line (default off).
+ .lp "silent  "
+ Suppress terminal beeps (default on).
++.lp sortloot
++Controls the behavior of the sortloot patch that sorts pickup lists for
++inventory and #loot commands and some others.
++The possible values are:
++.sd
++.si
++full - always sort the lists;
++loot - only sort the lists that don't use inventory
++       letters, like with the #loot and pickup commands;
++none - show lists the traditional way without sorting.
++.ei
++.ed
+ .lp sortpack
+ Sort the pack contents by type when displaying inventory (default on).
+ .lp sound
+@@ -2157,6 +2188,8 @@
+ Select which windowing system to use, such as ``tty'' or ``X11''
+ (default depends on version).
+ Cannot be set with the `O' command.
++.lp win_edge
++Align menus and text windows in tty left instead of right. (default off)
+ .hn 2
+ Window Port Customization options
+ .pg
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/doc/Guidebook.tex nh343-nao/doc/Guidebook.tex
+--- nethack-3.4.3-orig/doc/Guidebook.tex	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/doc/Guidebook.tex	2008-03-18 20:51:13.000000000 +0000
+@@ -2209,6 +2209,13 @@
+ Name your starting dog (ex.\ ``{\tt dogname:Fang}'').
+ Cannot be set with the `{\tt O}' command.
+ %.lp
++\item[\ib{dumpfile}]
++The name of a file where the disclosure information is written when the
++game ends. You may use the macro %n that will be replaced with the name
++of your player character. The game must have write permissions to the
++directory where the file is written. Normally /tmp may be used for unix
++systems.
++%.lp
+ \item[\ib{dungeon}]
+ Set the graphics symbols for displaying the dungeon (default
+ ``\verb& |--------||.-|++##& \verb&.##<><>_|\\#{}.}..## #}&'').
+@@ -2486,6 +2493,18 @@
+ containing the symbols for the various object types.  Any omitted types
+ are filled in at the end from the previous order.
+ %.lp
++\item[\ib{paranoid\_hit}]
++If true, asks you to type the word ``yes'' when hitting any peaceful
++monster, not just the letter ``y''.
++%.lp
++\item[\ib{paranoid\_quit}]
++If true, asks you to type the word ``yes'' when quitting or entering
++Explore mode, not just the letter ``y''.
++%.lp
++\item[\ib{paranoid\_remove}]
++If true, always show menu with the R and T commands even when there is
++only one item to remove or take off.
++%.lp
+ \item[\ib{perm\_invent}]
+ If true, always display your current inventory in a window.  This only
+ makes sense for windowing system interfaces that implement this feature.
+@@ -2559,6 +2578,11 @@
+ ``{\tt scores:5top scores/4around my score/own scores}'').  Only the first
+ letter of each category (`{\tt t}', `{\tt a}' or `{\tt o}') is necessary.
+ %.lp
++\item[\ib{showborn}]
++When the game ends, show the number of each monster created
++in the ``Vanquished creatures'' list, if it differs from the
++number of those monsters killed.
++%.lp
+ \item[\ib{showexp}]
+ Show your accumulated experience points on bottom line (default off).
+ %.lp
+@@ -2573,6 +2597,21 @@
+ \item[\ib{silent}]
+ Suppress terminal beeps (default on).
+ %.lp
++\item[\ib{sortloot}]
++Controls the behavior of the sortloot patch that sorts pickup lists for
++inventory and \#loot commands and some others.
++
++The possible values are:
++%.sd
++%.si
++{\tt full} --- always sort the lists;\\
++{\tt loot} --- only sort the lists that don't use inventory
++       letters, like with the \#loot and pickup commands;\\
++{\tt none} --- show lists the traditional way without sorting.
++%.ei
++%.ed
++%.lp
++The default is 'none', the way an unpatched game works.
+ \item[\ib{sortpack}]
+ Sort the pack contents by type when displaying inventory (default on).
+ %.lp
+@@ -2640,6 +2679,9 @@
+ Select which windowing system to use, such as ``{\tt tty}'' or ``{\tt X11}''
+ (default depends on version).
+ Cannot be set with the `{\tt O}' command.
++%.lp
++\item[\ib{win_edge}]
++Align menus and text windows in tty left instead of right. (default off)
+ \elist
+ 
+ %.hn 2
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/doc/Guidebook.txt nh343-nao/doc/Guidebook.txt
+--- nethack-3.4.3-orig/doc/Guidebook.txt	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/doc/Guidebook.txt	2008-03-18 20:51:13.000000000 +0000
+@@ -2274,6 +2274,13 @@
+             Name  your  starting dog (ex. ``dogname:Fang'').  Cannot be set
+             with the `O' command.
+ 
++          dumpfile
++            The name of a file where the disclosure information is
++            written when the game ends. You may use the macro %n that
++            will be replaced with the name of your player character.
++            The game must have write permissions to the directory where
++            the file is written. Normally /tmp may be used for unixes.
++
+           dungeon
+             Set the graphics symbols for displaying  the  dungeon  (default
+             `` |--------||.-|++##.##<><>_|\\#{}.}..## #}'').   The  dungeon
+@@ -2607,6 +2614,18 @@
+             Any  omitted  types  are filled in at the end from the previous
+             order.
+ 
++          paranoid_hit
++            If true, asks you to type the word ``yes'' when hitting any
++            peaceful monster, not just the letter ``y''.
++
++          paranoid_quit
++            If true, asks you  to type the word ``yes'' when quitting or
++            entering Explore mode, not just the letter ``y''.
++
++          paranoid_remove
++            If true, always show menu with the R and T commands even when
++	    there is only one item to remove or take off.
++
+           perm_invent
+             If true, always display your current  inventory  in  a  window.
+             This  only makes sense for windowing system interfaces that im-
+@@ -2693,6 +2712,11 @@
+             Only the first letter of each category (`t', `a',  or  `o')  is
+             necessary.
+ 
++          showborn
++               When the game ends, show the number of each monster created
++               in the "Vanquished creatures" list, if it differs from the
++               number of those monsters killed.
++
+           showexp
+             Show your accumulated experience points on bottom line (default
+             off).
+@@ -2723,6 +2747,18 @@
+           silent
+             Suppress terminal beeps (default on).
+ 
++          sortloot
++            Controls the behavior of the sortloot patch that sorts
++            pickup lists for inventory and #loot commands and some
++            others.
++            The possible values are:
++
++                 full - always sort the lists
++                 loot - only sort the lists that don't use inventory
++                        letters, like with the #loot and pickup commands
++                 none - show lists the traditional way without sorting
++            The default is 'none', the way an unpatched game works.
++
+           sortpack
+             Sort the pack contents by type when displaying  inventory  (de-
+             fault on).
+@@ -2808,6 +2844,10 @@
+             ``X11''  (default  depends on version).  Cannot be set with the
+             `O' command.
+ 
++          win_edge
++            Align menus and text windows in tty left instead of right.
++            (default off)
++
+           9.5.  Window Port Customization options
+ 
+                Here are explanations of the various options that  are  used
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/include/color.h nh343-nao/include/color.h
+--- nethack-3.4.3-orig/include/color.h	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/include/color.h	2008-03-18 14:55:15.000000000 +0000
+@@ -5,6 +5,12 @@
+ #ifndef COLOR_H
+ #define COLOR_H
+ 
++#ifdef MENU_COLOR
++# ifdef MENU_COLOR_REGEX
++#  include <regex.h>
++# endif
++#endif
++
+ /*
+  * The color scheme used is tailored for an IBM PC.  It consists of the
+  * standard 8 colors, folowed by their bright counterparts.  There are
+@@ -49,4 +55,20 @@
+ #define DRAGON_SILVER	CLR_BRIGHT_CYAN
+ #define HI_ZAP		CLR_BRIGHT_BLUE
+ 
++#ifdef MENU_COLOR
++struct menucoloring {
++# ifdef MENU_COLOR_REGEX
++#  ifdef MENU_COLOR_REGEX_POSIX
++    regex_t match;
++#  else
++    struct re_pattern_buffer match;
++#  endif
++# else
++    char *match;
++# endif
++    int color, attr;
++    struct menucoloring *next;
++};
++#endif /* MENU_COLOR */
++
+ #endif /* COLOR_H */
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/include/config.h nh343-nao/include/config.h
+--- nethack-3.4.3-orig/include/config.h	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/include/config.h	2008-03-19 18:23:11.000000000 +0000
+@@ -169,11 +169,11 @@
+ 
+ #ifdef UNIX
+ /* path and file name extension for compression program */
+-#define COMPRESS "/usr/bin/compress"	/* Lempel-Ziv compression */
+-#define COMPRESS_EXTENSION ".Z"		/* compress's extension */
++/* #define COMPRESS "/usr/bin/compress" */	/* Lempel-Ziv compression */
++/* #define COMPRESS_EXTENSION ".Z" */		/* compress's extension */
+ /* An example of one alternative you might want to use: */
+-/* #define COMPRESS "/usr/local/bin/gzip" */	/* FSF gzip compression */
+-/* #define COMPRESS_EXTENSION ".gz" */		/* normal gzip extension */
++#define COMPRESS "/bin/gzip"	/* FSF gzip compression */
++#define COMPRESS_EXTENSION ".gz"		/* normal gzip extension */
+ #endif
+ 
+ #ifndef COMPRESS
+@@ -204,7 +204,7 @@
+  * otherwise it will be the current directory.
+  */
+ # ifndef HACKDIR
+-#  define HACKDIR "/usr/games/lib/nethackdir"
++#  define HACKDIR "/nh343"
+ # endif
+ 
+ /*
+@@ -338,7 +338,7 @@
+ #endif
+ 
+ #define EXP_ON_BOTL	/* Show experience on bottom line */
+-/* #define SCORE_ON_BOTL */	/* added by Gary Erickson (erickson@ucivax) */
++#define SCORE_ON_BOTL	/* added by Gary Erickson (erickson@ucivax) */
+ 
+ /*
+  * Section 5:  EXPERIMENTAL STUFF
+@@ -348,8 +348,64 @@
+  * bugs left here.
+  */
+ 
++#if defined(TTY_GRAPHICS) || defined(MSWIN_GRAPHICS)
++# define MENU_COLOR
++# define MENU_COLOR_REGEX
++# define MENU_COLOR_REGEX_POSIX
++/* if MENU_COLOR_REGEX is defined, use regular expressions (regex.h,
++ * GNU specific functions by default, POSIX functions with
++ * MENU_COLOR_REGEX_POSIX).
++ * otherwise use pmatch() to match menu color lines.
++ * pmatch() provides basic globbing: '*' and '?' wildcards.
++ */
++#endif
++
++#ifdef TTY_GRAPHICS
++# define WIN_EDGE	/* windows aligned left&top */
++#endif
++
+ /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+-/*#define AUTOPICKUP_EXCEPTIONS */ /* exceptions to autopickup */
++#define AUTOPICKUP_EXCEPTIONS  /* exceptions to autopickup */
++
++#define DUMP_LOG        /* Dump game end information to a file */
++#define DUMP_FN "/dgldir/userdata/%n/dumplog/%t.nh343.txt"      /* Fixed dumpfile name, if you want
++                                   * to prevent definition by users */
++#define DUMPMSGS 20     /* Number of latest messages in the dump file  */
++
++#define SHOW_BORN    /* extinct & showborn -patch */
++#define SHOW_EXTINCT
++
++#define SORTLOOT /* sortloot -patch */
++
++#define HPMON /* hpmon -patch */
++
++#define SIMPLE_MAIL /* dgamelaunch simple mail */
++
++#define PARANOID /* paranoid quit &c */
++
++
++#define XLOGFILE "xlogfile"  /* even larger logfile */
++/* #define REALTIME_ON_BOTL */  /* Show elapsed time on bottom line.  Note:
++                                 * this breaks savefile compatibility. */
++/* The options in this section require the extended logfile support */
++#ifdef XLOGFILE
++#define RECORD_CONDUCT  /* Record conducts kept in logfile */
++#define RECORD_TURNS    /* Record turns elapsed in logfile */
++#define RECORD_ACHIEVE  /* Record certain notable achievements in the
++                         * logfile.  Note: this breaks savefile compatibility
++                         * due to the addition of the u_achieve struct. */
++#define RECORD_REALTIME /* Record the amount of actual playing time (in
++                         * seconds) in the record file.  Note: this breaks
++                         * savefile compatibility. */
++#define RECORD_START_END_TIME /* Record to-the-second starting and ending
++                               * times; stored as 32-bit values obtained
++                               * from time(2) (seconds since the Epoch.) */
++#define RECORD_GENDER0   /* Record initial gender in logfile */
++#define RECORD_ALIGN0   /* Record initial alignment in logfile */
++#endif
++
++/* from Sporkhack */
++#define WHEREIS_FILE /* Write out player's current location to player.whereis */
+ 
+ /* End of Section 5 */
+ 
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/include/decl.h nh343-nao/include/decl.h
+--- nethack-3.4.3-orig/include/decl.h	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/include/decl.h	2008-03-19 16:47:11.000000000 +0000
+@@ -72,6 +72,10 @@
+     xchar	d_mines_dnum, d_quest_dnum;
+     d_level	d_qstart_level, d_qlocate_level, d_nemesis_level;
+     d_level	d_knox_level;
++#ifdef RECORD_ACHIEVE
++    d_level     d_mineend_level;
++    d_level     d_sokoend_level;
++#endif
+ } dungeon_topology;
+ /* macros for accesing the dungeon levels by their old names */
+ #define oracle_level		(dungeon_topology.d_oracle_level)
+@@ -104,6 +108,10 @@
+ #define qlocate_level		(dungeon_topology.d_qlocate_level)
+ #define nemesis_level		(dungeon_topology.d_nemesis_level)
+ #define knox_level		(dungeon_topology.d_knox_level)
++#ifdef RECORD_ACHIEVE
++#define mineend_level           (dungeon_topology.d_mineend_level)
++#define sokoend_level           (dungeon_topology.d_sokoend_level)
++#endif
+ 
+ E NEARDATA stairway dnstair, upstair;		/* stairs up and down */
+ #define xdnstair	(dnstair.sx)
+@@ -184,6 +192,9 @@
+ E long done_money;
+ #endif
+ E char killer_buf[BUFSZ];
++#ifdef DUMP_LOG
++E char dump_fn[];		/* dumpfile name (dump patch) */
++#endif
+ E const char *configfile;
+ E NEARDATA char plname[PL_NSIZ];
+ E NEARDATA char dogname[];
+@@ -385,6 +396,45 @@
+ };
+ #endif /* AUTOPICKUP_EXCEPTIONS */
+ 
++#ifdef RECORD_ACHIEVE
++struct u_achieve {
++        Bitfield(get_bell,1);        /* You have obtained the bell of 
++                                      * opening */
++        Bitfield(get_candelabrum,1); /* You have obtained the candelabrum */
++        Bitfield(get_book,1);        /* You have obtained the book of 
++                                      * the dead */
++        Bitfield(enter_gehennom,1);  /* Entered Gehennom (including the 
++                                      * Valley) by any means */
++        Bitfield(perform_invocation,1); /* You have performed the invocation
++                                         * ritual */
++        Bitfield(get_amulet,1);      /* You have obtained the amulet
++                                      * of Yendor */
++        Bitfield(ascended,1);        /* You ascended to demigod[dess]hood.
++                                      * Not quite the same as 
++                                      * u.uevent.ascended. */
++        Bitfield(get_luckstone,1);   /* You obtained the luckstone at the
++                                      * end of the mines. */
++        Bitfield(finish_sokoban,1);  /* You obtained the sokoban prize. */
++        Bitfield(killed_medusa,1);   /* You defeated Medusa. */
++};
++
++E struct u_achieve achieve;
++#endif
++
++#if defined(RECORD_REALTIME) || defined(REALTIME_ON_BOTL)
++E struct realtime_data {
++  time_t realtime;    /* Amount of actual playing time up until the last time
++                       * the game was restored. */
++  time_t restoretime; /* The time that the game was started or restored. */
++  time_t last_displayed_time; /* Last time displayed on the status line */
++} realtime_data;
++#endif /* RECORD_REALTIME || REALTIME_ON_BOTL */
++
++
++#ifdef SIMPLE_MAIL
++E int mailckfreq;
++#endif
++
+ #undef E
+ 
+ #endif /* DECL_H */
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/include/dungeon.h nh343-nao/include/dungeon.h
+--- nethack-3.4.3-orig/include/dungeon.h	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/include/dungeon.h	2008-03-19 16:47:42.000000000 +0000
+@@ -121,6 +121,10 @@
+ #define Is_qlocate(x)		(on_level(x, &qlocate_level))
+ #define Is_nemesis(x)		(on_level(x, &nemesis_level))
+ #define Is_knox(x)		(on_level(x, &knox_level))
++#ifdef RECORD_ACHIEVE
++#define Is_mineend_level(x)     (on_level(x, &mineend_level))
++#define Is_sokoend_level(x)     (on_level(x, &sokoend_level))
++#endif
+ 
+ #define In_sokoban(x)		((x)->dnum == sokoban_dnum)
+ #define Inhell			In_hell(&u.uz)	/* now gehennom */
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/include/extern.h nh343-nao/include/extern.h
+--- nethack-3.4.3-orig/include/extern.h	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/include/extern.h	2008-03-27 21:48:13.000000000 +0000
+@@ -25,6 +25,9 @@
+ E void NDECL(display_gamewindows);
+ E void NDECL(newgame);
+ E void FDECL(welcome, (BOOLEAN_P));
++#if defined(RECORD_REALTIME) || defined(REALTIME_ON_BOTL)
++E time_t NDECL(get_realtime);
++#endif
+ 
+ /* ### apply.c ### */
+ 
+@@ -131,6 +134,10 @@
+ E int FDECL(describe_level, (char *));
+ E const char *FDECL(rank_of, (int,SHORT_P,BOOLEAN_P));
+ E void NDECL(bot);
++#ifdef DUMP_LOG
++E void FDECL(bot1str, (char *));
++E void FDECL(bot2str, (char *));
++#endif
+ 
+ /* ### cmd.c ### */
+ 
+@@ -166,6 +173,10 @@
+ E int NDECL(extcmd_via_menu);
+ E void FDECL(enlightenment, (int));
+ E void FDECL(show_conduct, (int));
++#ifdef DUMP_LOG
++E void FDECL(dump_enlightenment, (int));
++E void FDECL(dump_conduct, (int));
++#endif
+ E int FDECL(xytod, (SCHAR_P,SCHAR_P));
+ E void FDECL(dtoxy, (coord *,int));
+ E int FDECL(movecmd, (CHAR_P));
+@@ -281,6 +292,9 @@
+ E void FDECL(row_refresh, (int,int,int));
+ E void NDECL(cls);
+ E void FDECL(flush_screen, (int));
++#ifdef DUMP_LOG
++E void NDECL(dump_screen);
++#endif
+ E int FDECL(back_to_glyph, (XCHAR_P,XCHAR_P));
+ E int FDECL(zapdir_to_glyph, (int,int,int));
+ E int FDECL(glyph_at, (XCHAR_P,XCHAR_P));
+@@ -553,6 +567,10 @@
+ #if !defined(MAKEDEFS_C) && !defined(LEV_LEX_C)
+ E void FDECL(done, (int));
+ E void FDECL(container_contents, (struct obj *,BOOLEAN_P,BOOLEAN_P));
++#ifdef DUMP_LOG
++E void FDECL(dump, (char *, char *));
++E void FDECL(do_containerconts, (struct obj *,BOOLEAN_P,BOOLEAN_P,BOOLEAN_P,BOOLEAN_P));
++#endif
+ E void FDECL(terminate, (int));
+ E int NDECL(num_genocides);
+ 
+@@ -660,6 +678,10 @@
+ #ifdef HOLD_LOCKFILE_OPEN
+ E void NDECL(really_close);
+ #endif
++#ifdef WHEREIS_FILE
++E void NDECL(touch_whereis);
++E void NDECL(delete_whereis);
++#endif
+ 
+ /* ### fountain.c ### */
+ 
+@@ -790,6 +812,9 @@
+ E char *FDECL(xprname, (struct obj *,const char *,CHAR_P,BOOLEAN_P,long,long));
+ E int NDECL(ddoinv);
+ E char FDECL(display_inventory, (const char *,BOOLEAN_P));
++#ifdef DUMP_LOG
++E char FDECL(dump_inventory, (const char *,BOOLEAN_P,BOOLEAN_P));
++#endif
+ E int FDECL(display_binventory, (int,int,BOOLEAN_P));
+ E struct obj *FDECL(display_cinventory,(struct obj *));
+ E struct obj *FDECL(display_minventory,(struct monst *,int,char *));
+@@ -1360,6 +1385,9 @@
+ E boolean FDECL(not_fully_identified, (struct obj *));
+ E char *FDECL(corpse_xname, (struct obj *,BOOLEAN_P));
+ E char *FDECL(cxname, (struct obj *));
++#ifdef SORTLOOT
++E char *FDECL(cxname2, (struct obj *));
++#endif
+ E char *FDECL(killer_xname, (struct obj *));
+ E const char *FDECL(singular, (struct obj *,char *(*)(OBJ_P)));
+ E char *FDECL(an, (const char *));
+@@ -1405,6 +1433,9 @@
+ E int FDECL(add_autopickup_exception, (const char *));
+ E void NDECL(free_autopickup_exceptions);
+ #endif /* AUTOPICKUP_EXCEPTIONS */
++#ifdef MENU_COLOR
++E boolean FDECL(add_menu_coloring, (char *));
++#endif /* MENU_COLOR */
+ 
+ /* ### pager.c ### */
+ 
+@@ -1985,6 +2016,9 @@
+ 
+ /* ### topten.c ### */
+ 
++#ifdef RECORD_CONDUCT
++E long FDECL(encodeconduct, (void));
++#endif
+ E void FDECL(topten, (int));
+ E void FDECL(prscore, (int,char **));
+ E struct obj *FDECL(tt_oname, (struct obj *));
+@@ -2237,6 +2271,9 @@
+ E int NDECL(abon);
+ E int NDECL(dbon);
+ E int NDECL(enhance_weapon_skill);
++#ifdef DUMP_LOG
++E void NDECL(dump_weapon_skill);
++#endif
+ E void FDECL(unrestrict_weapon_skill, (int));
+ E void FDECL(use_skill, (int,int));
+ E void FDECL(add_weapon_skill, (int));
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/include/flag.h nh343-nao/include/flag.h
+--- nethack-3.4.3-orig/include/flag.h	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/include/flag.h	2008-03-19 16:50:27.000000000 +0000
+@@ -175,6 +175,9 @@
+ 	uchar	bouldersym;	/* symbol for boulder display */
+ 	boolean travel1;	/* first travel step */
+ 	coord	travelcc;	/* coordinates for travel_cache */
++#ifdef SIMPLE_MAIL
++	boolean simplemail;	/* simple mail format $NAME:$MESSAGE */
++#endif
+ #ifdef WIZARD
+ 	boolean  sanity_check;	/* run sanity checks */
+ 	boolean  mon_polycontrol;	/* debug: control monster polymorphs */
+@@ -183,6 +186,12 @@
+ 	char prevmsg_window;	/* type of old message window to use */
+ 	boolean  extmenu;	/* extended commands use menu interface */
+ #endif
++#ifdef MENU_COLOR
++	boolean use_menu_color;	/* use color in menus; only if wc_color */
++#endif
++#ifdef WIN_EDGE
++	boolean  win_edge;	/* are the menus aligned left&top */
++#endif
+ #ifdef MFLOPPY
+ 	boolean  checkspace;	/* check disk space before writing files */
+ 				/* (in iflags to allow restore after moving
+@@ -216,6 +225,20 @@
+ 	boolean lan_mail;	/* mail is initialized */
+ 	boolean lan_mail_fetched; /* mail is awaiting display */
+ #endif
++#ifdef SHOW_BORN
++	boolean show_born;	/* show numbers of created monsters */
++#endif
++#ifdef SORTLOOT
++	char sortloot;          /* sort items to loot alphabetically */
++#endif
++#ifdef HPMON
++        boolean hpmon;
++#endif
++#ifdef PARANOID
++	boolean  paranoid_hit;  /* Ask for 'yes' when hitting peacefuls */
++	boolean  paranoid_quit; /* Ask for 'yes' when quitting */
++	boolean  paranoid_remove; /* Always show menu for 'T' and 'R' */
++#endif
+ /*
+  * Window capability support.
+  */
+@@ -263,7 +286,10 @@
+ 	boolean wc2_fullscreen;		/* run fullscreen */
+ 	boolean wc2_softkeyboard;	/* use software keyboard */
+ 	boolean wc2_wraptext;		/* wrap text */
++	boolean wc2_darkgray;		/* try to use PC dark-gray color
++					 * to represent black object */
+ 
++        boolean show_buc;
+ 	boolean  cmdassist;	/* provide detailed assistance for some commands */
+ 	boolean	 obsolete;	/* obsolete options can point at this, it isn't used */
+ 	/* Items which belong in flags, but are here to allow save compatibility */
+@@ -280,6 +306,9 @@
+ #define MAX_ALTKEYHANDLER 25
+ 	char	 altkeyhandler[MAX_ALTKEYHANDLER];
+ #endif
++#ifdef REALTIME_ON_BOTL
++  boolean  showrealtime; /* show actual elapsed time */
++#endif
+ };
+ 
+ /*
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/include/obj.h nh343-nao/include/obj.h
+--- nethack-3.4.3-orig/include/obj.h	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/include/obj.h	2008-03-19 16:50:55.000000000 +0000
+@@ -97,6 +97,11 @@
+ #define leashmon  corpsenm	/* gets m_id of attached pet */
+ #define spestudied corpsenm	/* # of times a spellbook has been studied */
+ #define fromsink  corpsenm	/* a potion from a sink */
++
++#ifdef RECORD_ACHIEVE
++#define record_achieve_special corpsenm
++#endif
++
+ 	unsigned oeaten;	/* nutrition left in food, if partly eaten */
+ 	long age;		/* creation date */
+ 
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/include/unixconf.h nh343-nao/include/unixconf.h
+--- nethack-3.4.3-orig/include/unixconf.h	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/include/unixconf.h	2008-03-18 20:56:57.000000000 +0000
+@@ -32,12 +32,12 @@
+ 
+ 
+ /* define any of the following that are appropriate */
+-#define SVR4		/* use in addition to SYSV for System V Release 4 */
++/*#define SVR4*/		/* use in addition to SYSV for System V Release 4 */
+ 			/* including Solaris 2+ */
+ #define NETWORK		/* if running on a networked system */
+ 			/* e.g. Suns sharing a playground through NFS */
+ /* #define SUNOS4 */	/* SunOS 4.x */
+-/* #define LINUX */	/* Another Unix clone */
++#define LINUX	/* Another Unix clone */
+ /* #define CYGWIN32 */	/* Unix on Win32 -- use with case sensitive defines */
+ /* #define GENIX */	/* Yet Another Unix Clone */
+ /* #define HISX */	/* Bull Unix for XPS Machines */
+@@ -102,7 +102,7 @@
+  * If you want the static parts of your playground on a read-only file
+  * system, define VAR_PLAYGROUND to be where the variable parts are kept.
+  */
+-/* #define VAR_PLAYGROUND "/var/lib/games/nethack" */
++#define VAR_PLAYGROUND "/nh343/var"
+ 
+ 
+ /*
+@@ -132,7 +132,7 @@
+  * "extra output" method is used, but not all systems provide access to
+  * a fine-grained timer.
+  */
+-/* #define TIMED_DELAY */	/* usleep() */
++#define TIMED_DELAY	/* usleep() */
+ #endif
+ 
+ /*
+@@ -193,7 +193,7 @@
+ # endif
+ #endif
+ 
+-#define MAILCKFREQ	50
++/* #define MAILCKFREQ	50 */
+ #endif	/* MAIL */
+ 
+ 
+@@ -209,6 +209,12 @@
+ 
+ #define FCMASK	0660	/* file creation mask */
+ 
++/* fcntl(2) is a POSIX-portable call for manipulating file descriptors.
++ * Comment out the USE_FCNTL if for some reason you have a strange
++ * os/filesystem combination for which fcntl(2) does not work. */
++#ifdef POSIX_TYPES
++# define USE_FCNTL
++#endif
+ 
+ /*
+  * The remainder of the file should not need to be changed.
+@@ -270,7 +276,7 @@
+ #endif
+ #define tgetch getchar
+ 
+-#define SHELL		/* do not delete the '!' command */
++/*#define SHELL*/		/* do not delete the '!' command */
+ 
+ #include "system.h"
+ 
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/include/winprocs.h nh343-nao/include/winprocs.h
+--- nethack-3.4.3-orig/include/winprocs.h	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/include/winprocs.h	2008-03-18 20:24:59.000000000 +0000
+@@ -176,8 +176,9 @@
+ 
+ #define WC2_FULLSCREEN		0x01L	/* 01 display full screen                    */
+ #define WC2_SOFTKEYBOARD	0x02L	/* 02 software keyboard                      */
+-#define WC2_WRAPTEXT		0x04L	/* 04 wrap long lines of text                */
+-					/* 29 free bits */
++#define WC2_WRAPTEXT		0x04L	/* 03 wrap long lines of text                */
++#define WC2_DARKGRAY		0x08L	/* 04 try to use "bright black" color        */
++					/* 28 free bits */
+ 
+ #define ALIGN_LEFT	1
+ #define ALIGN_RIGHT	2
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/README.gray nh343-nao/README.gray
+--- nethack-3.4.3-orig/README.gray	1970-01-01 00:00:00.000000000 +0000
++++ nh343-nao/README.gray	2008-03-18 20:24:59.000000000 +0000
+@@ -0,0 +1,42 @@
++This copy of the nethack source includes a patch to allow black objects
++(orcish daggers, ravens, pits, etc.) to be represented using a dark shade
++of gray on some terminals.  Normally, nethack shows them as blue to avoid
++printing unreadable black-on-black text, but this confuses them with with
++objects that are actually blue (cornuthaums, sapphires, soldier ants,
++etc.).
++
++The patch works by specifying "black foreground" and "boldface" at the
++same time.  On terminals that simulate bold with brighter colors, this
++produces a distinct color.  Terminal emulators based on PC CGA/EGA/VGA
++textmode generally have this property.
++
++However, on terminals that implement actual bolding -- thickening the
++font without changing the color, it will result in invisible text.  So,
++the feature is not enabled by default.  It must be activated with the new
++option "use_darkgray".
++
++Notes:
++ * This patch is only effective in when TERMINFO is defined in unixconf.h
++
++ * Highlights added by the existing "use_inverse" and/or "hilite_pet"
++options will probably not be visible when applied to black objects.
++
++ * nethack doesn't properly follow the rules for using the tputs()
++function of termcap/curses.  The first argument is supposed to be a string
++obtained from the termcap/terminfo functions.  Nethack assumes it can
++provide a null pointer to do nothing, and can string-concatenate two codes
++(boldface and a color select) and use them as one.
++   My code does not fix this -- although it uses "" instead of a null
++pointer, which is less likely to crash on a less permissive
++termcap/terminfo implementation.
++
++ * I'm aware of a seperate patch to add darkgray support -- but it was
++unconditional at runtime, and had to change the color numbers in
++includes/color.h to work.  My patch makes the TTY code independent of the
++actual value of the CLR_* defines.
++
++ * I personally believe the correct spelling of the color involved is
++"grey", however I have adopted the popular misspelling "gray" throughout
++to be consistent with the rest of nethack. :)
++
++---- Michael Deutschmann <michael@talamasca.ocis.net>
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/README.menucolor nh343-nao/README.menucolor
+--- nethack-3.4.3-orig/README.menucolor	1970-01-01 00:00:00.000000000 +0000
++++ nh343-nao/README.menucolor	2008-03-18 14:55:15.000000000 +0000
+@@ -0,0 +1,106 @@
++
++   This is version 1.5 of the menucolors patch.
++
++   This patch allows the user to define in what color menus are shown.
++   For example, putting
++
++   OPTIONS=menucolors
++   MENUCOLOR=" blessed "=green
++   MENUCOLOR=" holy "=green
++   MENUCOLOR=" cursed "=red
++   MENUCOLOR=" unholy "=red
++   MENUCOLOR=" cursed .* (being worn)"=orange&underline
++
++   in the configuration file makes all known blessed items
++   show up in green, all cursed items show up in red and
++   all cursed worn items show up in orange and underlined
++   when viewing inventory.
++
++   If you have regex.h but it is not GNU (e.g. DJGPP, *BSD), uncomment
++   #define MENU_COLOR_REGEX_POSIX in include/config.h
++
++   If you do not have regex.h, comment
++   #define MENU_COLOR_REGEX out from include/config.h
++   and replace the MENUCOLOR lines in your config file with these:
++
++   MENUCOLOR="* blessed *"=green
++   MENUCOLOR="* holy *"=green
++   MENUCOLOR="* cursed *"=red
++   MENUCOLOR="* unholy *"=red
++   MENUCOLOR="* cursed * (being worn)"=orange&underline
++
++
++   Colors: black, red, green, brown, blue, magenta, cyan, gray, orange,
++           lightgreen, yellow, lightblue, lightmagenta, lightcyan, white.
++   Attributes: none, bold, dim, underline, blink, inverse.
++
++   Note that the terminal is free to interpret the attributes however
++   it wants.
++
++
++   TODO/BUGS:
++
++    o Only works with TTY and Windows GUI.
++    o You can't use '=' or '&' in the match-string.
++    o Maybe add color-field to tty_menu_item in include/wintty.h
++      (so there's no need to find the color for the line again)
++    o Guidebook is not up to date
++    o Better place to put the functions, colornames[] and attrnames[]?
++    o Some menus do not need coloring; maybe add new parameter
++      to process_menu_window()?
++
++
++   FIXES:
++
++   v1.5:
++    o Partial support for Windows GUI windowport; supports colors,
++      but not attributes.
++
++   v1.4:
++    o Option to use standard instead of GNU regex functions.
++
++   v1.3:
++    o Updated to use 3.4.3 codebase.
++    o Added a text to #version to show menucolors is compiled in.
++
++   v1.2:
++    o Updated to use 3.4.2 codebase.
++
++   v1.1:
++    o Updated to use 3.4.1 codebase.
++    o replaced USE_REGEX_MATCH with MENU_COLOR_REGEX
++
++   v1.04:
++    o Oops! 1.03 worked only on *nixes... (GNU regex.h)
++    o Compile-time option USE_REGEX_MATCH: if it's defined, use regex,
++      otherwise use globbing. ('?' and '*' wildcards)
++
++   v1.03:
++
++    o Now using Nethack 3.4.0 codebase
++    o Compile-time option MENU_COLOR
++    o Strings match using regular expressions instead of globbing
++    o You can use attribute with color (attr must come after '&')
++    o Use ``MENUCOLOR="foo"=color'' instead of ``OPTIONS=menucolor=...''
++      (Both work, but OPTIONS complains if you define menucolor
++      more than once)
++
++   v1.02:
++
++    o Should now work with OS/2, thanks to Jukka Lahtinen
++    o Strings match now using simple globbing. ('?' and '*' wildcards)
++
++   v1.01:
++
++    o Moved 'menucolors' boolean option, so now the options-menu
++      is in alphabetical order.
++    o Fixed 'menucolor' description in dat/opthelp.
++    o menu_colorings is now initialized to null in src/decl.c.
++
++   v1.0:
++
++    o Initial release
++
++--
++ Pasi Kallinen
++ paxed@alt.org
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/allmain.c nh343-nao/src/allmain.c
+--- nethack-3.4.3-orig/src/allmain.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/allmain.c	2008-03-19 16:53:06.000000000 +0000
+@@ -316,6 +316,16 @@
+ 
+ 	    if (vision_full_recalc) vision_recalc(0);	/* vision! */
+ 	}
++
++#ifdef REALTIME_ON_BOTL
++        if(iflags.showrealtime) {
++            /* Update the bottom line if the number of minutes has
++             * changed */
++            if(get_realtime() / 60 != realtime_data.last_displayed_time / 60)
++                flags.botl = 1;
++        }
++#endif
++
+ 	if(flags.botl || flags.botlx) bot();
+ 
+ 	flags.move = 1;
+@@ -537,6 +547,19 @@
+ #endif
+ 	program_state.something_worth_saving++;	/* useful data now exists */
+ 
++#if defined(RECORD_REALTIME) || defined(REALTIME_ON_BOTL)
++
++        /* Start the timer here */
++        realtime_data.realtime = (time_t)0L;
++
++#if defined(BSD) && !defined(POSIX_TYPES)
++        (void) time((long *)&realtime_data.restoretime);
++#else
++        (void) time(&realtime_data.restoretime);
++#endif
++
++#endif /* RECORD_REALTIME || REALTIME_ON_BOTL */
++
+ 	/* Success! */
+ 	welcome(TRUE);
+ 	return;
+@@ -628,6 +651,33 @@
+ }
+ #endif
+ 
++#if defined(REALTIME_ON_BOTL) || defined (RECORD_REALTIME)
++time_t
++get_realtime(void)
++{
++    time_t curtime;
++
++    /* Get current time */
++#if defined(BSD) && !defined(POSIX_TYPES)
++    (void) time((long *)&curtime);
++#else
++    (void) time(&curtime);
++#endif
++
++    /* Since the timer isn't set until the game starts, this prevents us
++     * from displaying nonsense on the bottom line before it does. */
++    if(realtime_data.restoretime == 0) {
++        curtime = realtime_data.realtime;
++    } else {
++        curtime -= realtime_data.restoretime;
++        curtime += realtime_data.realtime;
++    }
++ 
++    return curtime;
++}
++#endif /* REALTIME_ON_BOTL || RECORD_REALTIME */
++
++
+ #endif /* OVLB */
+ 
+ /*allmain.c*/
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/botl.c nh343-nao/src/botl.c
+--- nethack-3.4.3-orig/src/botl.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/botl.c	2008-03-19 16:53:46.000000000 +0000
+@@ -3,6 +3,11 @@
+ /* NetHack may be freely redistributed.  See license for details. */
+ 
+ #include "hack.h"
++#if defined(HPMON) && defined(TEXTCOLOR)
++# ifndef WINTTY_H
++#  include "wintty.h"
++# endif
++#endif
+ 
+ #ifdef OVL0
+ extern const char *hu_stat[];	/* defined in eat.c */
+@@ -165,10 +170,16 @@
+ }
+ #endif
+ 
++#ifdef DUMP_LOG
++void bot1str(char *newbot1)
++#else
+ STATIC_OVL void
+ bot1()
++#endif
+ {
++#ifndef DUMP_LOG
+ 	char newbot1[MAXCO];
++#endif
+ 	register char *nb;
+ 	register int i,j;
+ 
+@@ -215,6 +226,15 @@
+ 	if (flags.showscore)
+ 	    Sprintf(nb = eos(nb), " S:%ld", botl_score());
+ #endif
++#ifdef DUMP_LOG
++}
++STATIC_OVL void
++bot1()
++{
++	char newbot1[MAXCO];
++
++	bot1str(newbot1);
++#endif
+ 	curs(WIN_STATUS, 1, 0);
+ 	putstr(WIN_STATUS, 0, newbot1);
+ }
+@@ -242,12 +262,22 @@
+ 	return ret;
+ }
+ 
++#ifdef DUMP_LOG
++void bot2str(newbot2)
++char* newbot2;
++#else
+ STATIC_OVL void
+ bot2()
++#endif
+ {
++#ifndef DUMP_LOG
+ 	char  newbot2[MAXCO];
++#endif
+ 	register char *nb;
+ 	int hp, hpmax;
++#ifdef HPMON
++	int hpcolor, hpattr;
++#endif
+ 	int cap = near_capacity();
+ 
+ 	hp = Upolyd ? u.mh : u.uhp;
+@@ -256,6 +286,15 @@
+ 	if(hp < 0) hp = 0;
+ 	(void) describe_level(newbot2);
+ 	Sprintf(nb = eos(newbot2),
++#ifdef HPMON
++		"%c:%-2ld HP:", oc_syms[COIN_CLASS],
++#ifndef GOLDOBJ
++		u.ugold
++#else
++		money_cnt(invent)
++#endif
++		);
++#else /* HPMON */
+ 		"%c:%-2ld HP:%d(%d) Pw:%d(%d) AC:%-2d", oc_syms[COIN_CLASS],
+ #ifndef GOLDOBJ
+ 		u.ugold,
+@@ -263,6 +302,39 @@
+ 		money_cnt(invent),
+ #endif
+ 		hp, hpmax, u.uen, u.uenmax, u.uac);
++#endif /* HPMON */
++#ifdef HPMON
++	curs(WIN_STATUS, 1, 1);
++	putstr(WIN_STATUS, 0, newbot2);
++
++	Sprintf(nb = eos(newbot2), "%d(%d)", hp, hpmax);
++#ifdef TEXTCOLOR
++	if (iflags.use_color && iflags.hpmon) {
++	  curs(WIN_STATUS, 1, 1);
++	  hpattr = ATR_NONE;
++	  if(hp == hpmax){
++	    hpcolor = NO_COLOR;
++	  } else if(hp > (hpmax*2/3)) {
++	    hpcolor = CLR_GREEN;
++	  } else if(hp <= (hpmax/3)) {
++	    hpcolor = CLR_RED;
++	    if(hp<=(hpmax/10)) 
++	      hpattr = ATR_BLINK;
++	  } else {
++	    hpcolor = CLR_YELLOW;
++	  }
++	  if (hpcolor != NO_COLOR)
++	    term_start_color(hpcolor);
++	  if(hpattr!=ATR_NONE)term_start_attr(hpattr);
++	  putstr(WIN_STATUS, hpattr, newbot2);
++	  if(hpattr!=ATR_NONE)term_end_attr(hpattr);
++	  if (hpcolor != NO_COLOR)
++	    term_end_color();
++	}
++#endif /* TEXTCOLOR */
++	Sprintf(nb = eos(newbot2), " Pw:%d(%d) AC:%-2d",
++		u.uen, u.uenmax, u.uac);
++#endif /* HPMON */
+ 
+ 	if (Upolyd)
+ 		Sprintf(nb = eos(nb), " HD:%d", mons[u.umonnum].mlevel);
+@@ -275,6 +347,15 @@
+ 
+ 	if(flags.time)
+ 	    Sprintf(nb = eos(nb), " T:%ld", moves);
++
++#ifdef REALTIME_ON_BOTL
++  if(iflags.showrealtime) {
++    time_t currenttime = get_realtime();
++    Sprintf(nb = eos(nb), " %d:%2.2d", currenttime / 3600, 
++                                       (currenttime % 3600) / 60);
++  }
++#endif
++
+ 	if(strcmp(hu_stat[u.uhs], "        ")) {
+ 		Sprintf(nb = eos(nb), " ");
+ 		Strcat(newbot2, hu_stat[u.uhs]);
+@@ -292,6 +373,14 @@
+ 	if(Slimed)         Sprintf(nb = eos(nb), " Slime");
+ 	if(cap > UNENCUMBERED)
+ 		Sprintf(nb = eos(nb), " %s", enc_stat[cap]);
++#ifdef DUMP_LOG
++}
++STATIC_OVL void
++bot2()
++{
++	char newbot2[MAXCO];
++	bot2str(newbot2);
++#endif
+ 	curs(WIN_STATUS, 1, 1);
+ 	putstr(WIN_STATUS, 0, newbot2);
+ }
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/cmd.c nh343-nao/src/cmd.c
+--- nethack-3.4.3-orig/src/cmd.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/cmd.c	2008-03-18 20:58:28.000000000 +0000
+@@ -123,6 +123,10 @@
+ STATIC_PTR int NDECL(wiz_show_vision);
+ STATIC_PTR int NDECL(wiz_mon_polycontrol);
+ STATIC_PTR int NDECL(wiz_show_wmodes);
++STATIC_PTR int NDECL(wiz_showkills);	/* showborn patch */
++#ifdef SHOW_BORN
++extern void FDECL(list_vanquished, (int, BOOLEAN_P)); /* showborn patch */
++#endif /* SHOW_BORN */
+ #if defined(__BORLANDC__) && !defined(_WIN32)
+ extern void FDECL(show_borlandc_stats, (winid));
+ #endif
+@@ -478,9 +482,29 @@
+ STATIC_PTR int
+ enter_explore_mode()
+ {
++#ifdef PARANOID
++	char buf[BUFSZ];
++	int really_xplor = FALSE;
++#endif
++	pline("Explore mode is for local games, not public servers.");
++	return 0;
++
+ 	if(!discover && !wizard) {
+ 		pline("Beware!  From explore mode there will be no return to normal game.");
++#ifdef PARANOID
++		if (iflags.paranoid_quit) {
++		  getlin ("Do you want to enter explore mode? [yes/no]?",buf);
++		  (void) lcase (buf);
++		  if (!(strcmp (buf, "yes"))) really_xplor = TRUE;
++		} else {
++		  if (yn("Do you want to enter explore mode?") == 'y') {
++		    really_xplor = TRUE;
++		  }
++		}
++		if (really_xplor) {
++#else
+ 		if (yn("Do you want to enter explore mode?") == 'y') {
++#endif
+ 			clear_nhwindow(WIN_MESSAGE);
+ 			You("are now in non-scoring explore mode.");
+ 			discover = TRUE;
+@@ -756,6 +780,13 @@
+ 	return 0;
+ }
+ 
++/* #showkills command */
++STATIC_PTR int wiz_showkills()		/* showborn patch */
++{
++	list_vanquished('y', FALSE);
++	return 0;
++}
++
+ #endif /* WIZARD */
+ 
+ 
+@@ -1126,6 +1157,305 @@
+ 	return;
+ }
+ 
++#ifdef DUMP_LOG
++void
++dump_enlightenment(final)
++int final;
++{
++	int ltmp;
++	char buf[BUFSZ];
++	char buf2[BUFSZ];
++	const char *enc_stat[] = { /* copied from botl.c */
++	     "",
++	     "burdened",
++	     "stressed",
++	     "strained",
++	     "overtaxed",
++	     "overloaded"
++	};
++	char *youwere = "  You were ";
++	char *youhave = "  You have ";
++	char *youhad  = "  You had ";
++	char *youcould = "  You could ";
++
++	dump("", "Final attributes");
++
++#ifdef ELBERETH
++	if (u.uevent.uhand_of_elbereth) {
++	    static const char * const hofe_titles[3] = {
++				"the Hand of Elbereth",
++				"the Envoy of Balance",
++				"the Glory of Arioch"
++	    };
++	    dump(youwere,
++		(char *)hofe_titles[u.uevent.uhand_of_elbereth - 1]);
++	}
++#endif
++
++	if (u.ualign.record >= 20)
++		dump(youwere, "piously aligned");
++	else if (u.ualign.record > 13)
++	    dump(youwere, "devoutly aligned");
++	else if (u.ualign.record > 8)
++	    dump(youwere, "fervently aligned");
++	else if (u.ualign.record > 3)
++	    dump(youwere, "stridently aligned");
++	else if (u.ualign.record == 3)
++	    dump(youwere, "aligned");
++	else if (u.ualign.record > 0)
++	    dump(youwere, "haltingly aligned");
++	else if (u.ualign.record == 0)
++	    dump(youwere, "nominally aligned");
++	else if (u.ualign.record >= -3)	dump(youhave, "strayed");
++	else if (u.ualign.record >= -8)	dump(youhave, "sinned");
++	else dump("  You have ", "transgressed");
++	Sprintf(buf, " %d", u.ualign.record);
++	dump("  Your alignment was ", buf);
++
++
++	/*** Resistances to troubles ***/
++	if (Fire_resistance) dump(youwere, "fire resistant");
++	if (Cold_resistance) dump(youwere, "cold resistant");
++	if (Sleep_resistance) dump(youwere, "sleep resistant");
++	if (Disint_resistance) dump(youwere, "disintegration-resistant");
++	if (Shock_resistance) dump(youwere, "shock resistant");
++	if (Poison_resistance) dump(youwere, "poison resistant");
++	if (Drain_resistance) dump(youwere, "level-drain resistant");
++	if (Sick_resistance) dump(youwere, "immune to sickness");
++	if (Antimagic) dump(youwere, "magic-protected");
++	if (Acid_resistance) dump(youwere, "acid resistant");
++	if (Stone_resistance) dump(youwere, "petrification resistant");
++	if (Invulnerable) dump(youwere, "invulnerable");
++	if (u.uedibility) dump(youcould, "recognize detrimental food");
++
++	/*** Troubles ***/
++	if (Halluc_resistance) 	dump("  ", "You resisted hallucinations");
++	if (Hallucination) dump(youwere, "hallucinating");
++	if (Stunned) dump(youwere, "stunned");
++	if (Confusion) dump(youwere, "confused");
++	if (Blinded) dump(youwere, "blinded");
++	if (Sick) {
++		if (u.usick_type & SICK_VOMITABLE)
++			dump(youwere, "sick from food poisoning");
++		if (u.usick_type & SICK_NONVOMITABLE)
++			dump(youwere, "sick from illness");
++	}
++	if (Stoned) dump(youwere, "turning to stone");
++	if (Slimed) dump(youwere, "turning into slime");
++	if (Strangled)
++		dump(youwere, (u.uburied) ? "buried" : "being strangled");
++	if (Glib) {
++		Sprintf(buf, "slippery %s", makeplural(body_part(FINGER)));
++		dump(youhad, buf);
++	}
++	if (Fumbling) dump("  ", "You fumbled");
++	if (Wounded_legs
++#ifdef STEED
++	    && !u.usteed
++#endif
++			  ) {
++		Sprintf(buf, "wounded %s", makeplural(body_part(LEG)));
++		dump(youhad, buf);
++	}
++#ifdef STEED
++	if (Wounded_legs && u.usteed) {
++	    Strcpy(buf, x_monnam(u.usteed, ARTICLE_YOUR, (char *)0, 
++		    SUPPRESS_SADDLE | SUPPRESS_HALLUCINATION, FALSE));
++	    *buf = highc(*buf);
++	    Strcat(buf, " had wounded legs");
++	    dump("  ", buf);
++	}
++#endif
++	if (Sleeping) dump("  ", "You fell asleep");
++	if (Hunger) dump("  ", "You hungered rapidly");
++
++	/*** Vision and senses ***/
++	if (See_invisible) dump("  ", "You saw invisible");
++	if (Blind_telepat) dump(youwere, "telepathic");
++	if (Warning) dump(youwere, "warned");
++	if (Warn_of_mon && flags.warntype) {
++		Sprintf(buf, "aware of the presence of %s",
++			(flags.warntype & M2_ORC) ? "orcs" :
++			(flags.warntype & M2_DEMON) ? "demons" :
++			something); 
++		dump(youwere, buf);
++	}
++	if (Undead_warning) dump(youwere, "warned of undead");
++	if (Searching) dump(youhad, "automatic searching");
++	if (Clairvoyant) dump(youwere, "clairvoyant");
++	if (Infravision) dump(youhad, "infravision");
++	if (Detect_monsters)
++	  dump(youwere, "sensing the presence of monsters");
++	if (u.umconf) dump(youwere, "going to confuse monsters");
++
++	/*** Appearance and behavior ***/
++	if (Adornment) {
++	    int adorn = 0;
++	    if(uleft && uleft->otyp == RIN_ADORNMENT) adorn += uleft->spe;
++	    if(uright && uright->otyp == RIN_ADORNMENT) adorn += uright->spe;
++	    if (adorn < 0)
++		dump(youwere, "poorly adorned");
++	    else
++		dump(youwere, "adorned");
++	}
++	if (Invisible) dump(youwere, "invisible");
++	else if (Invis) dump(youwere, "invisible to others");
++	/* ordinarily "visible" is redundant; this is a special case for
++	   the situation when invisibility would be an expected attribute */
++	else if ((HInvis || EInvis || pm_invisible(youmonst.data)) && BInvis)
++	    dump(youwere, "visible");
++	if (Displaced) dump(youwere, "displaced");
++	if (Stealth) dump(youwere, "stealthy");
++	if (Aggravate_monster) dump("  ", "You aggravated monsters");
++	if (Conflict) dump("  ", "You caused conflict");
++
++	/*** Transportation ***/
++	if (Jumping) dump(youcould, "jump");
++	if (Teleportation) dump(youcould, "teleport");
++	if (Teleport_control) dump(youhad, "teleport control");
++	if (Lev_at_will) dump(youwere, "levitating, at will");
++	else if (Levitation)
++	  dump(youwere, "levitating");	/* without control */
++	else if (Flying) dump(youcould, "fly");
++	if (Wwalking) dump(youcould, "walk on water");
++	if (Swimming) dump(youcould, "swim");
++	if (Breathless) dump(youcould, "survive without air");
++	else if (Amphibious) dump(youcould, "breathe water");
++	if (Passes_walls) dump(youcould, "walk through walls");
++#ifdef STEED
++	if (u.usteed && (final < 2 || strcmp(killer, "riding accident"))) {
++	    Sprintf(buf, "riding %s", y_monnam(u.usteed));
++	    dump(youwere, buf);
++	}
++#endif
++	if (u.uswallow) {
++	    Sprintf(buf, "swallowed by %s", a_monnam(u.ustuck));
++#ifdef WIZARD
++	    if (wizard) Sprintf(eos(buf), " (%u)", u.uswldtim);
++#endif
++	    dump(youwere, buf);
++	} else if (u.ustuck) {
++	    Sprintf(buf, "%s %s",
++		    (Upolyd && sticks(youmonst.data)) ? "holding" : "held by",
++		    a_monnam(u.ustuck));
++	    dump(youwere, buf);
++	}
++
++	/*** Physical attributes ***/
++	if (u.uhitinc)
++	    dump(youhad,
++		enlght_combatinc("to hit", u.uhitinc, final, buf));
++	if (u.udaminc)
++	    dump(youhad,
++		enlght_combatinc("damage", u.udaminc, final, buf));
++	if (Slow_digestion) dump(youhad, "slower digestion");
++	if (Regeneration) dump("  ", "You regenerated");
++	if (u.uspellprot || Protection) {
++	    int prot = 0;
++
++	    if(uleft && uleft->otyp == RIN_PROTECTION) prot += uleft->spe;
++	    if(uright && uright->otyp == RIN_PROTECTION) prot += uright->spe;
++	    if (HProtection & INTRINSIC) prot += u.ublessed;
++	    prot += u.uspellprot;
++	    
++	    if (prot < 0)
++		dump(youwere, "ineffectively protected");
++	    else
++		dump(youwere, "protected");
++	}
++	if (Protection_from_shape_changers)
++		dump(youwere, "protected from shape changers");
++	if (Polymorph) dump(youwere, "polymorphing");
++	if (Polymorph_control) dump(youhad, "polymorph control");
++	if (u.ulycn >= LOW_PM) {
++		Strcpy(buf, an(mons[u.ulycn].mname));
++		dump(youwere, buf);
++	}
++	if (Upolyd) {
++	    if (u.umonnum == u.ulycn) Strcpy(buf, "in beast form");
++	    else Sprintf(buf, "polymorphed into %s",
++			 an(youmonst.data->mname));
++#ifdef WIZARD
++	    if (wizard) Sprintf(eos(buf), " (%d)", u.mtimedone);
++#endif
++	    dump(youwere, buf);
++	}
++	if (Unchanging)
++	  dump(youcould, "not change from your current form");
++	if (Fast) dump(youwere, Very_fast ? "very fast" : "fast");
++	if (Reflecting) dump(youhad, "reflection");
++	if (Free_action) dump(youhad, "free action");
++	if (Fixed_abil) dump(youhad, "fixed abilities");
++	if (Lifesaved)
++		dump("  ", "Your life would have been saved");
++	if (u.twoweap) dump(youwere, "wielding two weapons at once");
++
++	/*** Miscellany ***/
++	if (Luck) {
++	    ltmp = abs((int)Luck);
++	    Sprintf(buf, "%s%slucky (%d)",
++		    ltmp >= 10 ? "extremely " : ltmp >= 5 ? "very " : "",
++		    Luck < 0 ? "un" : "", Luck);
++	    dump(youwere, buf);
++	}
++#ifdef WIZARD
++	 else if (wizard) dump("  ", "Your luck was zero");
++#endif
++	if (u.moreluck > 0) dump(youhad, "extra luck");
++	else if (u.moreluck < 0) dump(youhad, "reduced luck");
++	if (carrying(LUCKSTONE) || stone_luck(TRUE)) {
++	    ltmp = stone_luck(FALSE);
++	    if (ltmp <= 0)
++		dump("  ", "Bad luck did not time out for you");
++	    if (ltmp >= 0)
++		dump("  ", "Good luck did not time out for you");
++	}
++
++	if (u.ugangr) {
++	    Sprintf(buf, " %sangry with you",
++		u.ugangr > 6 ? "extremely " : u.ugangr > 3 ? "very " : "");
++#ifdef WIZARD
++	    if (wizard) Sprintf(eos(buf), " (%d)", u.ugangr);
++#endif
++	    Sprintf(buf2, "%s was %s", u_gname(), buf);
++	    dump("  ", buf2);
++	}
++
++    {
++	const char *p;
++
++	buf[0] = '\0';
++	if (final < 2) {    /* quit/escaped/ascended */
++	    p = "survived after being killed ";
++	    switch (u.umortality) {
++	    case 0:  p = "survived";  break;
++	    case 1:  Strcpy(buf, "once");  break;
++	    case 2:  Strcpy(buf, "twice");  break;
++	    case 3:  Strcpy(buf, "thrice");  break;
++	    default: Sprintf(buf, "%d times", u.umortality);
++		     break;
++	    }
++	} else {		/* game ended in character's death */
++	    p = "are dead";
++	    switch (u.umortality) {
++	    case 0:  impossible("dead without dying?");
++	    case 1:  break;			/* just "are dead" */
++	    default: Sprintf(buf, " (%d%s time!)", u.umortality,
++			     ordin(u.umortality));
++		     break;
++	    }
++	}
++	if (p) {
++	  Sprintf(buf2, "You %s %s", p, buf);
++	  dump("  ", buf2);
++	}
++    }
++	dump("", "");
++	return;
++
++} /* dump_enlightenment */
++#endif
++
+ /*
+  * Courtesy function for non-debug, non-explorer mode players
+  * to help refresh them about who/what they are.
+@@ -1341,6 +1671,99 @@
+ 	destroy_nhwindow(en_win);
+ }
+ 
++#ifdef DUMP_LOG
++void
++dump_conduct(final)
++int final;
++{
++	char buf[BUFSZ];
++	int ngenocided;
++
++	dump("", "Voluntary challenges");
++
++	if (!u.uconduct.food)
++	    dump("", "  You went without food");
++	    /* But beverages are okay */
++	else if (!u.uconduct.unvegan)
++	    dump("", "  You followed a strict vegan diet");
++	else if (!u.uconduct.unvegetarian)
++	    dump("", "  You were a vegetarian");
++	else if (Role_if(PM_MONK) && u.uconduct.unvegetarian < 10) {
++	    sprintf(buf, "  You ate non-vegetarian food %ld time%s.", 
++		u.uconduct.unvegetarian, plur(u.uconduct.unvegetarian));
++	    dump("", buf);
++	}
++
++	if (!u.uconduct.gnostic)
++	    dump("", "  You were an atheist");
++
++	if (!u.uconduct.weaphit)
++	    dump("", "  You never hit with a wielded weapon");
++	else if (Role_if(PM_MONK) && u.uconduct.weaphit < 10) {
++	    Sprintf(buf, "  You hit with a wielded weapon %ld time%s",
++		    u.uconduct.weaphit, plur(u.uconduct.weaphit));
++	    dump("", buf);
++	}
++#ifdef WIZARD
++	else if (wizard) {
++	    Sprintf(buf, "hit with a wielded weapon %ld time%s",
++		    u.uconduct.weaphit, plur(u.uconduct.weaphit));
++	    dump("  You ", buf);
++	}
++#endif
++	if (!u.uconduct.killer)
++	    dump("", "  You were a pacifist");
++
++	if (!u.uconduct.literate)
++	    dump("", "  You were illiterate");
++#ifdef WIZARD
++	else if (wizard) {
++	    Sprintf(buf, "read items or engraved %ld time%s",
++		    u.uconduct.literate, plur(u.uconduct.literate));
++	    dump("  You ", buf);
++	}
++#endif
++
++	ngenocided = num_genocides();
++	if (ngenocided == 0) {
++	    dump("", "  You never genocided any monsters");
++	} else {
++	    Sprintf(buf, "genocided %d type%s of monster%s",
++		    ngenocided, plur(ngenocided), plur(ngenocided));
++	    dump("  You ", buf);
++	}
++
++	if (!u.uconduct.polypiles)
++	    dump("", "  You never polymorphed an object");
++	else {
++	    Sprintf(buf, "polymorphed %ld item%s",
++		    u.uconduct.polypiles, plur(u.uconduct.polypiles));
++	    dump("  You ", buf);
++	}
++
++	if (!u.uconduct.polyselfs)
++	    dump("", "  You never changed form");
++	else {
++	    Sprintf(buf, "changed form %ld time%s",
++		    u.uconduct.polyselfs, plur(u.uconduct.polyselfs));
++	    dump("  You ", buf);
++	}
++
++	if (!u.uconduct.wishes)
++	    dump("", "  You used no wishes");
++	else {
++	    Sprintf(buf, "used %ld wish%s",
++		    u.uconduct.wishes, (u.uconduct.wishes > 1L) ? "es" : "");
++	    dump("  You ", buf);
++
++	    if (!u.uconduct.wisharti)
++		dump("", "  You did not wish for any artifacts");
++	}
++
++	dump("", "");
++}
++#endif /* DUMP_LOG */
++
+ #endif /* OVLB */
+ #ifdef OVL1
+ 
+@@ -1519,6 +1942,7 @@
+ 	{(char *)0, (char *)0, donull, TRUE},
+ #endif
+ 	{(char *)0, (char *)0, donull, TRUE},
++	{(char *)0, (char *)0, donull, TRUE}, /* showkills (showborn patch) */
+         {(char *)0, (char *)0, donull, TRUE},
+ 	{(char *)0, (char *)0, donull, TRUE},
+ 	{(char *)0, (char *)0, donull, TRUE},
+@@ -1544,6 +1968,7 @@
+ 	{"portdebug", "wizard port debug command", wiz_port_debug, TRUE},
+ #endif
+ 	{"seenv", "show seen vectors", wiz_show_seenv, TRUE},
++	{"showkills", "show list of monsters killed", wiz_showkills, TRUE},
+ 	{"stats", "show memory statistics", wiz_show_stats, TRUE},
+ 	{"timeout", "look at timeout queue", wiz_timeout_queue, TRUE},
+ 	{"vision", "show vision array", wiz_show_vision, TRUE},
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/decl.c nh343-nao/src/decl.c
+--- nethack-3.4.3-orig/src/decl.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/decl.c	2008-03-19 16:54:22.000000000 +0000
+@@ -209,6 +209,15 @@
+ 
+ NEARDATA struct mvitals mvitals[NUMMONS];
+ 
++/* originally from end.c */
++#ifdef DUMP_LOG
++#ifdef DUMP_FN
++char dump_fn[] = DUMP_FN;
++#else
++char dump_fn[PL_PSIZ] = DUMMY;
++#endif
++#endif /* DUMP_LOG */
++
+ NEARDATA struct c_color_names c_color_names = {
+ 	"black", "amber", "golden",
+ 	"light blue", "red", "green",
+@@ -235,6 +244,10 @@
+ 	"white",		/* CLR_WHITE */
+ };
+ 
++#ifdef MENU_COLOR
++struct menucoloring *menu_colorings = 0;
++#endif
++
+ struct c_common_strings c_common_strings = {
+ 	"Nothing happens.",		"That's enough tries!",
+ 	"That is a silly thing to %s.",	"shudder for a moment.",
+@@ -271,6 +284,14 @@
+ 					"lockdir", "configdir", "troubledir" };
+ #endif
+ 
++#ifdef RECORD_ACHIEVE
++struct u_achieve achieve = DUMMY;
++#endif
++
++#if defined(RECORD_REALTIME) || defined(REALTIME_ON_BOTL)
++struct realtime_data realtime_data = { 0, 0, 0 };
++#endif
++
+ /* dummy routine used to force linkage */
+ void
+ decl_init()
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/display.c nh343-nao/src/display.c
+--- nethack-3.4.3-orig/src/display.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/display.c	2008-03-17 22:12:12.000000000 +0000
+@@ -1370,6 +1370,106 @@
+ 
+ /* ========================================================================= */
+ 
++#ifdef DUMP_LOG
++/* D: Added to dump screen to output file */
++STATIC_PTR uchar get_glyph_char(glyph)
++int glyph;
++{
++    uchar   ch;
++    register int offset;
++
++    if (glyph >= NO_GLYPH)
++        return ' ';
++
++    /*
++     *  Map the glyph back to a character.
++     *
++     *  Warning:  For speed, this makes an assumption on the order of
++     *		  offsets.  The order is set in display.h.
++     */
++    if ((offset = (glyph - GLYPH_WARNING_OFF)) >= 0) {	/* a warning flash */
++	ch = def_warnsyms[offset].sym;
++    } else if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {	/* swallow */
++	/* see swallow_to_glyph() in display.c */
++	ch = (uchar) defsyms[S_sw_tl + (offset & 0x7)].sym;
++    } else if ((offset = (glyph - GLYPH_ZAP_OFF)) >= 0) {	/* zap beam */
++	/* see zapdir_to_glyph() in display.c */
++	ch = defsyms[S_vbeam + (offset & 0x3)].sym;
++    } else if ((offset = (glyph - GLYPH_CMAP_OFF)) >= 0) {	/* cmap */
++	ch = defsyms[offset].sym;
++    } else if ((offset = (glyph - GLYPH_OBJ_OFF)) >= 0) {	/* object */
++	ch = def_oc_syms[(int)objects[offset].oc_class];
++    } else if ((offset = (glyph - GLYPH_RIDDEN_OFF)) >= 0) { /* mon ridden */
++	ch = def_monsyms[(int)mons[offset].mlet];
++    } else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {	/* a corpse */
++	ch = def_oc_syms[(int)objects[CORPSE].oc_class];
++    } else if ((offset = (glyph - GLYPH_DETECT_OFF)) >= 0) { /* mon detect */
++	ch = def_monsyms[(int)mons[offset].mlet];
++    } else if ((offset = (glyph - GLYPH_INVIS_OFF)) >= 0) {  /* invisible */
++	ch = DEF_INVISIBLE;
++    } else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {	/* a pet */
++	ch = def_monsyms[(int)mons[offset].mlet];
++    } else {						    /* a monster */
++	ch = monsyms[(int)mons[glyph].mlet];
++    }
++    return ch;
++}
++
++#ifdef TTY_GRAPHICS
++extern const char * FDECL(compress_str, (const char *));
++#else
++const char*
++compress_str(str) /* copied from win/tty/wintty.c */
++const char *str;
++{
++	static char cbuf[BUFSZ];
++	/* compress in case line too long */
++	if((int)strlen(str) >= 80) {
++		register const char *bp0 = str;
++		register char *bp1 = cbuf;
++
++		do {
++			if(*bp0 != ' ' || bp0[1] != ' ')
++				*bp1++ = *bp0;
++		} while(*bp0++);
++	} else
++	    return str;
++	return cbuf;
++}
++#endif /* TTY_GRAPHICS */
++
++/* Take a screen dump */
++void dump_screen()
++{
++    register int x,y;
++    int lastc;
++    /* D: botl.c has a closer approximation to the size, but we'll go with
++     *    this */
++    char buf[300], *ptr;
++    
++    for (y = 0; y < ROWNO; y++) {
++	lastc = 0;
++	ptr = buf;
++	for (x = 1; x < COLNO; x++) {
++	    uchar c = get_glyph_char(gbuf[y][x].glyph);
++	    *ptr++ = c;
++	    if (c != ' ')
++		lastc = x;
++	}
++	buf[lastc] = '\0';
++	dump("", buf);
++    }
++    dump("", "");
++    bot1str(buf);
++    ptr = (char *) compress_str((const char *) buf);
++    dump("", ptr);
++    bot2str(buf);
++    dump("", buf);
++    dump("", "");
++    dump("", "");
++}
++#endif /* DUMP_LOG */
++
+ /*
+  * back_to_glyph()
+  *
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/do.c nh343-nao/src/do.c
+--- nethack-3.4.3-orig/src/do.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/do.c	2008-03-19 18:27:32.000000000 +0000
+@@ -1283,6 +1283,10 @@
+ #endif
+ 		You_hear("groans and moans everywhere.");
+ 	    } else pline("It is hot here.  You smell smoke...");
++
++#ifdef RECORD_ACHIEVE
++            achieve.enter_gehennom = 1;
++#endif
+ 	}
+ 
+ 	if (familiar) {
+@@ -1356,6 +1360,10 @@
+ 	/* assume this will always return TRUE when changing level */
+ 	(void) in_out_region(u.ux, u.uy);
+ 	(void) pickup(1);
++
++#ifdef WHEREIS_FILE
++        touch_whereis();
++#endif
+ }
+ 
+ STATIC_OVL void
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/do_name.c nh343-nao/src/do_name.c
+--- nethack-3.4.3-orig/src/do_name.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/do_name.c	2008-03-19 21:03:53.000000000 +0000
+@@ -275,9 +275,13 @@
+ 	/* strip leading and trailing spaces; unnames monster if all spaces */
+ 	(void)mungspaces(buf);
+ 
+-	if (mtmp->data->geno & G_UNIQ)
++	if (mtmp->data->geno & G_UNIQ) {
++	  if (mtmp->data == &mons[PM_HIGH_PRIEST] && Is_astralevel(&u.uz)) {
++	    pline_The("high priest%s doesn't like being called names!", mtmp->female ? "ess" : "");
++	  } else {
+ 	    pline("%s doesn't like being called names!", Monnam(mtmp));
+-	else
++	  }
++	} else
+ 	    (void) christen_monst(mtmp, buf);
+ 	return(0);
+ }
+@@ -936,7 +940,59 @@
+ 	"Vorlon",				/* Babylon 5 */
+ 	"questing beast",		/* King Arthur */
+ 	"Predator",				/* Movie */
+-	"mother-in-law"				/* common pest */
++	"mother-in-law",			/* common pest */
++        "one-winged dewinged stab-bat",  /* KoL */
++        "praying mantis",
++        "arch-pedant",
++        "beluga whale",
++        "bluebird of happiness",
++        "bouncing eye", "floating nose",
++        "buffer overflow", "dangling pointer", "walking disk drive",
++        "cacodemon", "scrag",
++        "cardboard golem", "duct tape golem",
++        "chess pawn",
++        "chicken",
++        "chocolate pudding",
++        "coelacanth",
++        "corpulent porpoise",
++        "Crow T. Robot",
++        "diagonally moving grid bug",
++        "dropbear",
++        "Dudley",
++        "El Pollo Diablo",
++        "evil overlord",
++        "existential angst",
++        "figment of your imagination", "flash of insight",
++        "flying pig",
++        "gazebo",
++        "gonzo journalist",
++        "gray goo", "magnetic monopole",
++        "heisenbug",
++        "lag monster",
++        "loan shark",
++        "Lord British",
++        "newsgroup troll",
++        "ninja pirate zombie robot",
++        "octarine dragon",
++        "particle man",
++        "possessed waffle iron",
++        "poultrygeist",
++        "raging nerd",
++        "roomba",
++        "sea cucumber",
++        "spelling bee",
++        "Strong Bad",
++        "stuffed raccoon puppet",
++        "tapeworm",
++        "liger",
++        "velociraptor",
++        "vermicious knid",
++        "viking",
++        "voluptuous ampersand",
++        "wee green blobbie",
++        "wereplatypus",
++        "zergling",
++	"hag of bolding"
+ };
+ 
+ 
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/do_wear.c nh343-nao/src/do_wear.c
+--- nethack-3.4.3-orig/src/do_wear.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/do_wear.c	2008-03-18 15:58:09.000000000 +0000
+@@ -1078,7 +1078,11 @@
+ 			  "  Use 'R' command to remove accessories." : "");
+ 		return 0;
+ 	}
+-	if (armorpieces > 1)
++	if (armorpieces > 1
++#ifdef PARANOID
++	    || iflags.paranoid_remove
++#endif
++	    )
+ 		otmp = getobj(clothes, "take off");
+ 	if (otmp == 0) return(0);
+ 	if (!(otmp->owornmask & W_ARMOR)) {
+@@ -1128,7 +1132,11 @@
+ 		      "  Use 'T' command to take off armor." : "");
+ 		return(0);
+ 	}
+-	if (Accessories != 1) otmp = getobj(accessories, "remove");
++	if (Accessories != 1
++#ifdef PARANOID
++	    || iflags.paranoid_remove
++#endif
++	    ) otmp = getobj(accessories, "remove");
+ 	if(!otmp) return(0);
+ 	if(!(otmp->owornmask & (W_RING | W_AMUL | W_TOOL))) {
+ 		You("are not wearing that.");
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/dungeon.c nh343-nao/src/dungeon.c
+--- nethack-3.4.3-orig/src/dungeon.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/dungeon.c	2008-03-19 16:55:28.000000000 +0000
+@@ -632,6 +632,10 @@
+ 	{ "wizard1",	&wiz1_level },
+ 	{ "wizard2",	&wiz2_level },
+ 	{ "wizard3",	&wiz3_level },
++#ifdef RECORD_ACHIEVE
++        { "minend",     &mineend_level },
++        { "soko1",      &sokoend_level },
++#endif
+ 	{ X_START,	&qstart_level },
+ 	{ X_LOCATE,	&qlocate_level },
+ 	{ X_GOAL,	&nemesis_level },
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/end.c nh343-nao/src/end.c
+--- nethack-3.4.3-orig/src/end.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/end.c	2008-03-27 22:03:55.000000000 +0000
+@@ -10,6 +10,10 @@
+ #include <signal.h>
+ #endif
+ #include "dlb.h"
++#ifdef UNIX /* DUMP-patch dump filename chmod() */
++#include <sys/types.h>
++#include <sys/stat.h>
++#endif
+ 
+ 	/* these probably ought to be generated by makedefs, like LAST_GEM */
+ #define FIRST_GEM    DILITHIUM_CRYSTAL
+@@ -39,8 +43,16 @@
+ STATIC_DCL void FDECL(sort_valuables, (struct valuable_data *,int));
+ STATIC_DCL void FDECL(artifact_score, (struct obj *,BOOLEAN_P,winid));
+ STATIC_DCL void FDECL(savelife, (int));
+-STATIC_DCL void FDECL(list_vanquished, (CHAR_P,BOOLEAN_P));
++void FDECL(list_vanquished, (CHAR_P,BOOLEAN_P));
++#ifdef DUMP_LOG
++extern char msgs[][BUFSZ];
++extern int lastmsg;
++extern void NDECL(dump_spells);
++void FDECL(do_vanquished, (int, BOOLEAN_P, BOOLEAN_P));
++STATIC_DCL void FDECL(list_genocided, (int, BOOLEAN_P, BOOLEAN_P));
++#else
+ STATIC_DCL void FDECL(list_genocided, (CHAR_P,BOOLEAN_P));
++#endif /* DUMP_LOG */
+ STATIC_DCL boolean FDECL(should_query_disclose_option, (int,char *));
+ 
+ #if defined(__BEOS__) || defined(MICRO) || defined(WIN32) || defined(OS2)
+@@ -86,6 +98,84 @@
+ 
+ extern const char * const killed_by_prefix[];	/* from topten.c */
+ 
++#ifdef DUMP_LOG
++FILE *dump_fp = (FILE *)0;  /* file pointer for dumps */
++/* functions dump_init, dump_exit and dump are from the dump patch */
++
++void
++dump_init ()
++{
++  if (dump_fn[0]) {
++#ifdef UNIX
++    mode_t dumpmode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
++#endif
++    int ispercent = 0;
++    char new_dump_fn[512];
++
++    char *f, *p, *end;
++
++    f = dump_fn;
++    p = new_dump_fn;
++    end = new_dump_fn + sizeof(new_dump_fn) - 10;
++
++    while (*f) {
++      if (ispercent) {
++	switch (*f) {
++	case 't':
++	  snprintf (p, end + 1 - p, "%ld", u.ubirthday);
++	  while (*p != '\0')
++	    p++;
++	  break;
++	case 'n':
++	  snprintf (p, end + 1 - p, "%s", plname);
++	  while (*p != '\0')
++	    p++;
++	  break;
++	default:
++	  *p = *f;
++	  if (p < end)
++	    p++;
++	}
++	ispercent = 0;
++      } else {
++	if (*f == '%')
++	  ispercent = 1;
++	else {
++	  *p = *f;
++	  if (p < end)
++	    p++;
++	}
++      }
++      f++;
++    }
++    *p = '\0';
++
++    dump_fp = fopen(new_dump_fn, "w");
++#ifdef UNIX
++    chmod(new_dump_fn, dumpmode);
++#endif
++    if (!dump_fp) {
++      pline("Can't open %s for output.", new_dump_fn);
++      pline("Dump file not created.");
++    }
++  }
++}
++
++void
++dump_exit ()
++{
++  if (dump_fp)
++    fclose (dump_fp);
++}
++
++void dump (pre, str)
++     char *pre, *str;
++{
++  if (dump_fp)
++    fprintf (dump_fp, "%s%s\n", pre, str);
++}
++#endif  /* DUMP_LOG */
++
+ /*ARGSUSED*/
+ void
+ done1(sig_unused)   /* called as signal() handler, so sent at least one arg */
+@@ -112,7 +202,21 @@
+ int
+ done2()
+ {
++#ifdef PARANOID
++	char buf[BUFSZ];
++	int really_quit = FALSE;
++
++	if (iflags.paranoid_quit) {
++	  getlin ("Really quit [yes/no]?",buf);
++	  (void) lcase (buf);
++	  if (!(strcmp (buf, "yes"))) really_quit = TRUE;
++	} else {
++	  if(yn("Really quit?") == 'y') really_quit = TRUE;
++	}
++	if (!really_quit) {
++#else /* PARANOID */
+ 	if(yn("Really quit?") == 'n') {
++#endif /* PARANOID */
+ #ifndef NO_SIGNAL
+ 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+ #endif
+@@ -366,18 +470,30 @@
+ 	    ask = should_query_disclose_option('i', &defquery);
+ 	    if (!done_stopprint) {
+ 		c = ask ? yn_function(qbuf, ynqchars, defquery) : defquery;
+-		if (c == 'y') {
++	    } else {
++		c = 'n';
++	    }
++		{
++#ifdef DUMP_LOG
++			boolean want_disp = (c == 'y')? TRUE: FALSE;
++#endif
+ 			struct obj *obj;
+ 
+ 			for (obj = invent; obj; obj = obj->nobj) {
+ 			    makeknown(obj->otyp);
+ 			    obj->known = obj->bknown = obj->dknown = obj->rknown = 1;
+ 			}
++#ifdef DUMP_LOG
++			(void) dump_inventory((char *)0, TRUE, want_disp);
++			do_containerconts(invent, TRUE, TRUE, TRUE, want_disp);
++#else
++			if (c == 'y') {
+ 			(void) display_inventory((char *)0, TRUE);
+ 			container_contents(invent, TRUE, TRUE);
+ 		}
+-		if (c == 'q')  done_stopprint++;
++#endif /* DUMP_LOG */
+ 	    }
++		if (c == 'q')  done_stopprint++;
+ 	}
+ 
+ 	ask = should_query_disclose_option('a', &defquery);
+@@ -388,14 +504,28 @@
+ 		enlightenment(how >= PANICKED ? 1 : 2); /* final */
+ 	    if (c == 'q') done_stopprint++;
+ 	}
++#ifdef DUMP_LOG
++	if (dump_fp) {
++	  dump_enlightenment((int) (how >= PANICKED ? 1 : 2));
++	  dump_spells();
++	}
++#endif
+ 
+ 	ask = should_query_disclose_option('v', &defquery);
++#ifdef DUMP_LOG
++	do_vanquished(defquery, ask, TRUE);
++#else
+ 	if (!done_stopprint)
+ 	    list_vanquished(defquery, ask);
++#endif
+ 
+ 	ask = should_query_disclose_option('g', &defquery);
+ 	if (!done_stopprint)
++#ifdef DUMP_LOG
++	    list_genocided(defquery, ask,TRUE);
++#else
+ 	    list_genocided(defquery, ask);
++#endif
+ 
+ 	ask = should_query_disclose_option('c', &defquery);
+ 	if (!done_stopprint) {
+@@ -405,6 +535,12 @@
+ 		show_conduct(how >= PANICKED ? 1 : 2);
+ 	    if (c == 'q') done_stopprint++;
+ 	}
++#ifdef DUMP_LOG
++	if (dump_fp) {
++	    dump_conduct(how >= PANICKED ? 1 : 2);
++	    dump_weapon_skill();
++	}
++#endif
+ }
+ 
+ /* try to get the player back in a viable state after being killed */
+@@ -523,6 +659,11 @@
+ 			otmp->oartifact ? artifact_name(xname(otmp), &dummy) :
+ 				OBJ_NAME(objects[otmp->otyp]),
+ 			value, currency(value), points);
++#ifdef DUMP_LOG
++		if (dump_fp)
++		  dump("", pbuf);
++		if (endwin != WIN_ERR)
++#endif
+ 		putstr(endwin, 0, pbuf);
+ 	    }
+ 	}
+@@ -536,12 +677,17 @@
+ done(how)
+ int how;
+ {
++#if defined(WIZARD) && defined(PARANOID)
++	char paranoid_buf[BUFSZ];
++	int really_bon = TRUE;
++#endif
+ 	boolean taken;
+ 	char kilbuf[BUFSZ], pbuf[BUFSZ];
+ 	winid endwin = WIN_ERR;
+ 	boolean bones_ok, have_windows = iflags.window_inited;
+ 	struct obj *corpse = (struct obj *)0;
+ 	long umoney;
++	int i;
+ 
+ 	if (how == TRICKED) {
+ 	    if (killer) {
+@@ -614,12 +760,39 @@
+ 	program_state.gameover = 1;
+ 	/* in case of a subsequent panic(), there's no point trying to save */
+ 	program_state.something_worth_saving = 0;
++#ifdef DUMP_LOG
++	/* D: Grab screen dump right here */
++	if (dump_fn[0]) {
++	  dump_init();
++	  Sprintf(pbuf, "%s, %s %s %s %s", plname,
++		  aligns[1 - u.ualign.type].adj,
++		  genders[flags.female].adj,
++		  urace.adj,
++		  (flags.female && urole.name.f)?
++		   urole.name.f : urole.name.m);
++	  dump("", pbuf);
++	  /* D: Add a line for clearance from the screen dump */
++	  dump("", "");
++	  dump_screen();
++	}
++#endif /* DUMP_LOG */
++
++#ifdef WHEREIS_FILE
++	delete_whereis();
++#endif
++
+ 	/* render vision subsystem inoperative */
+ 	iflags.vision_inited = 0;
+ 	/* might have been killed while using a disposable item, so make sure
+ 	   it's gone prior to inventory disclosure and creation of bones data */
+ 	inven_inuse(TRUE);
+ 
++#ifdef RECORD_REALTIME
++        /* Update the realtime counter to reflect the playtime of the current
++         * game. */
++        realtime_data.realtime = get_realtime();
++#endif /* RECORD_REALTIME */
++
+ 	/* Sometimes you die on the first move.  Life's not fair.
+ 	 * On those rare occasions you get hosed immediately, go out
+ 	 * smiling... :-)  -3.
+@@ -692,8 +865,23 @@
+ 
+ 	if (have_windows) display_nhwindow(WIN_MESSAGE, FALSE);
+ 
+-	if (strcmp(flags.end_disclose, "none") && how != PANICKED)
++	if (strcmp(flags.end_disclose, "none") && how != PANICKED) {
+ 		disclose(how, taken);
++#if defined(DUMP_LOG) && defined(DUMPMSGS)
++		if (lastmsg >= 0) {
++		  dump ("", "Latest messages");
++		  for (i = lastmsg + 1; i < DUMPMSGS; i++) {
++		    if (msgs[i] && strcmp(msgs[i], "") )
++		      dump ("  ", msgs[i]);
++		  } 
++		  for (i = 0; i <= lastmsg; i++) {
++		    if (msgs[i] && strcmp(msgs[i], "") )
++		      dump ("  ", msgs[i]);
++		  } 
++		  dump ("","");
++		}
++#endif
++	}
+ 	/* finish_paybill should be called after disclosure but before bones */
+ 	if (bones_ok && taken) finish_paybill();
+ 
+@@ -725,8 +913,18 @@
+ 
+ 	if (bones_ok) {
+ #ifdef WIZARD
++# ifdef PARANOID
++	    if(wizard) {
++		getlin("Save WIZARD MODE bones? [no/yes]", paranoid_buf);
++		(void) lcase (paranoid_buf);
++		if (strcmp (paranoid_buf, "yes"))
++		  really_bon = FALSE;
++            }
++            if(really_bon)
++# else
+ 	    if (!wizard || yn("Save bones?") == 'y')
+-#endif
++#endif /* PARANOID */
++#endif /* WIZARD */
+ 		savebones(corpse);
+ 	    /* corpse may be invalid pointer now so
+ 		ensure that it isn't used again */
+@@ -770,15 +968,18 @@
+ 		/* don't bother counting to see whether it should be plural */
+ 	}
+ 
+-	if (!done_stopprint) {
+ 	    Sprintf(pbuf, "%s %s the %s...", Goodbye(), plname,
+ 		   how != ASCENDED ?
+ 		      (const char *) ((flags.female && urole.name.f) ?
+ 		         urole.name.f : urole.name.m) :
+ 		      (const char *) (flags.female ? "Demigoddess" : "Demigod"));
++	if (!done_stopprint) {
+ 	    putstr(endwin, 0, pbuf);
+ 	    putstr(endwin, 0, "");
+ 	}
++#ifdef DUMP_LOG
++	if (dump_fp) dump("", pbuf);
++#endif
+ 
+ 	if (how == ESCAPED || how == ASCENDED) {
+ 	    register struct monst *mtmp;
+@@ -805,31 +1006,39 @@
+ 	    keepdogs(TRUE);
+ 	    viz_array[0][0] |= IN_SIGHT; /* need visibility for naming */
+ 	    mtmp = mydogs;
+-	    if (!done_stopprint) Strcpy(pbuf, "You");
++	    Strcpy(pbuf, "You");
+ 	    if (mtmp) {
+ 		while (mtmp) {
+-		    if (!done_stopprint)
+ 			Sprintf(eos(pbuf), " and %s", mon_nam(mtmp));
+ 		    if (mtmp->mtame)
+ 			u.urexp += mtmp->mhp;
+ 		    mtmp = mtmp->nmon;
+ 		}
+ 		if (!done_stopprint) putstr(endwin, 0, pbuf);
++#ifdef DUMP_LOG
++		if (dump_fp) dump("", pbuf);
++#endif
+ 		pbuf[0] = '\0';
+ 	    } else {
+ 		if (!done_stopprint) Strcat(pbuf, " ");
+ 	    }
+-	    if (!done_stopprint) {
+ 		Sprintf(eos(pbuf), "%s with %ld point%s,",
+ 			how==ASCENDED ? "went to your reward" :
+ 					"escaped from the dungeon",
+ 			u.urexp, plur(u.urexp));
++#ifdef DUMP_LOG
++	    if (dump_fp) dump("", pbuf);
++#endif
++	    if (!done_stopprint) {
+ 		putstr(endwin, 0, pbuf);
+ 	    }
+ 
+ 	    if (!done_stopprint)
+ 		artifact_score(invent, FALSE, endwin);	/* list artifacts */
+-
++#ifdef DUMP_LOG
++	    else
++		artifact_score(invent, FALSE, WIN_ERR);
++#endif
+ 	    /* list valuables here */
+ 	    for (val = valuables; val->list; val++) {
+ 		sort_valuables(val->list, val->size);
+@@ -855,10 +1064,13 @@
+ 				count, plur(count));
+ 		    }
+ 		    putstr(endwin, 0, pbuf);
++#ifdef DUMP_LOG
++		    if (dump_fp) dump("", pbuf);
++#endif
+ 		}
+ 	    }
+ 
+-	} else if (!done_stopprint) {
++	} else {
+ 	    /* did not escape or ascend */
+ 	    if (u.uz.dnum == 0 && u.uz.dlevel <= 0) {
+ 		/* level teleported out of the dungeon; `how' is DIED,
+@@ -878,21 +1090,32 @@
+ 
+ 	    Sprintf(eos(pbuf), " with %ld point%s,",
+ 		    u.urexp, plur(u.urexp));
+-	    putstr(endwin, 0, pbuf);
++	    if (!done_stopprint) putstr(endwin, 0, pbuf);
++#ifdef DUMP_LOG
++	    if (dump_fp) dump("", pbuf);
++#endif
+ 	}
+ 
+-	if (!done_stopprint) {
+ 	    Sprintf(pbuf, "and %ld piece%s of gold, after %ld move%s.",
+ 		    umoney, plur(umoney), moves, plur(moves));
+-	    putstr(endwin, 0, pbuf);
++	if (!done_stopprint)  putstr(endwin, 0, pbuf);
++#ifdef DUMP_LOG
++	if (dump_fp) {
++	  dump("", pbuf);
++	  Sprintf(pbuf, "Killer: %s", killer);
++	  dump("", pbuf);
+ 	}
+-	if (!done_stopprint) {
++#endif
+ 	    Sprintf(pbuf,
+ 	     "You were level %d with a maximum of %d hit point%s when you %s.",
+ 		    u.ulevel, u.uhpmax, plur(u.uhpmax), ends[how]);
++	if (!done_stopprint) {
+ 	    putstr(endwin, 0, pbuf);
+ 	    putstr(endwin, 0, "");
+ 	}
++#ifdef DUMP_LOG
++	    if (dump_fp) dump("", pbuf);
++#endif
+ 	if (!done_stopprint)
+ 	    display_nhwindow(endwin, TRUE);
+ 	if (endwin != WIN_ERR)
+@@ -909,6 +1132,9 @@
+ 		exit_nhwindows((char *)0);
+ 	    topten(how);
+ 	}
++#ifdef DUMP_LOG
++	if (dump_fp) dump_exit();
++#endif
+ 
+ 	if(done_stopprint) { raw_print(""); raw_print(""); }
+ 	terminate(EXIT_SUCCESS);
+@@ -919,8 +1145,23 @@
+ container_contents(list, identified, all_containers)
+ struct obj *list;
+ boolean identified, all_containers;
++#ifdef DUMP_LOG
++{
++	do_containerconts(list, identified, all_containers, FALSE, TRUE);
++}
++
++void do_containerconts(list, identified, all_containers, want_dump, want_disp)
++struct obj *list;
++boolean identified, all_containers, want_dump, want_disp;
++#endif
++/* The original container_contents function */
+ {
+ 	register struct obj *box, *obj;
++#ifdef SORTLOOT
++	struct obj **oarray;
++	int i,j,n;
++	char *invlet;
++#endif /* SORTLOOT */
+ 	char buf[BUFSZ];
+ 
+ 	for (box = list; box; box = box->nobj) {
+@@ -928,25 +1169,101 @@
+ 		if (box->otyp == BAG_OF_TRICKS) {
+ 		    continue;	/* wrong type of container */
+ 		} else if (box->cobj) {
+-		    winid tmpwin = create_nhwindow(NHW_MENU);
++		    winid tmpwin;
++#ifdef DUMP_LOG
++		    if (want_disp)
++#endif
++		    tmpwin = create_nhwindow(NHW_MENU);
++#ifdef SORTLOOT
++		    /* count the number of items */
++		    for (n = 0, obj = box->cobj; obj; obj = obj->nobj) n++;
++		    /* Make a temporary array to store the objects sorted */
++		    oarray = (struct obj **) alloc(n*sizeof(struct obj*));
++
++		    /* Add objects to the array */
++		    i = 0;
++		    invlet = flags.inv_order;
++		nextclass:
++		    for (obj = box->cobj; obj; obj = obj->nobj) {
++                      if (!flags.sortpack || obj->oclass == *invlet) {
++			if (iflags.sortloot == 'f'
++			    || iflags.sortloot == 'l') {
++			  /* Insert object at correct index */
++			  for (j = i; j; j--) {
++			    if (strcmpi(cxname2(obj), cxname2(oarray[j-1]))>0
++			    || (flags.sortpack &&
++				oarray[j-1]->oclass != obj->oclass))
++			      break;
++			    oarray[j] = oarray[j-1];
++			  }
++			  oarray[j] = obj;
++			  i++;
++			} else {
++			  /* Just add it to the array */
++			  oarray[i++] = obj;
++			}
++		      }
++		    } /* for loop */
++		    if (flags.sortpack) {
++		      if (*++invlet) goto nextclass;
++		    }
++#endif /* SORTLOOT */
+ 		    Sprintf(buf, "Contents of %s:", the(xname(box)));
++#ifdef DUMP_LOG
++		    if (want_disp) {
++#endif
+ 		    putstr(tmpwin, 0, buf);
+ 		    putstr(tmpwin, 0, "");
++#ifdef DUMP_LOG
++		    }
++		    if (dump_fp) dump("", buf);
++#endif
++#ifdef SORTLOOT
++		    for (i = 0; i < n; i++) {
++		      obj = oarray[i];
++#else
+ 		    for (obj = box->cobj; obj; obj = obj->nobj) {
++#endif
+ 			if (identified) {
+ 			    makeknown(obj->otyp);
+ 			    obj->known = obj->bknown =
+ 			    obj->dknown = obj->rknown = 1;
+ 			}
++#ifdef DUMP_LOG
++			if (want_dump)  dump("  ", doname(obj));
++			if (want_disp)
++#endif
+ 			putstr(tmpwin, 0, doname(obj));
+ 		    }
++#ifdef DUMP_LOG
++		    if (want_dump)  dump("","");
++		    if (want_disp) {
++#endif
+ 		    display_nhwindow(tmpwin, TRUE);
+ 		    destroy_nhwindow(tmpwin);
+-		    if (all_containers)
++#ifdef DUMP_LOG
++		    }
++		    if (all_containers) {
++			do_containerconts(box->cobj, identified, TRUE,
++					  want_dump, want_disp);
++#else
++		    if (all_containers) {
+ 			container_contents(box->cobj, identified, TRUE);
++#endif /* DUMP_LOG */
++		    }
+ 		} else {
++#ifdef DUMP_LOG
++		    if (want_disp) {
++#endif
+ 		    pline("%s empty.", Tobjnam(box, "are"));
+ 		    display_nhwindow(WIN_MESSAGE, FALSE);
++#ifdef DUMP_LOG
++		    }
++		    if (want_dump) {
++		      dump(The(xname(box)), " is empty.");
++		      dump("", "");
++		    }
++#endif
+ 		}
+ 	    }
+ 	    if (!all_containers)
+@@ -973,10 +1290,21 @@
+ 	nethack_exit(status);
+ }
+ 
+-STATIC_OVL void
++void		/* showborn patch */
+ list_vanquished(defquery, ask)
+ char defquery;
+ boolean ask;
++#ifdef DUMP_LOG
++{
++  do_vanquished(defquery, ask, FALSE);
++}
++
++void
++do_vanquished(defquery, ask, want_dump)
++int defquery;
++boolean ask;
++boolean want_dump;
++#endif
+ {
+     register int i, lev;
+     int ntypes = 0, max_lev = 0, nkilled;
+@@ -996,13 +1324,22 @@
+      * includes all dead monsters, not just those killed by the player
+      */
+     if (ntypes != 0) {
+-	c = ask ? yn_function("Do you want an account of creatures vanquished?",
++#ifdef DUMP_LOG
++	c = done_stopprint ? 'n': ask ?
++#else
++	c = ask ?
++#endif
++	  yn_function("Do you want an account of creatures vanquished?",
+ 			      ynqchars, defquery) : defquery;
+ 	if (c == 'q') done_stopprint++;
+ 	if (c == 'y') {
+ 	    klwin = create_nhwindow(NHW_MENU);
+ 	    putstr(klwin, 0, "Vanquished creatures:");
+ 	    putstr(klwin, 0, "");
++#ifdef DUMP_LOG
++	} /* the original end of block removed by the patch */
++	    if (want_dump)  dump("", "Vanquished creatures");
++#endif
+ 
+ 	    /* countdown by monster "toughness" */
+ 	    for (lev = max_lev; lev >= 0; lev--)
+@@ -1029,21 +1366,38 @@
+ 			else
+ 			    Sprintf(buf, "%d %s",
+ 				    nkilled, makeplural(mons[i].mname));
++#ifdef SHOW_BORN
++			if (iflags.show_born && nkilled != mvitals[i].born)
++			    Sprintf(buf + strlen(buf), " (%d created)",
++				    (int) mvitals[i].born);
++#endif
+ 		    }
+-		    putstr(klwin, 0, buf);
++		    if (c == 'y') putstr(klwin, 0, buf);
++#ifdef DUMP_LOG
++		    if (want_dump)  dump("  ", buf);
++#endif
+ 		}
+ 	    /*
+ 	     * if (Hallucination)
+ 	     *     putstr(klwin, 0, "and a partridge in a pear tree");
+ 	     */
+ 	    if (ntypes > 1) {
+-		putstr(klwin, 0, "");
++		if (c == 'y') putstr(klwin, 0, "");
+ 		Sprintf(buf, "%ld creatures vanquished.", total_killed);
+-		putstr(klwin, 0, buf);
++		if (c == 'y') putstr(klwin, 0, buf);
++#ifdef DUMP_LOG
++		if (want_dump)  dump("  ", buf);
++#endif
+ 	    }
++	    if (c == 'y') {
+ 	    display_nhwindow(klwin, TRUE);
+ 	    destroy_nhwindow(klwin);
+ 	}
++#ifdef DUMP_LOG
++	    if (want_dump)  dump("", "");
++#else
++	} /* the original end of if (c == 'y') */
++#endif
+     }
+ }
+ 
+@@ -1059,43 +1413,112 @@
+     return n;
+ }
+ 
++#ifdef DUMP_LOG
++STATIC_OVL void
++list_genocided(defquery, ask, want_dump)
++int defquery;
++boolean ask;
++boolean want_dump;
++#else
+ STATIC_OVL void
+ list_genocided(defquery, ask)
+ char defquery;
+ boolean ask;
++#endif
+ {
+     register int i;
+-    int ngenocided;
++    int ngenocided=0;
++#ifdef SHOW_EXTINCT
++    int nextincted=0;
++#endif
+     char c;
+     winid klwin;
+     char buf[BUFSZ];
+ 
++    /* get totals first */
++#ifdef SHOW_EXTINCT
++    for (i = LOW_PM; i < NUMMONS; i++) {
++	if (mvitals[i].mvflags & G_GENOD)
++	    ngenocided++;
++	else if ( (mvitals[i].mvflags & G_GONE) && !(mons[i].geno & G_UNIQ) )
++	    nextincted++;
++    }
+     ngenocided = num_genocides();
++#endif
+ 
+     /* genocided species list */
+-    if (ngenocided != 0) {
++    if (ngenocided != 0
++#ifdef SHOW_EXTINCT
++      || nextincted != 0
++#endif
++    ) {
++#ifdef SHOW_EXTINCT
++	if (nextincted != 0)
++	  c = ask ?
++	  yn_function("Do you want a list of species genocided or extinct?",
++		      ynqchars, defquery) : defquery;
++       else
++#endif
+ 	c = ask ? yn_function("Do you want a list of species genocided?",
+ 			      ynqchars, defquery) : defquery;
+ 	if (c == 'q') done_stopprint++;
+ 	if (c == 'y') {
+ 	    klwin = create_nhwindow(NHW_MENU);
+-	    putstr(klwin, 0, "Genocided species:");
++#ifdef SHOW_EXTINCT
++	    Sprintf(buf, "Genocided or extinct species:");
++#else
++	    Sprintf(buf, "Genocided species:");
++#endif
++	    putstr(klwin, 0, buf);
+ 	    putstr(klwin, 0, "");
++#ifdef DUMP_LOG
++	    if (want_dump)  dump("", buf);
++#endif
+ 
+ 	    for (i = LOW_PM; i < NUMMONS; i++)
++#ifdef SHOW_EXTINCT
++	      if (mvitals[i].mvflags & G_GONE && !(mons[i].geno & G_UNIQ) ){
++#else
+ 		if (mvitals[i].mvflags & G_GENOD) {
++#endif
+ 		    if ((mons[i].geno & G_UNIQ) && i != PM_HIGH_PRIEST)
+ 			Sprintf(buf, "%s%s",
+ 				!type_is_pname(&mons[i]) ? "" : "the ",
+ 				mons[i].mname);
+ 		    else
+ 			Strcpy(buf, makeplural(mons[i].mname));
++#ifdef SHOW_EXTINCT
++		    if( !(mvitals[i].mvflags & G_GENOD) )
++			Strcat(buf, " (extinct)");
++#endif
+ 		    putstr(klwin, 0, buf);
++#ifdef DUMP_LOG
++		    if (want_dump)  dump("  ", buf);
++#endif
+ 		}
+ 
+ 	    putstr(klwin, 0, "");
+-	    Sprintf(buf, "%d species genocided.", ngenocided);
+-	    putstr(klwin, 0, buf);
++#ifdef SHOW_EXTINCT
++	    if (ngenocided>0) {
++#endif
++	      Sprintf(buf, "%d species genocided.", ngenocided);
++	      putstr(klwin, 0, buf);
++#ifdef DUMP_LOG
++	      if (want_dump)  dump("  ", buf);
++#endif
++#ifdef SHOW_EXTINCT
++	    }
++	    if (nextincted>0) {
++	      Sprintf(buf, "%d species extinct.", nextincted);
++	      putstr(klwin, 0, buf);
++#ifdef DUMP_LOG
++	      if (want_dump) dump(" ", buf);
++#endif
++            }
++#endif /* SHOW_EXTINCT */
++#ifdef DUMP_LOG
++	      if (want_dump)  dump("", "");
++#endif
+ 
+ 	    display_nhwindow(klwin, TRUE);
+ 	    destroy_nhwindow(klwin);
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/engrave.c nh343-nao/src/engrave.c
+--- nethack-3.4.3-orig/src/engrave.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/engrave.c	2008-03-22 00:54:36.000000000 +0000
+@@ -33,6 +33,26 @@
+ 	"You've got mail!", /* AOL */
+ #endif
+ 	"As if!", /* Clueless */
++        "Arooo!  Werewolves of Yendor!", /* gang tag */
++        "Dig for Victory here", /* pun, duh */
++        "Don't go this way",
++        "Gaius Julius Primigenius was here.  Why are you late?", /* pompeii */
++        "Go left --->", "<--- Go right",
++        "Haermund Hardaxe carved these runes", /* viking graffiti */
++        "Here be dragons",
++        "Need a light?  Come visit the Minetown branch of Izchak's Lighting Store!",
++        "Save now, and do your homework!",
++        "Snakes on the Astral Plane - Soon in a dungeon near you",
++        "There was a hole here.  It's gone now.",
++        "The Vibrating Square",
++        "This is a pit!",
++        "This is not the dungeon you are looking for.",
++        "This square deliberately left blank.",
++        "Warning, Exploding runes!",
++        "Watch out, there's a gnome with a wand of death behind that door!",
++        "X marks the spot",
++        "X <--- You are here.",
++        "You are the one millionth visitor to this place!  Please wait 200 turns for your wand of wishing.",
+ };
+ 
+ char *
+@@ -1229,7 +1249,369 @@
+ 	"I made an ash of myself",
+ 	"Soon ripe. Soon rotten. Soon gone. But not forgotten.",
+ 	"Here lies the body of Jonathan Blake. Stepped on the gas instead of the brake.",
+-	"Go away!"
++	"Go away!",
++        "Alas fair Death, 'twas missed in life - some peace and quiet from my wife",
++        "Applaud, my friends, the comedy is finished.",
++        "At last... a nice long sleep.",
++        "Audi Partem Alteram",
++        "Basil, assaulted by bears",
++        "Burninated",
++        "Confusion will be my epitaph",
++        "Do not open until Christmas",
++        "Don't be daft, they couldn't hit an elephant at this dist-",
++        "Don't forget to stop and smell the roses",
++        "Don't let this happen to you!",
++        "Dulce et decorum est pro patria mori",
++        "Et in Arcadia ego",
++        "Fatty and skinny went to bed.  Fatty rolled over and skinny was dead.  Skinny Smith 1983-2000.",
++        "Finally I am becoming stupider no more",
++        "Follow me to hell",
++        "...for famous men have the whole earth as their memorial",
++        "Game over, man.  Game over.",
++        "Go away!  I'm trying to take a nap in here!  Bloody adventurers...",
++        "Gone fishin'",
++        "Good night, sweet prince: And flights of angels sing thee to thy rest!",
++        "Go Team Ant!",
++        "He farmed his way here",
++        "Here lies a programmer.  Killed by a fatal error.",
++        "Here lies Bob - decided to try an acid blob",
++        "Here lies Dudley, killed by another %&#@#& newt.",
++        "Here lies Gregg, choked on an egg",
++        "Here lies Lies. It's True",
++        "Here lies The Lady's maid, died of a Vorpal Blade",
++        "Here lies the left foot of Jack, killed by a land mine.  Let us know if you find any more of him",
++        "He waited too long",
++        "I'd rather be sailing",
++        "If a man's deeds do not outlive him, of what value is a mark in stone?",
++        "I'm gonna make it!",
++        "I took both pills!",
++        "I will survive!",
++        "Killed by a black dragon -- This grave is empty",
++        "Let me out of here!",
++        "Lookin' good, Medusa.",
++        "Mrs. Smith, choked on an apple.  She left behind grieving husband, daughter, and granddaughter.",
++        "Nobody believed her when she said her feet were killing her",
++        "No!  I don't want to see my damn conduct!",
++        "One corpse, sans head",
++        "On the whole, I'd rather be in Minetown",
++        "On vacation",
++        "Oops.",
++        "Out to Lunch",
++        "SOLD",
++        "Someone set us up the bomb!",
++        "Take my stuff, I don't need it anymore",
++        "Taking a year dead for tax reasons",
++        "The reports of my demise are completely accurate",
++        "(This space for sale)",
++        "This was actually just a pit, but since there was a corpse, we filled it",
++        "This way to the crypt",
++        "Tu quoque, Brute?",
++        "VACANCY",
++        "Welcome!",
++        "Wish you were here!",
++        "Yea, it got me too",
++        "You should see the other guy",
++        "...and they made me engrave my own headstone too!",
++        "...but the blood has stopped pumping and I am left to decay...",
++        "<Expletive Deleted>",
++        "A masochist is never satisfied.",
++        "Ach, 'twas a wee monster in the loch",
++        "Adapt.  Enjoy.  Survive.",
++        "Adventure, hah!  Excitement, hah!",
++        "After all, what are friends for...",
++        "After this, nothing will shock me",
++        "After three days, fish and guests stink",
++        "Age and treachery will always overcome youth and skill",
++        "Ageing is not so bad.  The real killer is when you stop.",
++        "Ain't I a stinker?",
++        "Algernon",
++        "All else failed...",
++        "All hail RNG",
++        "All right, we'll call it a draw!",
++        "All's well that end well",
++        "Alone at last!",
++        "Always attack a floating eye from behind!",
++        "Am I having fun yet?",
++        "And I can still crawl, I'm not dead yet!",
++        "And all I wanted was a free lunch",
++        "And all of the signs were right there on your face",
++        "And don't give me that innocent look either!",
++        "And everyone died.  Boo hoo hoo.",
++        "And here I go again...",
++        "And nobody cares until somebody famous dies...",
++        "And so it ends?",
++        "And so... it begins.",
++        "And sometimes the bear eats you.",
++        "And then 'e nailed me 'ead to the floor!",
++        "And they said it couldn't be done!",
++        "And what do I look like?  The living?",
++        "And yes, it was ALL his fault!",
++        "And you said it was pretty here...",
++        "Another lost soul",
++        "Any day above ground is a good day!",
++        "Any more of this and I'll die of a stroke before I'm 30.",
++        "Anybody seen my head?",
++        "Anyone for deathmatch?",
++        "Anything for a change.",
++        "Anything that kills you makes you ... well, dead",
++        "Anything worth doing is worth overdoing.",
++        "Are unicorns supposedly peaceful if you're a virgin?  Hah!",
++        "Are we all being disintegrated, or is it just me?",
++        "At least I'm good at something",
++        "Attempted suicide",
++        "Auribus teneo lupum",
++        "Be prepared",
++        "Beauty survives",
++        "Been Here. Now Gone. Had a Good Time.",
++        "Been through Hell, eh?  What did you bring me?",
++        "Beg your pardon, didn't recognize you, I've changed a lot.",
++        "Being dead builds character",
++        "Beloved daughter, a treasure, buried here.",
++        "Best friends come and go...  Mine just die.",
++        "Better be dead than a fat slave",
++        "Better luck next time",
++        "Beware of Discordians bearing answers",
++        "Beware the ...",
++        "Bloody Hell...",
++        "Bloody barbarians!",
++        "Blown upward out of sight: He sought the leak by candlelight",
++        "Brains... Brains... Fresh human brains...",
++        "Buried the cat.  Took an hour.  Damn thing kept fighting.",
++        "But I disarmed the trap!",
++        "CONNECT 1964 - NO CARRIER 1994",
++        "Call me if you need my phone number!",
++        "Can YOU fly?",
++        "Can you believe that thing is STILL moving?",
++        "Can you come up with some better ending for this?",
++        "Can you feel anything when I do this?",
++        "Can you give me mouth to mouth, you just took my breath away.",
++        "Can't I just have a LITTLE peril?",
++        "Can't eat, can't sleep, had to bury the husband here.",
++        "Can't you hit me?!",
++        "Chaos, panic and disorder.  My work here is done.",
++        "Check enclosed.",
++        "Check this out!  It's my brain!",
++        "Chivalry is only reasonably dead",
++        "Coffin for sale.  Lifetime guarantee.",
++        "Come Monday, I'll be all right.",
++        "Come and see the violence inherent in the system",
++        "Come back here!  I'll bite your bloody knees off!",
++        "Commodore Business Machines, Inc.   Died for our sins.",
++        "Complain to one who can help you",
++        "Confess my sins to god?  Which one?",
++        "Confusion will be my epitaph",
++        "Cooties?  Ain't no cooties on me!",
++        "Could somebody get this noose off me?",
++        "Could you check again?  My name MUST be there.",
++        "Could you please take a breath mint?",
++        "Couldn't I be sedated for this?",
++        "Courage is looking at your setbacks with serenity",
++        "Cover me, I'm going in!",
++        "Crash course in brain surgery",
++        "Cross my fingers for me.",
++        "Curse god and die",
++        "Cut to fit",
++        "De'Ath",
++        "Dead Again?  Pardon me for not getting it right the first time!",
++        "Dead and loving every moment!",
++        "Dear wife of mine. Died of a broken heart, after I took it out of her.",
++        "Don't tread on me!",
++        "Dragon? What dragon?",
++        "Drawn and quartered",
++        "Either I'm dead or my watch has stopped.",
++        "Eliza -- Was I really alive, or did I just think I was?",
++        "Elvis",
++        "Enter not into the path of the wicked",
++        "Eris?  I don't need Eris",
++        "Eternal Damnation, Come and stay a long while!",
++        "Even The Dead pay taxes (and they aren't Grateful).",
++        "Even a tomb stone will say good things when you're down!",
++        "Ever notice that live is evil backwards?",
++        "Every day is starting to look like Monday",
++        "Every day, in every way, I am getting better and better.",
++        "Every survival kit should include a sense of humor",
++        "Evil I did dwell;  lewd did I live",
++        "Ex post fucto",
++        "Excellent day to have a rotten day.",
++        "Excuse me for not standing up.",
++        "Experience isn't everything. First, You've got to survive",
++        "First shalt thou pull out the Holy Pin",
++        "For a Breath, I Tarry...",
++        "For recreational use only.",
++        "For sale: One soul, slightly used. Asking for 3 wishes.",
++        "For some moments in life, there are no words.",
++        "Forget Disney World, I'm going to Hell!",
++        "Forget about the dog, Beware of my wife.",
++        "Funeral - Real fun.",
++        "Gawd, it's depressing in here, isn't it?",
++        "Genuine Exploding Gravestone.  (c)Acme Gravestones Inc.",
++        "Get back here!  I'm not finished yet...",
++        "Go ahead, I dare you to!",
++        "Go ahead, it's either you or him.",
++        "Goldilocks -- This casket is just right",
++        "Gone But Not Forgotten",
++        "Gone Underground For Good",
++        "Gone away owin' more than he could pay.",
++        "Gone, but not forgiven",
++        "Got a life. Didn't know what to do with it.",
++        "Grave?  But I was cremated!",
++        "Greetings from Hell - Wish you were here.",
++        "HELP! It's dark in here... Oh, my eyes are closed - sorry",
++        "Ha! I NEVER pay income tax!",
++        "Have you come to raise the dead?",
++        "Having a good time can be deadly.",
++        "Having a great time. Where am I exactly??",
++        "He died of the flux.",
++        "He died today... May we rest in peace!",
++        "He got the upside, I got the downside.",
++        "He lost his face when he was beheaded.",
++        "He missed me first.",
++        "He's not dead, he just smells that way.",
++        "Help! I've fallen and I can't get up!",
++        "Help, I can't wake up!",
++        "Here lies Pinocchio",
++        "Here lies the body of John Round. Lost at sea and never found.",
++        "Here there be dragons",
++        "Hey, I didn't write this stuff!",
++        "Hold my calls",
++        "Home Sweet Hell",
++        "Humpty Dumpty, a Bad Egg.  He was pushed off the wall.",
++        "I KNEW this would happen if I lived long enough.",
++        "I TOLD you I was sick!",
++        "I ain't broke but I am badly bent.",
++        "I ain't old. I'm chronologically advantaged.",
++        "I am NOT a vampire. I just like to bite..nibble, really!",
++        "I am here. Wish you were fine.",
++        "I am not dead yet, but watch for further reports.",
++        "I believe them bones are me.",
++        "I broke his brain.",
++        "I can feel it.  My mind.  It's going.  I can feel it.",
++        "I can't go to Hell. They're afraid I'm gonna take over!",
++        "I can't go to hell, they don't want me.",
++        "I didn't believe in reincarnation the last time, either.",
++        "I didn't mean it when I said 'Bite me'",
++        "I died laughing",
++        "I disbelieved in reincarnation in my last life, too.",
++        "I hacked myself to death",
++        "I have all the time in the world",
++        "I knew I'd find a use for this gravestone!",
++        "I know my mind. And it's around here someplace.",
++        "I lied!  I'll never be alright!",
++        "I like it better in the dark.",
++        "I like to be here when I can.",
++        "I may rise but I refuse to shine.",
++        "I never get any either.",
++        "I said hit HIM with the fireball, not me!",
++        "I told you I would never say goodbye.",
++        "I used to be amusing. Now I'm just disgusting.",
++        "I used up all my sick days, so now I'm calling in dead.",
++        "I was killed by <illegible scrawl>",
++        "I was somebody. Who, is no business of yours.",
++        "I will not go quietly.",
++        "I'd give you a piece of my mind... but I can't find it.",
++        "I'd rather be breathing",
++        "I'll be back!",
++        "I'll be mellow when I'm dead. For now, let's PARTY!",
++        "I'm doing this only for tax purposes.",
++        "I'm not afraid of Death!  What's he gonna do? Kill me?",
++        "I'm not getting enough money, so I'm not going to engrave anything useful here.",
++        "I'm not saying anything.",
++        "I'm weeth stupeed --->",
++        "If you thought you had problems...",
++        "Ignorance kills daily.",
++        "Ignore me... I'm just here for my looks!",
++        "Ilene Toofar -- Fell off a cliff",
++        "Is that all?",
++        "Is there life before Death?",
++        "Is this a joke, or a grave matter?",
++        "It happens sometimes. People just explode.",
++        "It must be Thursday. I never could get the hang of Thursdays.",
++        "It wasn't a fair fight",
++        "It wasn't so easy.",
++        "It's Loot, Pillage and THEN Burn...",
++        "Just doing my job here",
++        "Killed by diarrhea of mouth and constipation of brain.",
++        "Let her RIP",
++        "Let it be; I am dead.",
++        "Let's play Hide the Corpse",
++        "Life is NOT a dream",
++        "Madge Ination -- It wasn't all in my head",
++        "Meet me in Heaven",
++        "Move on, there's nothing to see here.",
++        "Mr. Flintstone -- Yabba-dabba-done",
++        "My heart is not in this",
++        "No one ever died from it",
++        "No, you want room 12A, next door.",
++        "Nope.  No trap on that chest.  I swear.",
++        "Not again!",
++        "Not every soil can bear all things",
++        "Now I have a life",
++        "Now I lay thee down to sleep... wanna join me?",
++        "OK, here is a question: Where ARE your tanlines?",
++        "Obesa Cantavit",
++        "Oh! An untimely death.",
++        "Oh, by the way, how was my funeral?",
++        "Oh, honey..I missed you! She said, and fired again.",
++        "Ok, so the light does go off. Now let me out of here.",
++        "One stone brain",
++        "Ooh! Somebody STOP me!",
++        "Oops!",
++        "Out for the night.  Leave a message.",
++        "Ow!  Do that again!",
++        "Pardon my dust.",
++        "Part of me still works.",
++        "Please, not in front of those orcs!",
++        "Prepare to meet me in Heaven",
++        "R2D2 -- Rest, Tin Piece",
++        "Relax.  Nothing ever happens on the first level.",
++        "Res omnia mea culpa est",
++        "Rest In Pieces",
++        "Rest, rest, perturbed spirit.",
++        "Rip Torn",
++        "She always said her feet were killing her but nobody believed her.",
++        "She died of a chest cold.",
++        "So let it be written, so let it be done!",
++        "So then I says, How do I know you're the real angel of death?",
++        "Some patients insist on dying.",
++        "Some people have it dead easy, don't they?",
++        "Some things are better left buried.",
++        "Sure, trust me, I'm a lawyer...",
++        "Thank God I wore my corset, because I think my sides have split.",
++        "That is all",
++        "The Gods DO have a sense of humor: I'm living proof!",
++        "The frog's dead. He Kermitted suicide.",
++        "This dungeon is a pushover",
++        "This elevator doesn't go to Heaven",
++        "This gravestone is shareware. To register, please send me 10 zorkmids",
++        "This gravestone provided by The Yendorian Grave Services Inc.",
++        "This is not an important part of my life.",
++        "This one's on me.",
++        "This side up",
++        "Tim Burr -- Smashed by a tree",
++        "Tone it down a bit, I'm trying to get some rest here.",
++        "Virtually Alive",
++        "We Will Meet Again.",
++        "Weep not, he is at rest",
++        "Welcome to Dante's.  What level please?",
++        "Well, at least they listened to my sermon...",
++        "Went to be an angel.",
++        "What are you doing over there?",
++        "What are you smiling at?",
++        "What can you say, Death's got appeal...!",
++        "What health care?",
++        "What pit?",
++        "When the gods want to punish you, they answer your prayers.",
++        "Where e'er you be let your wind go free. Keeping it in was the death of me!",
++        "Where's my refund?",
++        "Will let you know for sure in a day or two...",
++        "Wizards are wimps",
++        "Worms at work, do not disturb!",
++        "Would you mind moving a bit?  I'm short of breath down here.",
++        "Would you quit being evil over my shoulder?",
++        "Ya really had me going baby, but now I'm gone.",
++        "Yes Dear, just a few more minutes...",
++        "You said it wasn't poisonous!",
++        "You set my heart aflame. You gave me heartburn."
+ };
+ 
+ /* Create a headstone at the given location.
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/files.c nh343-nao/src/files.c
+--- nethack-3.4.3-orig/src/files.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/files.c	2008-03-27 22:01:34.000000000 +0000
+@@ -9,9 +9,13 @@
+ #include "wintty.h" /* more() */
+ #endif
+ 
++#if defined(WHEREIS_FILE) && defined(UNIX)
++#include <sys/types.h> /* whereis-file chmod() */
++#endif
++
+ #include <ctype.h>
+ 
+-#if !defined(MAC) && !defined(O_WRONLY) && !defined(AZTEC_C)
++#if (!defined(MAC) && !defined(O_WRONLY) && !defined(AZTEC_C)) || defined(USE_FCNTL)
+ #include <fcntl.h>
+ #endif
+ 
+@@ -534,6 +538,9 @@
+ 	/* can't access maxledgerno() before dungeons are created -dlc */
+ 	for (x = (n_dgns ? maxledgerno() : 0); x >= 0; x--)
+ 		delete_levelfile(x);	/* not all levels need be present */
++#  ifdef WHEREIS_FILE
++	/*        delete_whereis();*/
++#  endif
+ #endif
+ }
+ 
+@@ -598,6 +605,85 @@
+ }
+ #endif
+ 	
++#ifdef WHEREIS_FILE
++void
++touch_whereis()
++{
++  /* Write out our current level and branch to name.whereis
++   *
++   *      Could eventually bolt on all kinds of info, but this way
++   *      at least something which wants to can scan for the games.
++   *
++   * For now this only works on Win32 and UNIX.  I'm too lazy
++   * to sort out all the proper other-OS stuff.
++   */
++
++  FILE* fp;
++  char whereis_file[255];
++  char whereis_work[255];
++
++#ifdef WIN32
++  Sprintf(whereis_file,"%s-%s.whereis",get_username(0),plname);
++#else
++  Sprintf(whereis_file,"whereis/%s.whereis",plname);
++#endif
++  Sprintf(whereis_work,
++	  "depth=%d:dnum=%d:hp=%d:maxhp=%d:turns=%d:score=%ld:role=%s:race=%s:gender=%s:align=%s:conduct=0x%lx:amulet=%d\n",
++	  depth(&u.uz),
++	  u.uz.dnum,
++	  u.uhp,
++	  u.uhpmax,
++	  moves,
++	  botl_score(),
++	  urole.name.m,
++	  urace.adj,
++	  u.mfemale ? "Fem" : "Mal",
++	  align_str(u.ualign.type),
++	  encodeconduct(),
++	  u.uhave.amulet ? 1 : 0
++	  );
++  /*
++  Sprintf(whereis_work,"%d,%d,%d,%d,%d,0,0,%s,%s,%s,%d,%d\n",
++	  depth(&u.uz), u.uz.dnum, u.uhp, u.uhpmax, moves,
++	  urole.name.m,urace.adj,u.mfemale ? "F" : "M",u.ualign.type + 2,
++	  u.uhave.amulet ? 1 : 0);*/
++  fp = fopen_datafile(whereis_file,"w",LEVELPREFIX);
++  if (fp) {
++#ifdef UNIX
++    mode_t whereismode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
++    chmod(fqname(whereis_file, LEVELPREFIX, 2), whereismode);
++#endif
++    fwrite(whereis_work,strlen(whereis_work),1,fp);
++    fclose(fp);
++  }
++
++}
++
++
++/* Changed over to write out where the player last was when they
++ * left the game; including possibly 'dead' :) */
++void
++delete_whereis()
++{
++    /*FILE* fp;*/
++  char whereis_file[255];
++  /*char whereis_work[255];*/
++#if defined (WIN32)
++  Sprintf(whereis_file,"%s-%s.whereis",get_username(0),plname);
++#else
++  Sprintf(whereis_file,"whereis/%s.whereis",plname);
++#endif
++  (void) unlink(fqname(whereis_file, LEVELPREFIX, 2));
++  /*
++  fp = fopen_datafile(whereis_file,"w",LEVELPREFIX);
++  if (fp) {
++    fwrite(whereis_work,strlen(whereis_work),1,fp);
++    fclose(fp);
++  }
++  */
++}
++#endif /* WHEREIS_FILE */
++
+ /* ----------  END LEVEL FILE HANDLING ----------- */
+ 
+ 
+@@ -1243,9 +1329,12 @@
+ 
+ static int nesting = 0;
+ 
+-#ifdef NO_FILE_LINKS	/* implies UNIX */
++#if defined(NO_FILE_LINKS) || defined(USE_FCNTL) 	/* implies UNIX */
+ static int lockfd;	/* for lock_file() to pass to unlock_file() */
+ #endif
++#ifdef USE_FCNTL
++struct flock sflock; /* for unlocking, same as above */
++#endif
+ 
+ #define HUP	if (!program_state.done_hup)
+ 
+@@ -1283,7 +1372,6 @@
+ #endif
+ }
+ 
+-
+ /* lock a file */
+ boolean
+ lock_file(filename, whichprefix, retryct)
+@@ -1303,18 +1391,51 @@
+ 	    return TRUE;
+ 	}
+ 
++#ifndef USE_FCNTL
+ 	lockname = make_lockname(filename, locknambuf);
+-	filename = fqname(filename, whichprefix, 0);
+-#ifndef NO_FILE_LINKS	/* LOCKDIR should be subsumed by LOCKPREFIX */
++# ifndef NO_FILE_LINKS	/* LOCKDIR should be subsumed by LOCKPREFIX */
+ 	lockname = fqname(lockname, LOCKPREFIX, 2);
++# endif
++#endif
++	filename = fqname(filename, whichprefix, 0);
++
++#ifdef USE_FCNTL
++	lockfd = open(filename,O_RDWR);
++	if (lockfd == -1) {
++		HUP raw_printf("Cannot open file %s. This is a program bug.",
++			filename);
++	}
++	sflock.l_type = F_WRLCK;
++	sflock.l_whence = SEEK_SET;
++	sflock.l_start = 0;
++	sflock.l_len = 0;
+ #endif
+ 
+ #if defined(UNIX) || defined(VMS)
+-# ifdef NO_FILE_LINKS
++# ifdef USE_FCNTL
++	while (fcntl(lockfd,F_SETLK,&sflock) == -1) {
++# else 
++#  ifdef NO_FILE_LINKS
+ 	while ((lockfd = open(lockname, O_RDWR|O_CREAT|O_EXCL, 0666)) == -1) {
+-# else
++#  else
+ 	while (link(filename, lockname) == -1) {
+-# endif
++#  endif
++# endif 
++
++#ifdef USE_FCNTL
++		if (retryct--) {
++			HUP raw_printf(
++				"Waiting for release of fcntl lock on %s. (%d retries left).",
++				filename, retryct);
++			sleep(1);
++		} else {
++		    HUP (void) raw_print("I give up.  Sorry.");
++		    HUP raw_printf("Some other process has an unnatural grip on %s.",
++					filename);
++		    nesting--;
++		    return FALSE;
++		}
++#else
+ 	    register int errnosv = errno;
+ 
+ 	    switch (errnosv) {	/* George Barbanis */
+@@ -1360,11 +1481,11 @@
+ 		nesting--;
+ 		return FALSE;
+ 	    }
+-
++#endif /* USE_FCNTL */
+ 	}
+ #endif  /* UNIX || VMS */
+ 
+-#if defined(AMIGA) || defined(WIN32) || defined(MSDOS)
++#if (defined(AMIGA) || defined(WIN32) || defined(MSDOS)) && !defined(USE_FCNTL)
+ # ifdef AMIGA
+ #define OPENFAILURE(fd) (!fd)
+     lockptr = 0;
+@@ -1418,25 +1539,33 @@
+ 	const char *lockname;
+ 
+ 	if (nesting == 1) {
++#ifdef USE_FCNTL
++		sflock.l_type = F_UNLCK;
++		if (fcntl(lockfd,F_SETLK,&sflock) == -1) {
++			HUP raw_printf("Can't remove fcntl lock on %s.", filename);
++			(void) close(lockfd);
++		}
++# else
+ 		lockname = make_lockname(filename, locknambuf);
+-#ifndef NO_FILE_LINKS	/* LOCKDIR should be subsumed by LOCKPREFIX */
++# ifndef NO_FILE_LINKS	/* LOCKDIR should be subsumed by LOCKPREFIX */
+ 		lockname = fqname(lockname, LOCKPREFIX, 2);
+-#endif
++# endif
+ 
+-#if defined(UNIX) || defined(VMS)
++# if defined(UNIX) || defined(VMS)
+ 		if (unlink(lockname) < 0)
+ 			HUP raw_printf("Can't unlink %s.", lockname);
+-# ifdef NO_FILE_LINKS
++#  ifdef NO_FILE_LINKS
+ 		(void) close(lockfd);
+-# endif
++#  endif
+ 
+-#endif  /* UNIX || VMS */
++# endif  /* UNIX || VMS */
+ 
+-#if defined(AMIGA) || defined(WIN32) || defined(MSDOS)
++# if defined(AMIGA) || defined(WIN32) || defined(MSDOS)
+ 		if (lockptr) Close(lockptr);
+ 		DeleteFile(lockname);
+ 		lockptr = 0;
+-#endif /* AMIGA || WIN32 || MSDOS */
++# endif /* AMIGA || WIN32 || MSDOS */
++#endif /* USE_FCNTL */
+ 	}
+ 
+ 	nesting--;
+@@ -1794,6 +1923,10 @@
+ 	} else if (match_varname(buf, "BOULDER", 3)) {
+ 	    (void) get_uchars(fp, buf, bufp, &iflags.bouldersym, TRUE,
+ 			      1, "BOULDER");
++	} else if (match_varname(buf, "MENUCOLOR", 9)) {
++#ifdef MENU_COLOR
++	    (void) add_menu_coloring(bufp);
++#endif
+ 	} else if (match_varname(buf, "GRAPHICS", 4)) {
+ 	    len = get_uchars(fp, buf, bufp, translate, FALSE,
+ 			     MAXPCHARS, "GRAPHICS");
+@@ -2250,8 +2383,8 @@
+ 		program_state.in_paniclog = 1;
+ 		lfile = fopen_datafile(PANICLOG, "a", TROUBLEPREFIX);
+ 		if (lfile) {
+-		    (void) fprintf(lfile, "%s %08ld: %s %s\n",
+-				   version_string(buf), yyyymmdd((time_t)0L),
++		    (void) fprintf(lfile, "%ld %s: %s %s\n",
++				   u.ubirthday, (plname ? plname : "(none)"),
+ 				   type, reason);
+ 		    (void) fclose(lfile);
+ 		}
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/hacklib.c nh343-nao/src/hacklib.c
+--- nethack-3.4.3-orig/src/hacklib.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/hacklib.c	2008-03-18 21:59:21.000000000 +0000
+@@ -460,6 +460,14 @@
+ void
+ setrandom()
+ {
++  
++  FILE *fptr = NULL;
++  int rnd[2];
++
++  fptr = fopen("/dev/urandom","r");
++  if (fptr) fread((void *)rnd, sizeof(int),1,fptr);
++  fclose(fptr);
++  
+ 	/* the types are different enough here that sweeping the different
+ 	 * routine names into one via #defines is even more confusing
+ 	 */
+@@ -473,7 +481,7 @@
+ #   endif
+ 		srandom((int) time((long *)0));
+ #  else
+-		srandom((int) time((time_t *)0));
++	srandom((int) (time((time_t *)0)) + rnd[0]);
+ #  endif
+ # else
+ #  ifdef UNIX	/* system srand48() */
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/invent.c nh343-nao/src/invent.c
+--- nethack-3.4.3-orig/src/invent.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/invent.c	2008-09-29 15:47:30.000000000 +0000
+@@ -19,7 +19,12 @@
+ STATIC_DCL boolean FDECL(putting_on, (const char *));
+ STATIC_PTR int FDECL(ckunpaid,(struct obj *));
+ STATIC_PTR int FDECL(ckvalidcat,(struct obj *));
++#ifdef DUMP_LOG
++static char FDECL(display_pickinv,
++		 (const char *,BOOLEAN_P, long *, BOOLEAN_P, BOOLEAN_P));
++#else
+ static char FDECL(display_pickinv, (const char *,BOOLEAN_P, long *));
++#endif /* DUMP_LOG */
+ #ifdef OVLB
+ STATIC_DCL boolean FDECL(this_type_only, (struct obj *));
+ STATIC_DCL void NDECL(dounpaid);
+@@ -253,15 +258,27 @@
+ 	} else if (obj->otyp == AMULET_OF_YENDOR) {
+ 		if (u.uhave.amulet) impossible("already have amulet?");
+ 		u.uhave.amulet = 1;
++#ifdef RECORD_ACHIEVE
++                achieve.get_amulet = 1;
++#endif
+ 	} else if (obj->otyp == CANDELABRUM_OF_INVOCATION) {
+ 		if (u.uhave.menorah) impossible("already have candelabrum?");
+ 		u.uhave.menorah = 1;
++#ifdef RECORD_ACHIEVE
++                achieve.get_candelabrum = 1;
++#endif
+ 	} else if (obj->otyp == BELL_OF_OPENING) {
+ 		if (u.uhave.bell) impossible("already have silver bell?");
+ 		u.uhave.bell = 1;
++#ifdef RECORD_ACHIEVE
++                achieve.get_bell = 1;
++#endif
+ 	} else if (obj->otyp == SPE_BOOK_OF_THE_DEAD) {
+ 		if (u.uhave.book) impossible("already have the book?");
+ 		u.uhave.book = 1;
++#ifdef RECORD_ACHIEVE
++                achieve.get_book = 1;
++#endif
+ 	} else if (obj->oartifact) {
+ 		if (is_quest_artifact(obj)) {
+ 		    if (u.uhave.questart)
+@@ -271,6 +288,19 @@
+ 		}
+ 		set_artifact_intrinsic(obj, 1, W_ART);
+ 	}
++
++#ifdef RECORD_ACHIEVE
++        if(obj->otyp == LUCKSTONE && obj->record_achieve_special) {
++                achieve.get_luckstone = 1;
++                obj->record_achieve_special = 0;
++        } else if((obj->otyp == AMULET_OF_REFLECTION ||
++                   obj->otyp == BAG_OF_HOLDING) &&
++                  obj->record_achieve_special) {
++                achieve.finish_sokoban = 1;
++                obj->record_achieve_special = 0;
++        }
++#endif /* RECORD_ACHIEVE */
++
+ }
+ 
+ /*
+@@ -575,6 +605,20 @@
+ 		 */
+ 		return;
+ 	}
++
++	if (obj == uwep) uwepgone();
++	else if (obj == uswapwep) uswapwepgone();
++	else if (obj == uquiver) uqwepgone();
++	else if (obj == uarm) setnotworn(obj);
++	else if (obj == uarmc) setnotworn(obj);
++	else if (obj == uarmh) setnotworn(obj);
++	else if (obj == uarms) setnotworn(obj);
++	else if (obj == uarmg) setnotworn(obj);
++#ifdef TOURIST
++	else if (obj == uarmu) setnotworn(obj);
++#endif
++	else if (obj == uarmf) setnotworn(obj);
++
+ 	update_map = (obj->where == OBJ_FLOOR);
+ 	obj_extract_self(obj);
+ 	if (update_map) newsym(obj->ox, obj->oy);
+@@ -1007,7 +1051,9 @@
+ #ifndef GOLDOBJ
+ 			if(!(allowcnt == 2 && cnt < u.ugold))
+ 				cnt = u.ugold;
+-			return(mkgoldobj(cnt));
++			if (cnt)
++			    return(mkgoldobj(cnt));
++			else return((struct obj *)0);
+ #endif
+ 		}
+ 		if(ilet == '?' || ilet == '*') {
+@@ -1017,7 +1063,11 @@
+ 		    if (ilet == '?' && !*lets && *altlets)
+ 			allowed_choices = altlets;
+ 		    ilet = display_pickinv(allowed_choices, TRUE,
+-					   allowcnt ? &ctmp : (long *)0);
++					   allowcnt ? &ctmp : (long *)0
++#ifdef DUMP_LOG
++					   , FALSE, TRUE
++#endif
++					   );
+ 		    if(!ilet) continue;
+ 		    if (allowcnt && ctmp >= 0) {
+ 			cnt = ctmp;
+@@ -1689,13 +1739,27 @@
+  * inventory and return a count as well as a letter. If out_cnt is not null,
+  * any count returned from the menu selection is placed here.
+  */
++#ifdef DUMP_LOG
++static char
++display_pickinv(lets, want_reply, out_cnt, want_dump, want_disp)
++register const char *lets;
++boolean want_reply;
++long* out_cnt;
++boolean want_dump;
++boolean want_disp;
++#else
+ static char
+ display_pickinv(lets, want_reply, out_cnt)
+ register const char *lets;
+ boolean want_reply;
+ long* out_cnt;
++#endif
+ {
+ 	struct obj *otmp;
++#ifdef SORTLOOT
++	struct obj **oarray;
++	int i, j;
++#endif
+ 	char ilet, ret;
+ 	char *invlet = flags.inv_order;
+ 	int n, classcount;
+@@ -1704,6 +1768,9 @@
+ 	anything any;
+ 	menu_item *selected;
+ 
++#ifdef DUMP_LOG
++	if (want_disp) {
++#endif
+ 	/* overriden by global flag */
+ 	if (flags.perm_invent) {
+ 	    win = (lets && *lets) ? local_win : WIN_INVEN;
+@@ -1713,6 +1780,11 @@
+ 	} else
+ 	    win = WIN_INVEN;
+ 
++#ifdef DUMP_LOG
++	}
++	if (want_dump)   dump("", "Your inventory");
++#endif
++
+ 	/*
+ 	Exit early if no inventory -- but keep going if we are doing
+ 	a permanent inventory update.  We need to keep going so the
+@@ -1725,11 +1797,24 @@
+ 	to here is short circuited away.
+ 	*/
+ 	if (!invent && !(flags.perm_invent && !lets && !want_reply)) {
++#ifdef DUMP_LOG
++	  if (want_disp) {
++#endif
+ #ifndef GOLDOBJ
+ 	    pline("Not carrying anything%s.", u.ugold ? " except gold" : "");
+ #else
+ 	    pline("Not carrying anything.");
+ #endif
++#ifdef DUMP_LOG
++	  }
++	  if (want_dump) {
++#ifdef GOLDOBJ
++	    dump("  ", "Not carrying anything");
++#else
++	    dump("  Not carrying anything", u.ugold ? " except gold." : ".");
++#endif
++	  }
++#endif
+ 	    return 0;
+ 	}
+ 
+@@ -1743,37 +1828,124 @@
+ 	    ret = '\0';
+ 	    for (otmp = invent; otmp; otmp = otmp->nobj) {
+ 		if (otmp->invlet == lets[0]) {
++#ifdef DUMP_LOG
++		  if (want_disp) {
++#endif
+ 		    ret = message_menu(lets[0],
+ 			  want_reply ? PICK_ONE : PICK_NONE,
+ 			  xprname(otmp, (char *)0, lets[0], TRUE, 0L, 0L));
+ 		    if (out_cnt) *out_cnt = -1L;	/* select all */
++#ifdef DUMP_LOG
++		  }
++		  if (want_dump) {
++		    char letbuf[7];
++		    sprintf(letbuf, "  %c - ", lets[0]);
++		    dump(letbuf,
++			 xprname(otmp, (char *)0, lets[0], TRUE, 0L, 0L));
++		  }
++#endif
+ 		    break;
+ 		}
+ 	    }
+ 	    return ret;
+ 	}
+ 
++#ifdef SORTLOOT
++	/* count the number of items */
++	for (n = 0, otmp = invent; otmp; otmp = otmp->nobj)
++	  if(!lets || !*lets || index(lets, otmp->invlet)) n++;
++
++	/* Make a temporary array to store the objects sorted */
++	oarray = (struct obj **)alloc(n*sizeof(struct obj*));
++
++	/* Add objects to the array */
++	i = 0;
++	for(otmp = invent; otmp; otmp = otmp->nobj)
++	  if(!lets || !*lets || index(lets, otmp->invlet)) {
++	    if (iflags.sortloot == 'f') {
++	      /* Insert object at correct index */
++	      for (j = i; j; j--) {
++		if (strcmpi(cxname2(otmp), cxname2(oarray[j-1]))>0) break;
++		oarray[j] = oarray[j-1];
++	      }
++	      oarray[j] = otmp;
++	      i++;
++	    } else {
++	      /* Just add it to the array */
++	      oarray[i++] = otmp;
++	    }
++	  }
++#endif /* SORTLOOT */
++
++#ifdef DUMP_LOG
++	if (want_disp)
++#endif
+ 	start_menu(win);
+ nextclass:
+ 	classcount = 0;
+ 	any.a_void = 0;		/* set all bits to zero */
++#ifdef SORTLOOT
++	for(i = 0; i < n; i++) {
++	  otmp = oarray[i];
++	  ilet = otmp->invlet;
++	  if (!flags.sortpack || otmp->oclass == *invlet) {
++	    if (flags.sortpack && !classcount) {
++	      any.a_void = 0;             /* zero */
++#ifdef DUMP_LOG
++	      if (want_dump)
++		dump("  ", let_to_name(*invlet, FALSE));
++	      if (want_disp)
++#endif
++	      add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings,
++		       let_to_name(*invlet, FALSE), MENU_UNSELECTED);
++	      classcount++;
++	    }
++	    any.a_char = ilet;
++#ifdef DUMP_LOG
++	    if (want_dump) {
++	      char letbuf[7];
++	      sprintf(letbuf, "  %c - ", ilet);
++	      dump(letbuf, doname(otmp));
++	    }
++	    if (want_disp)
++#endif
++	    add_menu(win, obj_to_glyph(otmp),
++		     &any, ilet, 0, ATR_NONE, doname(otmp),
++		     MENU_UNSELECTED);
++	  }
++	}
++#else /* SORTLOOT */
+ 	for(otmp = invent; otmp; otmp = otmp->nobj) {
+ 		ilet = otmp->invlet;
+ 		if(!lets || !*lets || index(lets, ilet)) {
+ 			if (!flags.sortpack || otmp->oclass == *invlet) {
+ 			    if (flags.sortpack && !classcount) {
+ 				any.a_void = 0;		/* zero */
++#ifdef DUMP_LOG
++				if (want_dump)
++				    dump("  ", let_to_name(*invlet, FALSE));
++				if (want_disp)
++#endif
+ 				add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings,
+ 				    let_to_name(*invlet, FALSE), MENU_UNSELECTED);
+ 				classcount++;
+ 			    }
+ 			    any.a_char = ilet;
++#ifdef DUMP_LOG
++			    if (want_dump) {
++			      char letbuf[7];
++			      sprintf(letbuf, "  %c - ", ilet);
++			      dump(letbuf, doname(otmp));
++			    }
++			    if (want_disp)
++#endif
+ 			    add_menu(win, obj_to_glyph(otmp),
+ 					&any, ilet, 0, ATR_NONE, doname(otmp),
+ 					MENU_UNSELECTED);
+ 			}
+ 		}
+ 	}
++#endif /* SORTLOOT */
+ 	if (flags.sortpack) {
+ 		if (*++invlet) goto nextclass;
+ #ifdef WIZARD
+@@ -1783,6 +1955,12 @@
+ 		}
+ #endif
+ 	}
++#ifdef SORTLOOT
++	free(oarray);
++#endif
++#ifdef DUMP_LOG
++	if (want_disp) {
++#endif
+ 	end_menu(win, (char *) 0);
+ 
+ 	n = select_menu(win, want_reply ? PICK_ONE : PICK_NONE, &selected);
+@@ -1792,6 +1970,10 @@
+ 	    free((genericptr_t)selected);
+ 	} else
+ 	    ret = !n ? '\0' : '\033';	/* cancelled */
++#ifdef DUMP_LOG
++	} /* want_disp */
++	if (want_dump)  dump("", "");
++#endif
+ 
+ 	return ret;
+ }
+@@ -1808,8 +1990,23 @@
+ register const char *lets;
+ boolean want_reply;
+ {
+-	return display_pickinv(lets, want_reply, (long *)0);
++	return display_pickinv(lets, want_reply, (long *)0
++#ifdef DUMP_LOG
++			       , FALSE , TRUE
++#endif
++	);
++}
++
++#ifdef DUMP_LOG
++/* See display_inventory. This is the same thing WITH dumpfile creation */
++char
++dump_inventory(lets, want_reply, want_disp)
++register const char *lets;
++boolean want_reply, want_disp;
++{
++  return display_pickinv(lets, want_reply, (long *)0, TRUE, want_disp);
+ }
++#endif
+ 
+ /*
+  * Returns the number of unpaid items within the given list.  This includes
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/mail.c nh343-nao/src/mail.c
+--- nethack-3.4.3-orig/src/mail.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/mail.c	2008-03-18 15:49:45.000000000 +0000
+@@ -5,6 +5,8 @@
+ #include "hack.h"
+ 
+ #ifdef MAIL
++#include <fcntl.h>
++#include <errno.h>
+ #include "mail.h"
+ 
+ /*
+@@ -36,6 +38,8 @@
+ STATIC_DCL boolean FDECL(md_rush,(struct monst *,int,int));
+ STATIC_DCL void FDECL(newmail, (struct mail_info *));
+ 
++int mailckfreq = 0;
++
+ extern char *viz_rmin, *viz_rmax;	/* line-of-sight limits (vision.c) */
+ 
+ #ifdef OVL0
+@@ -464,11 +468,15 @@
+ void
+ ckmailstatus()
+ {
++#ifdef SIMPLE_MAIL
++	if (mailckfreq == 0)
++	  mailckfreq = (iflags.simplemail ? 5 : 10);
++#else
++	mailckfreq = 10;
++#endif
++
+ 	if(!mailbox || u.uswallow || !flags.biff
+-#  ifdef MAILCKFREQ
+-		    || moves < laststattime + MAILCKFREQ
+-#  endif
+-							)
++		    || moves < laststattime + mailckfreq)
+ 		return;
+ 
+ 	laststattime = moves;
+@@ -501,9 +509,68 @@
+ readmail(otmp)
+ struct obj *otmp;
+ {
+-#  ifdef DEF_MAILREADER			/* This implies that UNIX is defined */
++#ifdef DEF_MAILREADER
+ 	register const char *mr = 0;
++#endif /* DEF_MAILREADER */
++#ifdef SIMPLE_MAIL
++	if (iflags.simplemail)
++	{
++		FILE* mb = fopen(mailbox, "r");
++		char curline[102], *msg;
++		boolean seen_one_already = FALSE;
++		struct flock fl = { 0 };
++
++		fl.l_type = F_RDLCK;
++		fl.l_whence = SEEK_SET;
++		fl.l_start = 0;
++		fl.l_len = 0;
++
++		if (!mb)
++			goto bail;
++
++		/* Allow this call to block. */
++		if (fcntl (fileno (mb), F_SETLKW, &fl) == -1)
++		  goto bail;
++		
++		errno = 0;
++		
++		while (fgets(curline, 102, mb) != NULL)
++		{
++		  fl.l_type = F_UNLCK;
++		  fcntl (fileno(mb), F_UNLCK, &fl);
++		  
++		  pline("There is a%s message on this scroll.",
++		      seen_one_already ? "nother" : "");
++		  
++		  msg = strchr(curline, ':');
++		  
++		  if (!msg)
++		    goto bail;
++		  
++		  *msg = '\0';
++		  msg++;
++		  
++		  pline ("This message is from '%s'.", curline);
++
++		  msg[strlen(msg) - 1] = '\0'; /* kill newline */
++		  pline ("It reads: \"%s\".", msg);
++
++		  seen_one_already = TRUE;
++		  errno = 0;
++
++		  fl.l_type = F_RDLCK;
++		  fcntl(fileno(mb), F_SETLKW, &fl);
++		}
+ 
++		fl.l_type = F_UNLCK;
++		fcntl(fileno(mb), F_UNLCK, &fl);
++		
++		fclose(mb);
++		unlink(mailbox);
++		return;
++	}
++# endif /* SIMPLE_MAIL */
++# ifdef DEF_MAILREADER			/* This implies that UNIX is defined */
+ 	display_nhwindow(WIN_MESSAGE, FALSE);
+ 	if(!(mr = nh_getenv("MAILREADER")))
+ 		mr = DEF_MAILREADER;
+@@ -512,15 +579,21 @@
+ 		(void) execl(mr, mr, (char *)0);
+ 		terminate(EXIT_FAILURE);
+ 	}
+-#  else
+-#   ifndef AMS				/* AMS mailboxes are directories */
++# else
++#  ifndef AMS				/* AMS mailboxes are directories */
+ 	display_file(mailbox, TRUE);
+-#   endif /* AMS */
+-#  endif /* DEF_MAILREADER */
++#  endif /* AMS */
++# endif /* DEF_MAILREADER */
+ 
+ 	/* get new stat; not entirely correct: there is a small time
+ 	   window where we do not see new mail */
+ 	getmailstatus();
++	return;
++
++#ifdef SIMPLE_MAIL
++bail:
++	pline("It appears to be all gibberish."); /* bail out _professionally_ */
++#endif
+ }
+ 
+ # endif /* UNIX */
+@@ -587,10 +660,7 @@
+ 	static int laststattime = 0;
+ 	
+ 	if(u.uswallow || !flags.biff
+-#  ifdef MAILCKFREQ
+-		    || moves < laststattime + MAILCKFREQ
+-#  endif
+-							)
++		    || moves < laststattime + mailckfreq)
+ 		return;
+ 
+ 	laststattime = moves;
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/mklev.c nh343-nao/src/mklev.c
+--- nethack-3.4.3-orig/src/mklev.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/mklev.c	2008-03-19 16:58:00.000000000 +0000
+@@ -1462,6 +1462,10 @@
+     mkstairs(u.ux, u.uy, 0, (struct mkroom *)0); /* down */
+     newsym(u.ux, u.uy);
+     vision_full_recalc = 1;	/* everything changed */
++
++#ifdef RECORD_ACHIEVE
++    achieve.perform_invocation = 1;
++#endif
+ }
+ 
+ /* Change level topology.  Boulders in the vicinity are eliminated.
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/mon.c nh343-nao/src/mon.c
+--- nethack-3.4.3-orig/src/mon.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/mon.c	2008-03-19 16:58:40.000000000 +0000
+@@ -1481,6 +1481,12 @@
+ #endif
+ 	if(mtmp->iswiz) wizdead();
+ 	if(mtmp->data->msound == MS_NEMESIS) nemdead();
++        
++#ifdef RECORD_ACHIEVE
++        if(mtmp->data == &mons[PM_MEDUSA])
++            achieve.killed_medusa = 1;
++#endif
++
+ 	if(glyph_is_invisible(levl[mtmp->mx][mtmp->my].glyph))
+ 	    unmap_object(mtmp->mx, mtmp->my);
+ 	m_detach(mtmp, mptr);
+Binary files nethack-3.4.3-orig/src/nethack.343-nao and nh343-nao/src/nethack.343-nao differ
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/objnam.c nh343-nao/src/objnam.c
+--- nethack-3.4.3-orig/src/objnam.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/objnam.c	2008-03-18 20:41:20.000000000 +0000
+@@ -15,6 +15,9 @@
+ #endif
+ static char *NDECL(nextobuf);
+ static void FDECL(add_erosion_words, (struct obj *, char *));
++#ifdef SORTLOOT
++char * FDECL(xname2, (struct obj *, boolean));
++#endif
+ 
+ struct Jitem {
+ 	int item;
+@@ -233,6 +236,15 @@
+ char *
+ xname(obj)
+ register struct obj *obj;
++#ifdef SORTLOOT
++{
++	return xname2(obj, FALSE);
++}
++char *
++xname2(obj, ignore_oquan)
++register struct obj *obj;
++boolean ignore_oquan;
++#endif
+ {
+ 	register char *buf;
+ 	register int typ = obj->otyp;
+@@ -469,6 +481,9 @@
+ 	default:
+ 		Sprintf(buf,"glorkum %d %d %d", obj->oclass, typ, obj->spe);
+ 	}
++#ifdef SORTLOOT
++	if (!ignore_oquan)
++#endif
+ 	if (obj->quan != 1L) Strcpy(buf, makeplural(buf));
+ 
+ 	if (obj->onamelth && obj->dknown) {
+@@ -600,7 +615,7 @@
+ 		Strcat(prefix, "cursed ");
+ 	    else if (obj->blessed)
+ 		Strcat(prefix, "blessed ");
+-	    else if ((!obj->known || !objects[obj->otyp].oc_charged ||
++	    else if (iflags.show_buc || (!obj->known || !objects[obj->otyp].oc_charged ||
+ 		      (obj->oclass == ARMOR_CLASS ||
+ 		       obj->oclass == RING_CLASS))
+ 		/* For most items with charges or +/-, if you know how many
+@@ -853,6 +868,16 @@
+ 	    return corpse_xname(obj, FALSE);
+ 	return xname(obj);
+ }
++#ifdef SORTLOOT
++char *
++cxname2(obj)
++struct obj *obj;
++{
++	if (obj->otyp == CORPSE)
++	    return corpse_xname(obj, TRUE);
++	return xname2(obj, TRUE);
++}
++#endif /* SORTLOOT */
+ 
+ /* treat an object as fully ID'd when it might be used as reason for death */
+ char *
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/options.c nh343-nao/src/options.c
+--- nethack-3.4.3-orig/src/options.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/options.c	2008-03-19 16:59:20.000000000 +0000
+@@ -101,6 +101,9 @@
+ 	{"fullscreen", &iflags.wc2_fullscreen, FALSE, SET_IN_FILE},
+ 	{"help", &flags.help, TRUE, SET_IN_GAME},
+ 	{"hilite_pet",    &iflags.wc_hilite_pet, FALSE, SET_IN_GAME},	/*WC*/
++#ifdef HPMON
++	{"hp_monitor", &iflags.hpmon, TRUE, SET_IN_GAME},
++#endif
+ #ifdef ASCIIGRAPH
+ 	{"IBMgraphics", &iflags.IBMgraphics, FALSE, SET_IN_GAME},
+ #else
+@@ -125,6 +128,15 @@
+ #else
+ 	{"mail", (boolean *)0, TRUE, SET_IN_FILE},
+ #endif
++#ifdef MENU_COLOR
++# ifdef MICRO
++	{"menucolors", &iflags.use_menu_color, TRUE,  SET_IN_GAME},
++# else
++	{"menucolors", &iflags.use_menu_color, FALSE, SET_IN_GAME},
++# endif
++#else
++	{"menucolors", (boolean *)0, FALSE, SET_IN_GAME},
++#endif
+ #ifdef WIZARD
+ 	/* for menu debugging only*/
+ 	{"menu_tab_sep", &iflags.menu_tab_sep, FALSE, SET_IN_GAME},
+@@ -143,6 +155,11 @@
+ #else
+ 	{"page_wait", (boolean *)0, FALSE, SET_IN_FILE},
+ #endif
++#ifdef PARANOID
++	{"paranoid_hit", &iflags.paranoid_hit, FALSE, SET_IN_GAME},
++	{"paranoid_quit", &iflags.paranoid_quit, FALSE, SET_IN_GAME},
++	{"paranoid_remove", &iflags.paranoid_remove, FALSE, SET_IN_GAME},
++#endif
+ 	{"perm_invent", &flags.perm_invent, FALSE, SET_IN_GAME},
+ 	{"popup_dialog",  &iflags.wc_popup_dialog, FALSE, SET_IN_GAME},	/*WC*/
+ 	{"prayconfirm", &flags.prayconfirm, TRUE, SET_IN_GAME},
+@@ -160,12 +177,19 @@
+ #else
+ 	{"sanity_check", (boolean *)0, FALSE, SET_IN_FILE},
+ #endif
++#ifdef SHOW_BORN
++	{"showborn", &iflags.show_born, FALSE, SET_IN_GAME},
++#endif
++	{"showbuc", &iflags.show_buc, FALSE, SET_IN_GAME},
+ #ifdef EXP_ON_BOTL
+ 	{"showexp", &flags.showexp, FALSE, SET_IN_GAME},
+ #else
+ 	{"showexp", (boolean *)0, FALSE, SET_IN_FILE},
+ #endif
+ 	{"showrace", &iflags.showrace, FALSE, SET_IN_GAME},
++#ifdef REALTIME_ON_BOTL
++        {"showrealtime", &iflags.showrealtime, FALSE, SET_IN_GAME},
++#endif
+ #ifdef SCORE_ON_BOTL
+ 	{"showscore", &flags.showscore, FALSE, SET_IN_GAME},
+ #else
+@@ -188,11 +212,17 @@
+ 	{"tombstone",&flags.tombstone, TRUE, SET_IN_GAME},
+ 	{"toptenwin",&flags.toptenwin, FALSE, SET_IN_GAME},
+ 	{"travel", &iflags.travelcmd, TRUE, SET_IN_GAME},
++	{"use_darkgray", &iflags.wc2_darkgray, FALSE, SET_IN_FILE},
+ #ifdef WIN32CON
+ 	{"use_inverse",   &iflags.wc_inverse, TRUE, SET_IN_GAME},		/*WC*/
+ #else
+ 	{"use_inverse",   &iflags.wc_inverse, FALSE, SET_IN_GAME},		/*WC*/
+ #endif
++#ifdef WIN_EDGE
++	{"win_edge", &iflags.win_edge, FALSE, SET_IN_GAME},
++#else
++	{"win_edge", (boolean *)0, TRUE, SET_IN_FILE},
++#endif
+ 	{"verbose", &flags.verbose, TRUE, SET_IN_GAME},
+ 	{"wraptext", &iflags.wc2_wraptext, FALSE, SET_IN_GAME},
+ 	{(char *)0, (boolean *)0, FALSE, 0}
+@@ -224,6 +254,14 @@
+ 						SET_IN_GAME },
+ 	{ "dogname",  "the name of your (first) dog (e.g., dogname:Fang)",
+ 						PL_PSIZ, DISP_IN_GAME },
++#ifdef DUMP_LOG
++	{ "dumpfile", "where to dump data (e.g., dumpfile:/tmp/dump.nh)",
++#ifdef DUMP_FN
++						PL_PSIZ, DISP_IN_GAME },
++#else
++						PL_PSIZ, SET_IN_GAME },
++#endif
++#endif
+ 	{ "dungeon",  "the symbols to use in drawing the dungeon map",
+ 						MAXDCHARS+1, SET_IN_FILE },
+ 	{ "effects",  "the symbols to use in drawing special effects",
+@@ -246,6 +284,7 @@
+ 	{ "horsename", "the name of your (first) horse (e.g., horsename:Silver)",
+ 						PL_PSIZ, DISP_IN_GAME },
+ 	{ "map_mode", "map display mode under Windows", 20, DISP_IN_GAME },	/*WC*/
++	{ "menucolor", "set menu colors", PL_PSIZ, SET_IN_FILE },
+ 	{ "menustyle", "user interface for object selection",
+ 						MENUTYPELEN, SET_IN_GAME },
+ 	{ "menu_deselect_all", "deselect all items in a menu", 4, SET_IN_FILE },
+@@ -306,6 +345,9 @@
+ 	{ "scroll_amount", "amount to scroll map when scroll_margin is reached",
+ 						20, DISP_IN_GAME }, /*WC*/
+ 	{ "scroll_margin", "scroll map when this far from the edge", 20, DISP_IN_GAME }, /*WC*/
++#ifdef SORTLOOT
++	{ "sortloot", "sort object selection lists by description", 4, SET_IN_GAME },
++#endif
+ #ifdef MSDOS
+ 	{ "soundcard", "type of sound card to use", 20, SET_IN_FILE },
+ #endif
+@@ -532,6 +574,10 @@
+ 	flags.warnlevel = 1;
+ 	flags.warntype = 0L;
+ 
++#ifdef SORTLOOT
++	iflags.sortloot = 'n';
++#endif
++
+      /* assert( sizeof flags.inv_order == sizeof def_inv_order ); */
+ 	(void)memcpy((genericptr_t)flags.inv_order,
+ 		     (genericptr_t)def_inv_order, sizeof flags.inv_order);
+@@ -964,6 +1010,133 @@
+ 	}
+ }
+ 
++#ifdef MENU_COLOR
++extern struct menucoloring *menu_colorings;
++
++static const struct {
++   const char *name;
++   const int color;
++} colornames[] = {
++   {"black", CLR_BLACK},
++   {"red", CLR_RED},
++   {"green", CLR_GREEN},
++   {"brown", CLR_BROWN},
++   {"blue", CLR_BLUE},
++   {"magenta", CLR_MAGENTA},
++   {"cyan", CLR_CYAN},
++   {"gray", CLR_GRAY},
++   {"orange", CLR_ORANGE},
++   {"lightgreen", CLR_BRIGHT_GREEN},
++   {"yellow", CLR_YELLOW},
++   {"lightblue", CLR_BRIGHT_BLUE},
++   {"lightmagenta", CLR_BRIGHT_MAGENTA},
++   {"lightcyan", CLR_BRIGHT_CYAN},
++   {"white", CLR_WHITE}
++};
++
++static const struct {
++   const char *name;
++   const int attr;
++} attrnames[] = {
++     {"none", ATR_NONE},
++     {"bold", ATR_BOLD},
++     {"dim", ATR_DIM},
++     {"underline", ATR_ULINE},
++     {"blink", ATR_BLINK},
++     {"inverse", ATR_INVERSE}
++
++};
++
++/* parse '"regex_string"=color&attr' and add it to menucoloring */
++boolean
++add_menu_coloring(str)
++char *str;
++{
++    int i, c = NO_COLOR, a = ATR_NONE;
++    struct menucoloring *tmp;
++    char *tmps, *cs = strchr(str, '=');
++#ifdef MENU_COLOR_REGEX_POSIX
++    int errnum;
++    char errbuf[80];
++#endif
++    const char *err = (char *)0;
++
++    if (!cs || !str) return FALSE;
++
++    tmps = cs;
++    tmps++;
++    while (*tmps && isspace(*tmps)) tmps++;
++
++    for (i = 0; i < SIZE(colornames); i++)
++	if (strstri(tmps, colornames[i].name) == tmps) {
++	    c = colornames[i].color;
++	    break;
++	}
++    if ((i == SIZE(colornames)) && (*tmps >= '0' && *tmps <='9'))
++	c = atoi(tmps);
++
++    if (c > 15) return FALSE;
++
++    tmps = strchr(str, '&');
++    if (tmps) {
++	tmps++;
++	while (*tmps && isspace(*tmps)) tmps++;
++	for (i = 0; i < SIZE(attrnames); i++)
++	    if (strstri(tmps, attrnames[i].name) == tmps) {
++		a = attrnames[i].attr;
++		break;
++	    }
++	if ((i == SIZE(attrnames)) && (*tmps >= '0' && *tmps <='9'))
++	    a = atoi(tmps);
++    }
++
++    *cs = '\0';
++    tmps = str;
++    if ((*tmps == '"') || (*tmps == '\'')) {
++	cs--;
++	while (isspace(*cs)) cs--;
++	if (*cs == *tmps) {
++	    *cs = '\0';
++	    tmps++;
++	}
++    }
++
++    tmp = (struct menucoloring *)alloc(sizeof(struct menucoloring));
++#ifdef MENU_COLOR_REGEX
++#ifdef MENU_COLOR_REGEX_POSIX
++    errnum = regcomp(&tmp->match, tmps, REG_EXTENDED | REG_NOSUB);
++    if (errnum != 0)
++    {
++	regerror(errnum, &tmp->match, errbuf, sizeof(errbuf));
++	err = errbuf;
++    }
++#else
++    tmp->match.translate = 0;
++    tmp->match.fastmap = 0;
++    tmp->match.buffer = 0;
++    tmp->match.allocated = 0;
++    tmp->match.regs_allocated = REGS_FIXED;
++    err = re_compile_pattern(tmps, strlen(tmps), &tmp->match);
++#endif
++#else
++    tmp->match = (char *)alloc(strlen(tmps)+1);
++    (void) memcpy((genericptr_t)tmp->match, (genericptr_t)tmps, strlen(tmps)+1);
++#endif
++    if (err) {
++	raw_printf("\nMenucolor regex error: %s\n", err);
++	wait_synch();
++	free(tmp);
++	return FALSE;
++    } else {
++	tmp->next = menu_colorings;
++	tmp->color = c;
++	tmp->attr = a;
++	menu_colorings = tmp;
++	return TRUE;
++    }
++}
++#endif /* MENU_COLOR */
++
+ void
+ parseoptions(opts, tinitial, tfrom_file)
+ register char *opts;
+@@ -1077,6 +1250,19 @@
+ 		return;
+ 	}
+ 
++#ifdef DUMP_LOG
++	fullname = "dumpfile";
++	if (match_optname(opts, fullname, 3, TRUE)) {
++#ifndef DUMP_FN
++		if (negated) bad_negation(fullname, FALSE);
++		else if ((op = string_for_opt(opts, !tfrom_file)) != 0
++			&& strlen(op) > 1)
++			nmcpy(dump_fn, op, PL_PSIZ);
++#endif
++		return;
++       }
++#endif
++
+ 	fullname = "horsename";
+ 	if (match_optname(opts, fullname, 5, TRUE)) {
+ 		if (negated) bad_negation(fullname, FALSE);
+@@ -1133,6 +1319,18 @@
+ 		return;
+ 	}
+ 
++	/* menucolor:"regex_string"=color */
++	fullname = "menucolor";
++	if (match_optname(opts, fullname, 9, TRUE)) {
++#ifdef MENU_COLOR
++	    if (negated) bad_negation(fullname, FALSE);
++	    else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
++		if (!add_menu_coloring(op))
++		    badoption(opts);
++#endif
++	    return;
++	}
++
+ 	fullname = "msghistory";
+ 	if (match_optname(opts, fullname, 3, TRUE)) {
+ 		op = string_for_env_opt(fullname, opts, negated);
+@@ -1839,6 +2037,24 @@
+ 	    return;
+ 	}
+ 
++#ifdef SORTLOOT
++	fullname = "sortloot";
++	if (match_optname(opts, fullname, 4, TRUE)) {
++		op = string_for_env_opt(fullname, opts, FALSE);
++		if (op) {
++			switch (tolower(*op)) {
++                        case 'n':
++                        case 'l':
++                        case 'f': iflags.sortloot = tolower(*op);
++				break;
++                        default:  badoption(opts);
++				return;
++			}
++		}
++		return;
++	}
++#endif /* SORTLOOT */
++
+ 	fullname = "suppress_alert";
+ 	if (match_optname(opts, fullname, 4, TRUE)) {
+ 		op = string_for_opt(opts, negated);
+@@ -2263,6 +2479,12 @@
+ 	"teleport", "run", "walk", "crawl"
+ };
+ 
++#ifdef SORTLOOT
++static NEARDATA const char *sortltype[] = {
++	"none", "loot", "full"
++};
++#endif
++
+ /*
+  * Convert the given string of object classes to a string of default object
+  * symbols.
+@@ -2540,7 +2762,7 @@
+     boolean retval = FALSE;
+     
+     /* Special handling of menustyle, pickup_burden, pickup_types,
+-     * disclose, runmode, msg_window, menu_headings, and number_pad options.
++     * disclose, runmode, msg_window, menu_headings, number_pad and sortloot
+ #ifdef AUTOPICKUP_EXCEPTIONS
+      * Also takes care of interactive autopickup_exception_handling changes.
+ #endif
+@@ -2761,6 +2983,26 @@
+         }
+ 	destroy_nhwindow(tmpwin);
+         retval = TRUE;
++#ifdef SORTLOOT
++    } else if (!strcmp("sortloot", optname)) {
++	const char *sortl_name;
++	menu_item *sortl_pick = (menu_item *)0;
++	tmpwin = create_nhwindow(NHW_MENU);
++	start_menu(tmpwin);
++	for (i = 0; i < SIZE(sortltype); i++) {
++	    sortl_name = sortltype[i];
++	    any.a_char = *sortl_name;
++	    add_menu(tmpwin, NO_GLYPH, &any, *sortl_name, 0,
++		     ATR_NONE, sortl_name, MENU_UNSELECTED);
++	}
++	end_menu(tmpwin, "Select loot sorting type:");
++	if (select_menu(tmpwin, PICK_ONE, &sortl_pick) > 0) {
++	    iflags.sortloot = sortl_pick->item.a_char;
++	    free((genericptr_t)sortl_pick);
++	}
++	destroy_nhwindow(tmpwin);
++	retval = TRUE;
++#endif /* SORTLOOT */
+     } else if (!strcmp("menu_headings", optname)) {
+ 	static const char *mhchoices[3] = {"bold", "inverse", "underline"};
+ 	const char *npletters = "biu";
+@@ -2933,6 +3175,10 @@
+ 	}
+ 	else if (!strcmp(optname, "dogname")) 
+ 		Sprintf(buf, "%s", dogname[0] ? dogname : none );
++#ifdef DUMP_LOG
++	else if (!strcmp(optname, "dumpfile"))
++		Sprintf(buf, "%s", dump_fn[0] ? dump_fn: none );
++#endif
+ 	else if (!strcmp(optname, "dungeon"))
+ 		Sprintf(buf, "%s", to_be_done);
+ 	else if (!strcmp(optname, "effects"))
+@@ -3072,6 +3318,17 @@
+ 		if (iflags.wc_scroll_margin) Sprintf(buf, "%d",iflags.wc_scroll_margin);
+ 		else Strcpy(buf, defopt);
+ 	}
++#ifdef SORTLOOT
++	else if (!strcmp(optname, "sortloot")) {
++		char *sortname = (char *)NULL;
++		for (i=0; i < SIZE(sortltype) && sortname==(char *)NULL; i++) {
++		   if (iflags.sortloot == sortltype[i][0])
++		     sortname = (char *)sortltype[i];
++		}
++		if (sortname != (char *)NULL)
++		   Sprintf(buf, "%s", sortname);
++	}
++#endif /* SORTLOOT */
+ 	else if (!strcmp(optname, "player_selection"))
+ 		Sprintf(buf, "%s", iflags.wc_player_selection ? "prompts" : "dialog");
+ #ifdef MSDOS
+@@ -3593,6 +3850,7 @@
+ 	{"fullscreen", WC2_FULLSCREEN},
+ 	{"softkeyboard", WC2_SOFTKEYBOARD},
+ 	{"wraptext", WC2_WRAPTEXT},
++	{"use_darkgray", WC2_DARKGRAY},
+ 	{(char *)0, 0L}
+ };
+ 
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/pickup.c nh343-nao/src/pickup.c
+--- nethack-3.4.3-orig/src/pickup.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/pickup.c	2008-03-18 13:58:14.000000000 +0000
+@@ -690,9 +690,15 @@
+ int how;			/* type of query */
+ boolean FDECL((*allow), (OBJ_P));/* allow function */
+ {
++#ifdef SORTLOOT
++	int i, j;
++#endif
+ 	int n;
+ 	winid win;
+ 	struct obj *curr, *last;
++#ifdef SORTLOOT
++	struct obj **oarray;
++#endif
+ 	char *pack;
+ 	anything any;
+ 	boolean printed_type_name;
+@@ -717,6 +723,33 @@
+ 	    return 1;
+ 	}
+ 
++#ifdef SORTLOOT
++	/* Make a temporary array to store the objects sorted */
++	oarray = (struct obj **)alloc(n*sizeof(struct obj*));
++
++	/* Add objects to the array */
++	i = 0;
++	for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
++	  if ((*allow)(curr)) {
++	    if (iflags.sortloot == 'f' ||
++		(iflags.sortloot == 'l' && !(qflags & USE_INVLET)))
++	      {
++		/* Insert object at correct index */
++		for (j = i; j; j--)
++		  {
++		    if (strcmpi(cxname2(curr), cxname2(oarray[j-1]))>0) break;
++		    oarray[j] = oarray[j-1];
++		  }
++		oarray[j] = curr;
++		i++;
++	      } else {
++		/* Just add it to the array */
++		oarray[i++] = curr;
++	      }
++	  }
++	}
++#endif /* SORTLOOT */
++
+ 	win = create_nhwindow(NHW_MENU);
+ 	start_menu(win);
+ 	any.a_obj = (struct obj *) 0;
+@@ -730,7 +763,12 @@
+ 	pack = flags.inv_order;
+ 	do {
+ 	    printed_type_name = FALSE;
++#ifdef SORTLOOT
++	    for (i = 0; i < n; i++) {
++		curr = oarray[i];
++#else /* SORTLOOT */
+ 	    for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
++#endif /* SORTLOOT */
+ 		if ((qflags & FEEL_COCKATRICE) && curr->otyp == CORPSE &&
+ 		     will_feel_cockatrice(curr, FALSE)) {
+ 			destroy_nhwindow(win);	/* stop the menu and revert */
+@@ -758,6 +796,9 @@
+ 	    pack++;
+ 	} while (qflags & INVORDER_SORT && *pack);
+ 
++#ifdef SORTLOOT
++	free(oarray);
++#endif
+ 	end_menu(win, qstr);
+ 	n = select_menu(win, how, pick_list);
+ 	destroy_nhwindow(win);
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/pline.c nh343-nao/src/pline.c
+--- nethack-3.4.3-orig/src/pline.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/pline.c	2008-03-17 22:12:12.000000000 +0000
+@@ -15,6 +15,11 @@
+ 
+ static char *FDECL(You_buf, (int));
+ 
++#if defined(DUMP_LOG) && defined(DUMPMSGS)
++char msgs[DUMPMSGS][BUFSZ];
++int lastmsg = -1;
++#endif
++
+ /*VARARGS1*/
+ /* Note that these declarations rely on knowledge of the internals
+  * of the variable argument handling stuff in "tradstdc.h"
+@@ -55,6 +60,12 @@
+ 	    Vsprintf(pbuf,line,VA_ARGS);
+ 	    line = pbuf;
+ 	}
++#if defined(DUMP_LOG) && defined(DUMPMSGS)
++	if (DUMPMSGS > 0 && !program_state.gameover) {
++	  lastmsg = (lastmsg + 1) % DUMPMSGS;
++	  strncpy(msgs[lastmsg], line, BUFSZ);
++	}
++#endif
+ 	if (!iflags.window_inited) {
+ 	    raw_print(line);
+ 	    return;
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/potion.c nh343-nao/src/potion.c
+--- nethack-3.4.3-orig/src/potion.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/potion.c	2008-03-18 15:58:09.000000000 +0000
+@@ -1539,13 +1539,22 @@
+ 	here = levl[u.ux][u.uy].typ;
+ 	/* Is there a fountain to dip into here? */
+ 	if (IS_FOUNTAIN(here)) {
++#ifdef PARANOID
++		Sprintf(qbuf, "Dip %s into the fountain?", the(xname(obj)));
++		if(yn(qbuf) == 'y') {
++#else
+ 		if(yn("Dip it into the fountain?") == 'y') {
++#endif
+ 			dipfountain(obj);
+ 			return(1);
+ 		}
+ 	} else if (is_pool(u.ux,u.uy)) {
+ 		tmp = waterbody_name(u.ux,u.uy);
++#ifdef PARANOID
++		Sprintf(qbuf, "Dip %s into the %s?", the(xname(obj)), tmp);
++#else
+ 		Sprintf(qbuf, "Dip it into the %s?", tmp);
++#endif
+ 		if (yn(qbuf) == 'y') {
+ 		    if (Levitation) {
+ 			floating_above(tmp);
+@@ -1562,7 +1571,12 @@
+ 		}
+ 	}
+ 
++#ifdef PARANOID
++	Sprintf(qbuf, "dip %s into", the(xname(obj)));
++	if(!(potion = getobj(beverages, qbuf)))
++#else
+ 	if(!(potion = getobj(beverages, "dip into")))
++#endif
+ 		return(0);
+ 	if (potion == obj && potion->quan == 1L) {
+ 		pline("That is a potion bottle, not a Klein bottle!");
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/pray.c nh343-nao/src/pray.c
+--- nethack-3.4.3-orig/src/pray.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/pray.c	2008-03-19 16:59:44.000000000 +0000
+@@ -1287,6 +1287,11 @@
+ 		done(ESCAPED);
+ 	    } else { /* super big win */
+ 		adjalign(10);
++
++#ifdef RECORD_ACHIEVE
++                achieve.ascended = 1;
++#endif
++
+ pline("An invisible choir sings, and you are bathed in radiance...");
+ 		godvoice(altaralign, "Congratulations, mortal!");
+ 		display_nhwindow(WIN_MESSAGE, FALSE);
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/read.c nh343-nao/src/read.c
+--- nethack-3.4.3-orig/src/read.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/read.c	2008-03-19 21:05:48.000000000 +0000
+@@ -73,6 +73,64 @@
+     "Don't Panic",				/* HHGTTG */
+     "Furinkan High School Athletic Dept.",	/* Ranma 1/2 */
+     "Hel-LOOO, Nurse!",			/* Animaniacs */
++    "=^.^=",
++    "100% goblin hair - do not wash",
++    "Aberzombie and Fitch",
++    "Aim >>> <<< here",
++    "cK -- Cockatrice touches the Kop",
++    "Croesus for President 2008 - Campaign Finance Reform Now (for the other guy)",
++    "- - - - - - CUT HERE - - - - - -",
++    "Don't ask me, I only adventure here",
++    "Down With Pants!",
++    "d, your dog or a killer?",
++    "FREE PUG AND NEWT!",
++    "Gehennoms Angels",
++    "Glutton For Punishment",
++    "Go Team Ant!",
++    "Got Newt?",
++    "Heading for Godhead",
++    "Hey! Nymphs! Steal This T-Shirt!",
++    "I <3 Dungeon of Doom",
++    "I <3 Maud",
++    "I am a Valkyrie. If you see me running, try to keep up.",
++    "I Am Not a Pack Rat - I Am a Collector",
++    "I bounced off a rubber tree",
++    "If you can read this, I can hit you with my polearm",
++    "I'm Confused!",
++    "I met Carl, the swordmaster of Jambalaya island and all I got was this lousy t-shirt",
++    "I'm in ur base, killin ur doods",
++    "I scored with the princess",
++    "I Support Single Succubi",
++    "I want to live forever or die in the attempt.",
++    "Kop Killaz",
++    "Lichen Park",
++    "LOST IN THOUGHT - please send search party",
++    "Meat Is Mordor",
++    "Minetown Better Business Bureau",
++    "Minetown Watch",
++    "Ms. Palm's House of Negotiable Affection -- A Very Reputable House Of Disrepute",
++    "^^  My eyes are up there!  ^^",
++    "Neferet/Pelias '08",
++    "Next time you wave at me, use more than one finger, please.",
++    "No Outfit Is Complete Without a Little Cat Fur",
++    "Objects In This Shirt Are Closer Than They Appear",
++    "Protection Racketeer",
++    "P Happens",
++    "Real men love Crom",
++    "Rodney in '08. OR ELSE!",
++    "Sokoban Gym -- Get Strong or Die Trying",
++    "Somebody stole my Mojo!",
++    "The Hellhound Gang",
++    "The Werewolves",
++    "They Might Be Storm Giants",
++    "Up with miniskirts!",
++    "Weapons don't kill people, I kill people",
++    "Where's the beef?",
++    "White Zombie",
++    "Worship me",
++    "You laugh because I'm different, I laugh because you're about to die",
++    "You're killing me!",
++    "You should hear what the voices in my head are saying about you.",
+ 	    };
+ 	    char buf[BUFSZ];
+ 	    int erosion;
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/restore.c nh343-nao/src/restore.c
+--- nethack-3.4.3-orig/src/restore.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/restore.c	2008-03-19 18:28:13.000000000 +0000
+@@ -445,9 +445,21 @@
+ 
+ 	restnames(fd);
+ 	restore_waterlevel(fd);
++
++#ifdef RECORD_ACHIEVE
++        mread(fd, (genericptr_t) &achieve, sizeof achieve);
++#endif
++#if defined(RECORD_REALTIME) || defined(REALTIME_ON_BOTL)
++        mread(fd, (genericptr_t) &realtime_data.realtime, 
++                  sizeof realtime_data.realtime);
++#endif
++  
+ 	/* must come after all mons & objs are restored */
+ 	relink_timers(FALSE);
+ 	relink_light_sources(FALSE);
++#ifdef WHEREIS_FILE
++        touch_whereis();
++#endif
+ 	return(TRUE);
+ }
+ 
+@@ -676,6 +688,17 @@
+ 	clear_nhwindow(WIN_MESSAGE);
+ 	program_state.something_worth_saving++;	/* useful data now exists */
+ 
++#if defined(RECORD_REALTIME) || defined(REALTIME_ON_BOTL)
++
++/* Start the timer here (realtime has already been set) */
++#if defined(BSD) && !defined(POSIX_TYPES)
++        (void) time((long *)&realtime_data.restoretime);
++#else
++        (void) time(&realtime_data.restoretime);
++#endif
++
++#endif /* RECORD_REALTIME || REALTIME_ON_BOTL */
++
+ 	/* Success! */
+ 	welcome(FALSE);
+ 	return(1);
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/save.c nh343-nao/src/save.c
+--- nethack-3.4.3-orig/src/save.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/save.c	2008-03-27 21:59:43.000000000 +0000
+@@ -48,6 +48,10 @@
+ #define HUP
+ #endif
+ 
++#ifdef MENU_COLOR
++extern struct menucoloring *menu_colorings;
++#endif
++
+ /* need to preserve these during save to avoid accessing freed memory */
+ static unsigned ustuck_id = 0, usteed_id = 0;
+ 
+@@ -156,6 +160,10 @@
+ 		return(0);
+ 	}
+ 
++#ifdef WHEREIS_FILE
++	touch_whereis();
++#endif
++
+ 	vision_recalc(2);	/* shut down vision to prevent problems
+ 				   in the event of an impossible() call */
+ 	
+@@ -274,6 +282,10 @@
+ register int fd, mode;
+ {
+ 	int uid;
++#if defined(RECORD_REALTIME) || defined(REALTIME_ON_BOTL)
++        time_t realtime;
++#endif
++
+ 
+ #ifdef MFLOPPY
+ 	count_only = (mode & COUNT_SAVE);
+@@ -319,6 +331,15 @@
+ 	savefruitchn(fd, mode);
+ 	savenames(fd, mode);
+ 	save_waterlevel(fd, mode);
++
++#ifdef RECORD_ACHIEVE
++        bwrite(fd, (genericptr_t) &achieve, sizeof achieve);
++#endif
++#if defined(RECORD_REALTIME) || defined(REALTIME_ON_BOTL)
++        realtime = get_realtime();
++        bwrite(fd, (genericptr_t) &realtime, sizeof realtime);
++#endif
++
+ 	bflush(fd);
+ }
+ 
+@@ -953,12 +974,34 @@
+ 	return;
+ }
+ 
++#ifdef MENU_COLOR
++void
++free_menu_coloring()
++{
++    struct menucoloring *tmp = menu_colorings;
++
++    while (tmp) {
++	struct menucoloring *tmp2 = tmp->next;
++# ifdef MENU_COLOR_REGEX
++	(void) regfree(&tmp->match);
++# else
++	free(tmp->match);
++# endif
++	free(tmp);
++	tmp = tmp2;
++    }
++}
++#endif /* MENU_COLOR */
++
+ void
+ freedynamicdata()
+ {
+ 	unload_qtlist();
+ 	free_invbuf();	/* let_to_name (invent.c) */
+ 	free_youbuf();	/* You_buf,&c (pline.c) */
++#ifdef MENU_COLOR
++	free_menu_coloring();
++#endif
+ 	tmp_at(DISP_FREEMEM, 0);	/* temporary display effects */
+ #ifdef FREE_ALL_MEMORY
+ # define freeobjchn(X)	(saveobjchn(0, X, FREE_SAVE),  X = 0)
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/shk.c nh343-nao/src/shk.c
+--- nethack-3.4.3-orig/src/shk.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/shk.c	2008-03-26 07:21:09.000000000 +0000
+@@ -833,6 +833,20 @@
+ #endif
+ 		}
+ 	}
++
++	if (obj == uwep) uwepgone();
++	else if (obj == uswapwep) uswapwepgone();
++	else if (obj == uquiver) uqwepgone();
++	else if (obj == uarm) setnotworn(obj);
++	else if (obj == uarmc) setnotworn(obj);
++	else if (obj == uarmh) setnotworn(obj);
++	else if (obj == uarms) setnotworn(obj);
++	else if (obj == uarmg) setnotworn(obj);
++#ifdef TOURIST
++	else if (obj == uarmu) setnotworn(obj);
++#endif
++	else if (obj == uarmf) setnotworn(obj);
++
+ 	dealloc_obj(obj);
+ }
+ #endif /* OVLB */
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/spell.c nh343-nao/src/spell.c
+--- nethack-3.4.3-orig/src/spell.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/spell.c	2008-03-17 22:12:12.000000000 +0000
+@@ -1114,6 +1114,35 @@
+ 	return FALSE;
+ }
+ 
++#ifdef DUMP_LOG
++void 
++dump_spells()
++{
++	int i;
++	char buf[BUFSZ];
++
++	if (spellid(0) == NO_SPELL) {
++	    dump("", "You didn't know any spells.");
++	    dump("", "");
++	    return;
++	}
++	dump("", "Spells known in the end");
++
++	Sprintf(buf, "%-20s   Level    %-12s Fail", "    Name", "Category");
++	dump("  ",buf);
++	for (i = 0; i < MAXSPELL && spellid(i) != NO_SPELL; i++) {
++		Sprintf(buf, "%c - %-20s  %2d%s   %-12s %3d%%",
++			spellet(i), spellname(i), spellev(i),
++			spellknow(i) ? " " : "*",
++			spelltypemnemonic(spell_skilltype(spellid(i))),
++			100 - percent_success(i));
++		dump("  ", buf);
++	}
++	dump("","");
++
++} /* dump_spells */
++#endif
++
+ /* Integer square root function without using floating point. */
+ STATIC_OVL int
+ isqrt(val)
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/sp_lev.c nh343-nao/src/sp_lev.c
+--- nethack-3.4.3-orig/src/sp_lev.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/sp_lev.c	2008-03-19 17:03:03.000000000 +0000
+@@ -1032,6 +1032,20 @@
+ 	    mongone(was);
+ 	}
+ 
++#ifdef RECORD_ACHIEVE
++        /* Nasty hack here: try to determine if this is the Mines or Sokoban
++         * "prize" and then set record_achieve_special (maps to corpsenm)
++         * for the object.  That field will later be checked to find out if
++         * the player obtained the prize. */
++        if(otmp->otyp == LUCKSTONE && Is_mineend_level(&u.uz)) {
++                otmp->record_achieve_special = 1;
++        } else if((otmp->otyp == AMULET_OF_REFLECTION ||
++                   otmp->otyp == BAG_OF_HOLDING) && 
++                  Is_sokoend_level(&u.uz)) {
++                otmp->record_achieve_special = 1;
++        }
++#endif
++
+ 	stackobj(otmp);
+ 
+     }		/* if (rn2(100) < o->chance) */
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/topten.c nh343-nao/src/topten.c
+--- nethack-3.4.3-orig/src/topten.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/topten.c	2008-03-27 21:50:17.000000000 +0000
+@@ -30,15 +30,15 @@
+ 
+ #define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
+ #define dealloc_ttentry(ttent) free((genericptr_t) (ttent))
+-#define NAMSZ	10
++#define NAMSZ	20
+ #define DTHSZ	100
+ #define ROLESZ   3
+ #define PERSMAX	 3		/* entries per name/uid per char. allowed */
+ #define POINTSMIN	1	/* must be > 0 */
+-#define ENTRYMAX	100	/* must be >= 10 */
++#define ENTRYMAX	2000	/* must be >= 10 */
+ 
+ #if !defined(MICRO) && !defined(MAC) && !defined(WIN32)
+-#define PERS_IS_UID		/* delete for PERSMAX per name; now per uid */
++/*#define PERS_IS_UID*/		/* delete for PERSMAX per name; now per uid */
+ #endif
+ struct toptenentry {
+ 	struct toptenentry *tt_next;
+@@ -66,10 +66,20 @@
+ STATIC_DCL void FDECL(outentry, (int,struct toptenentry *,BOOLEAN_P));
+ STATIC_DCL void FDECL(readentry, (FILE *,struct toptenentry *));
+ STATIC_DCL void FDECL(writeentry, (FILE *,struct toptenentry *));
++#ifdef XLOGFILE
++STATIC_DCL void FDECL(munge_xlstring, (char *dest, char *src, int n));
++STATIC_DCL void FDECL(write_xlentry, (FILE *,struct toptenentry *));
++#endif
+ STATIC_DCL void FDECL(free_ttlist, (struct toptenentry *));
+ STATIC_DCL int FDECL(classmon, (char *,BOOLEAN_P));
+ STATIC_DCL int FDECL(score_wanted,
+ 		(BOOLEAN_P, int,struct toptenentry *,int,const char **,int));
++#ifdef RECORD_CONDUCT
++/*STATIC_DCL long FDECL(encodeconduct, (void));*/
++#endif
++#ifdef RECORD_ACHIEVE
++STATIC_DCL long FDECL(encodeachieve, (void));
++#endif
+ #ifdef NO_SCAN_BRACK
+ STATIC_DCL void FDECL(nsb_mung_line,(char*));
+ STATIC_DCL void FDECL(nsb_unmung_line,(char*));
+@@ -84,6 +94,10 @@
+ 
+ static winid toptenwin = WIN_ERR;
+ 
++#ifdef RECORD_START_END_TIME
++static time_t deathtime = 0L;
++#endif
++
+ STATIC_OVL void
+ topten_print(x)
+ const char *x;
+@@ -226,6 +240,109 @@
+ #endif
+ }
+ 
++#ifdef XLOGFILE
++#define SEP ":"
++#define SEPC ':'
++
++/* copy a maximum of n-1 characters from src to dest, changing ':' and '\n'
++ * to '_'; always null-terminate. */
++STATIC_OVL void
++munge_xlstring(dest, src, n)
++char *dest;
++char *src;
++int n;
++{
++  int i;
++
++  for(i = 0; i < (n - 1) && src[i] != '\0'; i++) {
++    if(src[i] == SEPC || src[i] == '\n')
++      dest[i] = '_';
++    else
++      dest[i] = src[i];
++  }
++
++  dest[i] = '\0';
++
++  return;
++}
++
++STATIC_OVL void
++write_xlentry(rfile,tt)
++FILE *rfile;
++struct toptenentry *tt;
++{
++
++  char buf[DTHSZ+1];
++
++  /* Log all of the data found in the regular logfile */
++  (void)fprintf(rfile,
++                "version=%d.%d.%d"
++                SEP "points=%ld"
++                SEP "deathdnum=%d"
++                SEP "deathlev=%d"
++                SEP "maxlvl=%d"
++                SEP "hp=%d"
++                SEP "maxhp=%d"
++                SEP "deaths=%d"
++                SEP "deathdate=%d"
++                SEP "birthdate=%d"
++                SEP "uid=%d",
++                tt->ver_major, tt->ver_minor, tt->patchlevel,
++                tt->points, tt->deathdnum, tt->deathlev,
++                tt->maxlvl, tt->hp, tt->maxhp, tt->deaths,
++                tt->deathdate, tt->birthdate, tt->uid);
++
++  (void)fprintf(rfile,
++                SEP "role=%s"
++                SEP "race=%s"
++                SEP "gender=%s"
++                SEP "align=%s",
++                tt->plrole, tt->plrace, tt->plgend, tt->plalign);
++   
++   munge_xlstring(buf, plname, DTHSZ + 1);
++  (void)fprintf(rfile, SEP "name=%s", buf);
++
++   munge_xlstring(buf, tt->death, DTHSZ + 1);
++  (void)fprintf(rfile, SEP "death=%s", buf);
++
++#ifdef RECORD_CONDUCT
++  (void)fprintf(rfile, SEP "conduct=0x%lx", encodeconduct());
++#endif
++
++#ifdef RECORD_TURNS
++  (void)fprintf(rfile, SEP "turns=%ld", moves);
++#endif
++
++#ifdef RECORD_ACHIEVE
++  (void)fprintf(rfile, SEP "achieve=0x%lx", encodeachieve());
++#endif
++
++#ifdef RECORD_REALTIME
++  (void)fprintf(rfile, SEP "realtime=%ld", (long)realtime_data.realtime);
++#endif
++
++#ifdef RECORD_START_END_TIME
++  (void)fprintf(rfile, SEP "starttime=%ld", (long)u.ubirthday);
++  (void)fprintf(rfile, SEP "endtime=%ld", (long)deathtime);
++#endif
++
++#ifdef RECORD_GENDER0
++  (void)fprintf(rfile, SEP "gender0=%s", genders[flags.initgend].filecode);
++#endif
++
++#ifdef RECORD_ALIGN0
++  (void)fprintf(rfile, SEP "align0=%s", 
++          aligns[1 - u.ualignbase[A_ORIGINAL]].filecode);
++#endif
++
++  (void)fprintf(rfile, "\n");
++
++}
++
++#undef SEP
++#undef SEPC
++#endif /* XLOGFILE */
++
+ STATIC_OVL void
+ free_ttlist(tt)
+ struct toptenentry *tt;
+@@ -255,6 +372,9 @@
+ #ifdef LOGFILE
+ 	FILE *lfile;
+ #endif /* LOGFILE */
++#ifdef XLOGFILE
++	FILE *xlfile;
++#endif /* XLOGFILE */
+ 
+ /* Under DICE 3.0, this crashes the system consistently, apparently due to
+  * corruption of *rfile somewhere.  Until I figure this out, just cut out
+@@ -332,7 +452,22 @@
+ 			break;
+ 	}
+ 	t0->birthdate = yyyymmdd(u.ubirthday);
+-	t0->deathdate = yyyymmdd((time_t)0L);
++
++#ifdef RECORD_START_END_TIME
++  /* Make sure that deathdate and deathtime refer to the same time; it
++   * wouldn't be good to have deathtime refer to the day after deathdate. */
++
++#if defined(BSD) && !defined(POSIX_TYPES)
++        (void) time((long *)&deathtime);
++#else
++        (void) time(&deathtime);
++#endif
++
++        t0->deathdate = yyyymmdd(deathtime);
++#else
++        t0->deathdate = yyyymmdd((time_t)0L);
++#endif /* RECORD_START_END_TIME */
++
+ 	t0->tt_next = 0;
+ #ifdef UPDATE_RECORD_IN_PLACE
+ 	t0->fpos = -1L;
+@@ -350,6 +485,18 @@
+ 	}
+ #endif /* LOGFILE */
+ 
++#ifdef XLOGFILE
++         if(lock_file(XLOGFILE, SCOREPREFIX, 10)) {
++             if(!(xlfile = fopen_datafile(XLOGFILE, "a", SCOREPREFIX))) {
++                  HUP raw_print("Cannot open extended log file!");
++             } else {
++                  write_xlentry(xlfile, t0);
++                  (void) fclose(xlfile);
++             }
++             unlock_file(XLOGFILE);
++         }
++#endif /* XLOGFILE */
++
+ 	if (wizard || discover) {
+ 	    if (how != PANICKED) HUP {
+ 		char pbuf[BUFSZ];
+@@ -358,6 +505,12 @@
+ 	      "Since you were in %s mode, the score list will not be checked.",
+ 		    wizard ? "wizard" : "discover");
+ 		topten_print(pbuf);
++#ifdef DUMP_LOG
++		if (dump_fn[0]) {
++		  dump("", pbuf);
++		  dump("", "");
++		}
++#endif
+ 	    }
+ 	    goto showwin;
+ 	}
+@@ -378,6 +531,9 @@
+ 	}
+ 
+ 	HUP topten_print("");
++#ifdef DUMP_LOG
++	dump("", "");
++#endif
+ 
+ 	/* assure minimum number of points */
+ 	if(t0->points < POINTSMIN) t0->points = 0;
+@@ -422,6 +578,10 @@
+ 				    t1->points);
+ 			    topten_print(pbuf);
+ 			    topten_print("");
++#ifdef DUMP_LOG
++			    dump("", pbuf);
++			    dump("", "");
++#endif
+ 			}
+ 		    }
+ 		    if(occ_cnt < 0) {
+@@ -452,17 +612,27 @@
+ 			goto destroywin;
+ 		}
+ #endif	/* UPDATE_RECORD_IN_PLACE */
+-		if(!done_stopprint) if(rank0 > 0){
+-		    if(rank0 <= 10)
++		if(rank0 > 0){
++		    if(rank0 <= 10) {
++			if(!done_stopprint) 
+ 			topten_print("You made the top ten list!");
+-		    else {
++#ifdef DUMP_LOG
++			dump("", "You made the top ten list!");
++#endif
++		    } else {
+ 			char pbuf[BUFSZ];
+ 			Sprintf(pbuf,
+ 			  "You reached the %d%s place on the top %d list.",
+ 				rank0, ordin(rank0), ENTRYMAX);
+-			topten_print(pbuf);
++			if(!done_stopprint) topten_print(pbuf);
++#ifdef DUMP_LOG
++			dump("", pbuf);
++#endif
+ 		    }
+-		    topten_print("");
++		    if(!done_stopprint) topten_print("");
++#ifdef DUMP_LOG
++		    dump("", "");
++#endif
+ 		}
+ 	}
+ 	if(rank0 == 0) rank0 = rank1;
+@@ -475,7 +645,7 @@
+ 		    && rank >= rank0
+ #endif
+ 		) writeentry(rfile, t1);
+-	    if (done_stopprint) continue;
++	    /* if (done_stopprint) continue; */
+ 	    if (rank > flags.end_top &&
+ 		    (rank < rank0 - flags.end_around ||
+ 		     rank > rank0 + flags.end_around) &&
+@@ -488,8 +658,12 @@
+ 		)) continue;
+ 	    if (rank == rank0 - flags.end_around &&
+ 		    rank0 > flags.end_top + flags.end_around + 1 &&
+-		    !flags.end_own)
+-		topten_print("");
++		    !flags.end_own) {
++		if(!done_stopprint) topten_print("");
++#ifdef DUMP_LOG
++		dump("", "");
++#endif
++	    }
+ 	    if(rank != rank0)
+ 		outentry(rank, t1, FALSE);
+ 	    else if(!rank1)
+@@ -546,7 +720,10 @@
+ 	bp = eos(linebuf);
+ 	while(bp < linebuf + COLNO - 9) *bp++ = ' ';
+ 	Strcpy(bp, "Hp [max]");
+-	topten_print(linebuf);
++	if(!done_stopprint) topten_print(linebuf);
++#ifdef DUMP_LOG
++	dump("", linebuf);
++#endif
+ }
+ 
+ /* so>0: standout line; so=0: ordinary line */
+@@ -664,9 +841,16 @@
+ 	    if (so) {
+ 		while (bp < linebuf + (COLNO-1)) *bp++ = ' ';
+ 		*bp = 0;
+-		topten_print_bold(linebuf);
+-	    } else
+-		topten_print(linebuf);
++		if(!done_stopprint) topten_print_bold(linebuf);
++#ifdef DUMP_LOG
++		dump("*", linebuf[0]==' '? linebuf+1: linebuf);
++#endif
++	    } else {
++		if(!done_stopprint) topten_print(linebuf);
++#ifdef DUMP_LOG
++		dump(" ", linebuf[0]==' '? linebuf+1: linebuf);
++#endif
++	    }
+ 	    Sprintf(linebuf, "%15s %s", "", linebuf3);
+ 	    lngr = strlen(linebuf);
+ 	}
+@@ -688,9 +872,12 @@
+ 	    if (so >= COLNO) so = COLNO-1;
+ 	    while (bp < linebuf + so) *bp++ = ' ';
+ 	    *bp = 0;
+-	    topten_print_bold(linebuf);
++	    if(!done_stopprint) topten_print_bold(linebuf);
+ 	} else
+-	    topten_print(linebuf);
++	    if(!done_stopprint) topten_print(linebuf);
++#ifdef DUMP_LOG
++	dump(" ", linebuf[0]==' '? linebuf+1: linebuf);
++#endif
+ }
+ 
+ STATIC_OVL int
+@@ -735,6 +922,70 @@
+ 	return 0;
+ }
+ 
++#ifdef RECORD_CONDUCT
++long
++encodeconduct(void)
++{
++       long e = 0L;
++
++       if(!u.uconduct.food)            e |= 0x001L;
++       if(!u.uconduct.unvegan)         e |= 0x002L;
++       if(!u.uconduct.unvegetarian)    e |= 0x004L;
++       if(!u.uconduct.gnostic)         e |= 0x008L;
++       if(!u.uconduct.weaphit)         e |= 0x010L;
++       if(!u.uconduct.killer)          e |= 0x020L;
++       if(!u.uconduct.literate)        e |= 0x040L;
++       if(!u.uconduct.polypiles)       e |= 0x080L;
++       if(!u.uconduct.polyselfs)       e |= 0x100L;
++       if(!u.uconduct.wishes)          e |= 0x200L;
++       if(!u.uconduct.wisharti)        e |= 0x400L;
++       if(!num_genocides())            e |= 0x800L;
++
++       return e;
++}
++#endif
++
++#ifdef RECORD_ACHIEVE
++long
++encodeachieve(void)
++{
++  /* Achievement bitfield:
++   * bit  meaning
++   *  0   obtained the Bell of Opening
++   *  1   entered gehennom (by any means)
++   *  2   obtained the Candelabrum of Invocation
++   *  3   obtained the Book of the Dead
++   *  4   performed the invocation ritual
++   *  5   obtained the amulet
++   *  6   entered elemental planes
++   *  7   entered astral plane
++   *  8   ascended (not "escaped in celestial disgrace!")
++   *  9   obtained the luckstone from the Mines
++   *  10  obtained the sokoban prize
++   *  11  killed medusa
++   */
++
++  long r;
++
++  r = 0;
++
++  if(achieve.get_bell)           r |= 1L << 0;
++  if(achieve.enter_gehennom)     r |= 1L << 1;
++  if(achieve.get_candelabrum)    r |= 1L << 2;
++  if(achieve.get_book)           r |= 1L << 3;
++  if(achieve.perform_invocation) r |= 1L << 4;
++  if(achieve.get_amulet)         r |= 1L << 5;
++  if(In_endgame(&u.uz))          r |= 1L << 6;
++  if(Is_astralevel(&u.uz))       r |= 1L << 7;
++  if(achieve.ascended)           r |= 1L << 8;
++  if(achieve.get_luckstone)      r |= 1L << 9;
++  if(achieve.finish_sokoban)     r |= 1L << 10;
++  if(achieve.killed_medusa)      r |= 1L << 11;
++
++  return r;
++}
++#endif
++
+ /*
+  * print selected parts of score list.
+  * argc >= 2, with argv[0] untrustworthy (directory names, et al.),
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/uhitm.c nh343-nao/src/uhitm.c
+--- nethack-3.4.3-orig/src/uhitm.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/uhitm.c	2008-03-18 15:58:09.000000000 +0000
+@@ -99,6 +99,9 @@
+ struct obj *wep;	/* uwep for attack(), null for kick_monster() */
+ {
+ 	char qbuf[QBUFSZ];
++#ifdef PARANOID
++	char buf[BUFSZ];
++#endif
+ 
+ 	/* if you're close enough to attack, alert any waiting monster */
+ 	mtmp->mstrategy &= ~STRAT_WAITMASK;
+@@ -199,11 +202,26 @@
+ 			return(FALSE);
+ 		}
+ 		if (canspotmon(mtmp)) {
++#ifdef PARANOID
++			Sprintf(qbuf, "Really attack %s? [no/yes]",
++				mon_nam(mtmp));
++			if (iflags.paranoid_hit) {
++				getlin (qbuf, buf);
++				(void) lcase (buf);
++				if (strcmp (buf, "yes")) {
++				  flags.move = 0;
++				  return(TRUE);
++				}
++			} else {
++#endif
+ 			Sprintf(qbuf, "Really attack %s?", mon_nam(mtmp));
+ 			if (yn(qbuf) != 'y') {
+ 				flags.move = 0;
+ 				return(TRUE);
+ 			}
++#ifdef PARANOID
++			}
++#endif
+ 		}
+ 	}
+ 
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/vis_tab.c nh343-nao/src/vis_tab.c
+--- nethack-3.4.3-orig/src/vis_tab.c	1970-01-01 00:00:00.000000000 +0000
++++ nh343-nao/src/vis_tab.c	2008-03-21 22:09:29.000000000 +0000
+@@ -0,0 +1,8 @@
++/* This source file is generated by 'makedefs'.  Do not edit. */
++#include "config.h"
++#ifdef VISION_TABLES
++#include "vis_tab.h"
++
++#endif /* VISION_TABLES */
++
++/*vis_tab.c*/
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/src/weapon.c nh343-nao/src/weapon.c
+--- nethack-3.4.3-orig/src/weapon.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/src/weapon.c	2008-03-17 22:12:12.000000000 +0000
+@@ -9,6 +9,10 @@
+  */
+ #include "hack.h"
+ 
++#ifdef DUMP_LOG
++STATIC_DCL int FDECL(enhance_skill, (boolean));
++#endif
++
+ /* Categories whose names don't come from OBJ_NAME(objects[type])
+  */
+ #define PN_BARE_HANDED			(-1)	/* includes martial arts */
+@@ -851,6 +855,23 @@
+  */
+ int
+ enhance_weapon_skill()
++#ifdef DUMP_LOG
++{
++	return enhance_skill(FALSE);
++}
++
++void dump_weapon_skill()
++{
++	enhance_skill(TRUE);
++}
++
++int enhance_skill(boolean want_dump)
++/* This is the original enhance_weapon_skill() function slightly modified
++ * to write the skills to the dump file. I added the wrapper functions just
++ * because it looked like the easiest way to add a parameter to the
++ * function call. - Jukka Lahtinen, August 2001
++ */
++#endif
+ {
+     int pass, i, n, len, longest,
+ 	to_advance, eventually_advance, maxxed_cnt;
+@@ -860,8 +881,15 @@
+     anything any;
+     winid win;
+     boolean speedy = FALSE;
++#ifdef DUMP_LOG
++    char buf2[BUFSZ];
++    boolean logged;
++#endif
+ 
+ #ifdef WIZARD
++#ifdef DUMP_LOG
++	if (!want_dump)
++#endif
+ 	if (wizard && yn("Advance skills without practice?") == 'y')
+ 	    speedy = TRUE;
+ #endif
+@@ -878,6 +906,11 @@
+ 		else if (peaked_skill(i)) maxxed_cnt++;
+ 	    }
+ 
++#ifdef DUMP_LOG
++	    if (want_dump)
++		dump("","Your skills at the end");
++	    else {
++#endif
+ 	    win = create_nhwindow(NHW_MENU);
+ 	    start_menu(win);
+ 
+@@ -905,6 +938,9 @@
+ 		add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE,
+ 			     "", MENU_UNSELECTED);
+ 	    }
++#ifdef DUMP_LOG
++	    } /* want_dump or not */
++#endif
+ 
+ 	    /* List the skills, making ones that could be advanced
+ 	       selectable.  List the miscellaneous skills first.
+@@ -916,8 +952,26 @@
+ 		/* Print headings for skill types */
+ 		any.a_void = 0;
+ 		if (i == skill_ranges[pass].first)
++#ifdef DUMP_LOG
++		if (want_dump) {
++		    dump("  ",(char *)skill_ranges[pass].name);
++		    logged=FALSE;
++		} else
++#endif
+ 		    add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings,
+ 			     skill_ranges[pass].name, MENU_UNSELECTED);
++#ifdef DUMP_LOG
++		if (want_dump) {
++		    if (P_SKILL(i) > P_UNSKILLED) {
++		 	Sprintf(buf2,"%-*s [%s]",
++			    longest, P_NAME(i),skill_level_name(i, buf));
++			dump("    ",buf2);
++			logged=TRUE;
++		    } else if (i == skill_ranges[pass].last && !logged) {
++			dump("    ","(none)");
++		    }
++               } else {
++#endif
+ 
+ 		if (P_RESTRICTED(i)) continue;
+ 		/*
+@@ -962,6 +1016,9 @@
+ 		any.a_int = can_advance(i, speedy) ? i+1 : 0;
+ 		add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE,
+ 			 buf, MENU_UNSELECTED);
++#ifdef DUMP_LOG
++		} /* !want_dump */
++#endif
+ 	    }
+ 
+ 	    Strcpy(buf, (to_advance > 0) ? "Pick a skill to advance:" :
+@@ -971,6 +1028,12 @@
+ 		Sprintf(eos(buf), "  (%d slot%s available)",
+ 			u.weapon_slots, plur(u.weapon_slots));
+ #endif
++#ifdef DUMP_LOG
++	    if (want_dump) {
++		dump("","");
++		n=0;
++	    } else {
++#endif
+ 	    end_menu(win, buf);
+ 	    n = select_menu(win, to_advance ? PICK_ONE : PICK_NONE, &selected);
+ 	    destroy_nhwindow(win);
+@@ -987,6 +1050,9 @@
+ 		    }
+ 		}
+ 	    }
++#ifdef DUMP_LOG
++	    }
++#endif
+ 	} while (speedy && n > 0);
+ 	return 0;
+ }
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/sys/unix/Makefile.src nh343-nao/sys/unix/Makefile.src
+--- nethack-3.4.3-orig/sys/unix/Makefile.src	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/sys/unix/Makefile.src	2008-03-21 22:08:34.000000000 +0000
+@@ -151,8 +151,8 @@
+ # flags for debugging:
+ # CFLAGS = -g -I../include
+ 
+-CFLAGS = -O -I../include
+-LFLAGS = 
++CFLAGS = -g -O -I../include
++LFLAGS =
+ 
+ # The Qt and Be window systems are written in C++, while the rest of
+ # NetHack is standard C.  If using Qt, uncomment the LINK line here to get
+@@ -230,8 +230,8 @@
+ # WINTTYLIB = -ltermcap
+ # WINTTYLIB = -lcurses
+ # WINTTYLIB = -lcurses16
+-# WINTTYLIB = -lncurses
+-WINTTYLIB = -ltermlib
++WINTTYLIB = -lncurses
++# WINTTYLIB = -ltermlib
+ #
+ # libraries for X11
+ # If USE_XPM is defined in config.h, you will also need -lXpm here.
+@@ -285,7 +285,7 @@
+ LIBS =
+ 
+ # make NetHack
+-GAME     = nethack
++GAME     = nethack.343-nao
+ # GAME     = nethack.prg
+ 
+ # if you defined RANDOM in unixconf.h/tosconf.h since your system did not come
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/sys/unix/Makefile.top nh343-nao/sys/unix/Makefile.top
+--- nethack-3.4.3-orig/sys/unix/Makefile.top	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/sys/unix/Makefile.top	2008-03-19 17:32:18.000000000 +0000
+@@ -14,15 +14,15 @@
+ # MAKE = make
+ 
+ # make NetHack
+-PREFIX	 = /usr
+-GAME     = nethack
++PREFIX	 = /opt/nethack/nethack.alt.org
++GAME     = nethack.343-nao
+ # GAME     = nethack.prg
+ GAMEUID  = games
+-GAMEGRP  = bin
++GAMEGRP  = games
+ 
+ # Permissions - some places use setgid instead of setuid, for instance
+ # See also the option "SECURE" in include/config.h
+-GAMEPERM = 04755
++GAMEPERM = 0755
+ FILEPERM = 0644
+ EXEPERM  = 0755
+ DIRPERM  = 0755
+@@ -35,9 +35,9 @@
+ # therefore there should not be anything in GAMEDIR that you want to keep
+ # (if there is, you'll have to do the installation by hand or modify the
+ # instructions)
+-GAMEDIR  = $(PREFIX)/games/lib/$(GAME)dir
+-VARDIR  = $(GAMEDIR)
+-SHELLDIR = $(PREFIX)/games
++GAMEDIR  = $(PREFIX)/nh343
++VARDIR  = $(GAMEDIR)/var
++#SHELLDIR = $(PREFIX)/games
+ 
+ # per discussion in Install.X11 and Install.Qt
+ VARDATND = 
+@@ -185,19 +185,19 @@
+ 	$(MAKE) dofiles-$${target-nodlb}
+ 	cp src/$(GAME) $(GAMEDIR)
+ 	cp util/recover $(GAMEDIR)
+-	-rm -f $(SHELLDIR)/$(GAME)
+-	sed -e 's;/usr/games/lib/nethackdir;$(GAMEDIR);' \
+-		-e 's;HACKDIR/nethack;HACKDIR/$(GAME);' \
+-		< sys/unix/nethack.sh \
+-		> $(SHELLDIR)/$(GAME)
++#	-rm -f $(SHELLDIR)/$(GAME)
++#	sed -e 's;/usr/games/lib/nethackdir;$(GAMEDIR);' \
++#		-e 's;HACKDIR/nethack;HACKDIR/$(GAME);' \
++#		< sys/unix/nethack.sh \
++#		> $(SHELLDIR)/$(GAME)
+ # set up their permissions
+ 	-( cd $(GAMEDIR) ; $(CHOWN) $(GAMEUID) $(GAME) recover ; \
+ 			$(CHGRP) $(GAMEGRP) $(GAME) recover )
+ 	chmod $(GAMEPERM) $(GAMEDIR)/$(GAME)
+ 	chmod $(EXEPERM) $(GAMEDIR)/recover
+-	-$(CHOWN) $(GAMEUID) $(SHELLDIR)/$(GAME)
+-	$(CHGRP) $(GAMEGRP) $(SHELLDIR)/$(GAME)
+-	chmod $(EXEPERM) $(SHELLDIR)/$(GAME)
++#	-$(CHOWN) $(GAMEUID) $(SHELLDIR)/$(GAME)
++#	$(CHGRP) $(GAMEGRP) $(SHELLDIR)/$(GAME)
++#	chmod $(EXEPERM) $(SHELLDIR)/$(GAME)
+ 
+ dofiles-dlb: check-dlb
+ 	( cd dat ; cp nhdat $(DATNODLB) $(GAMEDIR) )
+@@ -233,7 +233,7 @@
+ install: $(GAME) recover $(VARDAT) dungeon spec_levs
+ # set up the directories
+ # not all mkdirs have -p; those that don't will create a -p directory
+-	-mkdir -p $(SHELLDIR)
++#	-mkdir -p $(SHELLDIR)
+ 	-rm -rf $(GAMEDIR) $(VARDIR)
+ 	-mkdir -p $(GAMEDIR) $(VARDIR) $(VARDIR)/save
+ 	-rmdir ./-p
+@@ -243,10 +243,10 @@
+ # set up the game files
+ 	( $(MAKE) dofiles )
+ # set up some additional files
+-	touch $(VARDIR)/perm $(VARDIR)/record $(VARDIR)/logfile
+-	-( cd $(VARDIR) ; $(CHOWN) $(GAMEUID) perm record logfile ; \
+-			$(CHGRP) $(GAMEGRP) perm record logfile ; \
+-			chmod $(FILEPERM) perm record logfile )
++	touch $(VARDIR)/perm $(VARDIR)/record $(VARDIR)/logfile $(VARDIR)/xlogfile
++	-( cd $(VARDIR) ; $(CHOWN) $(GAMEUID) perm record logfile xlogfile ; \
++			$(CHGRP) $(GAMEGRP) perm record logfile xlogfile ; \
++			chmod $(FILEPERM) perm record logfile xlogfile )
+ # and a reminder
+ 	@echo You may also want to reinstall the man pages via the doc Makefile.
+ 
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/sys/unix/Makefile.utl nh343-nao/sys/unix/Makefile.utl
+--- nethack-3.4.3-orig/sys/unix/Makefile.utl	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/sys/unix/Makefile.utl	2008-03-17 21:24:26.000000000 +0000
+@@ -101,11 +101,11 @@
+ 
+ # yacc/lex programs to use to generate *_comp.h, *_lex.c, and *_yacc.c.
+ # if, instead of yacc/lex you have bison/flex, comment/uncomment the following.
+-YACC     = yacc
+-LEX      = lex
+-# YACC     = bison -y
++# YACC     = yacc
++# LEX      = lex
++YACC     = bison -y
+ # YACC     = byacc
+-# LEX      = flex
++LEX      = flex
+  
+ # these are the names of the output files from YACC/LEX. Under MS-DOS
+ # and similar systems, they may differ
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/sys/unix/unixmain.c nh343-nao/sys/unix/unixmain.c
+--- nethack-3.4.3-orig/sys/unix/unixmain.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/sys/unix/unixmain.c	2008-03-18 15:04:37.000000000 +0000
+@@ -54,7 +54,9 @@
+ 	register char *dir;
+ #endif
+ 	boolean exact_username;
+-
++#ifdef SIMPLE_MAIL
++	char* e_simple = NULL;
++#endif
+ #if defined(__APPLE__)
+ 	/* special hack to change working directory to a resource fork when
+ 	   running from finder --sam */
+@@ -84,6 +86,12 @@
+ 	}
+ #endif
+ 
++#ifdef SIMPLE_MAIL
++	/* figure this out early */
++	e_simple = nh_getenv("SIMPLEMAIL");
++	iflags.simplemail = (e_simple ? 1 : 0);
++#endif
++
+ 	hname = argv[0];
+ 	hackpid = getpid();
+ 	(void) umask(0777 & ~FCMASK);
+Binary files nethack-3.4.3-orig/util/dgn_comp and nh343-nao/util/dgn_comp differ
+Binary files nethack-3.4.3-orig/util/lev_comp and nh343-nao/util/lev_comp differ
+Binary files nethack-3.4.3-orig/util/makedefs and nh343-nao/util/makedefs differ
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/util/makedefs.c nh343-nao/util/makedefs.c
+--- nethack-3.4.3-orig/util/makedefs.c	2003-12-07 23:39:13.000000000 +0000
++++ nh343-nao/util/makedefs.c	2008-03-19 17:12:15.000000000 +0000
+@@ -652,6 +652,9 @@
+ #ifdef WIZARD
+ 		"debug mode",
+ #endif
++#ifdef REALTIME_ON_BOTL
++                "elapsed time on status line",
++#endif
+ #ifdef ELBERETH
+ 		"Elbereth",
+ #endif
+@@ -676,9 +679,19 @@
+ #ifdef LOGFILE
+ 		"log file",
+ #endif
++#ifdef XLOGFILE
++                "extended log file",
++#endif
+ #ifdef MAIL
+ 		"mail daemon",
+ #endif
++#ifdef MENU_COLOR
++# ifdef MENU_COLOR_REGEX
++		"menu colors via regular expressions",
++# else
++		"menu colors via pmatch",
++# endif
++#endif
+ #ifdef GNUDOS
+ 		"MSDOS protected mode",
+ #endif
+@@ -771,9 +784,33 @@
+ #ifdef WALLIFIED_MAZE
+ 		"walled mazes",
+ #endif
++#ifdef WIN_EDGE
++		"win_edge",
++#endif
+ #ifdef ZEROCOMP
+ 		"zero-compressed save files",
+ #endif
++#ifdef RECORD_TURNS
++                "record turns in xlogfile",
++#endif
++#ifdef RECORD_CONDUCT
++                "record conduct in xlogfile",
++#endif
++#ifdef RECORD_ACHIEVE
++                "record major achievements in xlogfile",
++#endif
++#ifdef RECORD_REALTIME
++                "record real time in xlogfile",
++#endif
++#ifdef RECORD_START_END_TIME
++                "record starting and ending time in xlogfile",
++#endif
++#ifdef RECORD_GENDER0
++                "record initial gender in xlogfile",
++#endif
++#ifdef RECORD_ALIGN0
++                "record initial alignment in xlogfile",
++#endif
+ 		save_bones_compat_buf,
+ 		"basic NetHack features"
+ 	};
+Binary files nethack-3.4.3-orig/util/recover and nh343-nao/util/recover differ
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/win/tty/getline.c nh343-nao/win/tty/getline.c
+--- nethack-3.4.3-orig/win/tty/getline.c	2003-12-07 23:39:14.000000000 +0000
++++ nh343-nao/win/tty/getline.c	2008-03-22 00:22:27.000000000 +0000
+@@ -193,6 +193,7 @@
+ 	    }
+ 	    tty_nhbell();
+ 	}
++	if (c == -1) break; /* lost terminal or other error */
+     }
+ 
+ }
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/win/tty/termcap.c nh343-nao/win/tty/termcap.c
+--- nethack-3.4.3-orig/win/tty/termcap.c	2003-12-07 23:39:14.000000000 +0000
++++ nh343-nao/win/tty/termcap.c	2008-03-18 20:24:59.000000000 +0000
+@@ -839,10 +839,9 @@
+ extern char *tparm();
+ #endif
+ 
+-#  ifdef COLOR_BLACK	/* trust include file */
+-#undef COLOR_BLACK
+-#  else
++#  ifndef COLOR_BLACK	/* trust include file */
+ #   ifndef _M_UNIX	/* guess BGR */
++#define COLOR_BLACK   0
+ #define COLOR_BLUE    1
+ #define COLOR_GREEN   2
+ #define COLOR_CYAN    3
+@@ -851,6 +850,7 @@
+ #define COLOR_YELLOW  6
+ #define COLOR_WHITE   7
+ #   else		/* guess RGB */
++#define COLOR_BLACK   0
+ #define COLOR_RED     1
+ #define COLOR_GREEN   2
+ #define COLOR_YELLOW  3
+@@ -860,40 +860,125 @@
+ #define COLOR_WHITE   7
+ #   endif
+ #  endif
+-#define COLOR_BLACK COLOR_BLUE
+ 
+-const int ti_map[8] = {
+-	COLOR_BLACK, COLOR_RED, COLOR_GREEN, COLOR_YELLOW,
+-	COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN, COLOR_WHITE };
++/* Mapping data for the six terminfo colors that resolve to pairs of nethack
++ * colors.  Black and white are handled specially.
++ */
++const struct {int ti_color, nh_color, nh_bright_color;} ti_map[6] =
++{
++	{COLOR_RED,CLR_RED,CLR_ORANGE},
++	{COLOR_GREEN,CLR_GREEN,CLR_BRIGHT_GREEN},
++	{COLOR_YELLOW,CLR_BROWN,CLR_YELLOW},
++	{COLOR_BLUE,CLR_BLUE,CLR_BRIGHT_BLUE},
++	{COLOR_MAGENTA,CLR_MAGENTA,CLR_BRIGHT_MAGENTA},
++	{COLOR_CYAN,CLR_CYAN,CLR_BRIGHT_CYAN}
++};
+ 
+ static void
+ init_hilite()
+ {
+ 	register int c;
+ 	char *setf, *scratch;
+-
+-	for (c = 0; c < SIZE(hilites); c++)
+-		hilites[c] = nh_HI;
+-	hilites[CLR_GRAY] = hilites[NO_COLOR] = (char *)0;
++	int length_md;
+ 
+ 	if (tgetnum("Co") < 8
+ 	    || ((setf = tgetstr("AF", (char **)0)) == (char *)0
+ 		 && (setf = tgetstr("Sf", (char **)0)) == (char *)0))
++	{
++		/* Fallback when colors not available
++		 * It's arbitrary to collapse all colors except gray
++		 * together, but that's what the previous code did.
++		 */
++		hilites[CLR_BLACK] = nh_HI;
++		hilites[CLR_RED] = nh_HI;
++		hilites[CLR_GREEN] = nh_HI;
++		hilites[CLR_BROWN] = nh_HI;
++		hilites[CLR_BLUE] = nh_HI;
++		hilites[CLR_MAGENTA] = nh_HI;
++		hilites[CLR_CYAN] = nh_HI;
++		hilites[CLR_GRAY] = "";
++		hilites[NO_COLOR] = "";
++		hilites[CLR_ORANGE] = nh_HI;
++		hilites[CLR_BRIGHT_GREEN] = nh_HI;
++		hilites[CLR_YELLOW] = nh_HI;
++		hilites[CLR_BRIGHT_BLUE] = nh_HI;
++		hilites[CLR_BRIGHT_MAGENTA] = nh_HI;
++		hilites[CLR_BRIGHT_CYAN] = nh_HI;
++		hilites[CLR_WHITE] = nh_HI;
+ 		return;
++	}
+ 
+-	for (c = 0; c < CLR_MAX / 2; c++) {
+-	    scratch = tparm(setf, ti_map[c]);
+-	    if (c != CLR_GRAY) {
+-		hilites[c] = (char *) alloc(strlen(scratch) + 1);
+-		Strcpy(hilites[c], scratch);
+-	    }
+-	    if (c != CLR_BLACK) {
+-		hilites[c|BRIGHT] = (char*) alloc(strlen(scratch)+strlen(MD)+1);
+-		Strcpy(hilites[c|BRIGHT], MD);
+-		Strcat(hilites[c|BRIGHT], scratch);
+-	    }
++	length_md = strlen(MD);
++
++	c = 6;
++	while (c--)
++	{
++	    char *work;
+ 
++	    scratch = tparm(setf,ti_map[c].ti_color);
++	    work = (char *) alloc(strlen(scratch) + length_md + 1);
++	    Strcpy(work,MD);
++	    hilites[ti_map[c].nh_bright_color] = work;
++	    work += length_md;
++	    Strcpy(work,scratch);
++	    hilites[ti_map[c].nh_color] = work;
+ 	}
++
++	scratch = tparm(setf,COLOR_WHITE);
++	hilites[CLR_WHITE] = (char *) alloc(strlen(scratch) + length_md + 1);
++	Strcpy(hilites[CLR_WHITE],MD);
++	Strcat(hilites[CLR_WHITE],scratch);
++
++	hilites[CLR_GRAY] = "";
++	hilites[NO_COLOR] = "";
++
++	if (iflags.wc2_darkgray)
++	{
++	    /* On many terminals, esp. those using classic PC CGA/EGA/VGA
++	     * textmode, specifying "hilight" and "black" simultaneously
++	     * produces a dark shade of gray that is visible against a
++	     * black background.  We can use it to represent black objects.
++	     */
++	    scratch = tparm(setf,COLOR_BLACK);
++	    hilites[CLR_BLACK] = (char *) alloc(strlen(scratch) + length_md + 1);
++	    Strcpy(hilites[CLR_BLACK],MD);
++	    Strcat(hilites[CLR_BLACK],scratch);
++	}
++	else
++	{
++	    /* But it's concievable that hilighted black-on-black could
++	     * still be invisible on many others.  We substitute blue for
++	     * black.
++	     */
++	    hilites[CLR_BLACK] = hilites[CLR_BLUE];
++	}
++}
++
++static void
++kill_hilite()
++{
++	/* if colors weren't usable, no freeing needed */
++	if (hilites[CLR_BLACK] == nh_HI)
++		return;
++
++	if (hilites[CLR_BLACK] != hilites[CLR_BLUE])
++		free(hilites[CLR_BLACK]);
++
++	/* CLR_BLUE overlaps CLR_BRIGHT_BLUE, do not free */
++	/* CLR_GREEN overlaps CLR_BRIGHT_GREEN, do not free */
++	/* CLR_CYAN overlaps CLR_BRIGHT_CYAN, do not free */
++	/* CLR_RED overlaps CLR_ORANGE, do not free */
++	/* CLR_MAGENTA overlaps CLR_BRIGHT_MAGENTA, do not free */
++	/* CLR_BROWN overlaps CLR_YELLOW, do not free */
++	/* CLR_GRAY is a constant "", do not free */
++	/* NO_COLOR is a constant "", do not free */
++	free(hilites[CLR_BRIGHT_BLUE]);
++	free(hilites[CLR_BRIGHT_GREEN]);
++	free(hilites[CLR_BRIGHT_CYAN]);
++	free(hilites[CLR_YELLOW]);
++	free(hilites[CLR_ORANGE]);
++	free(hilites[CLR_BRIGHT_MAGENTA]);
++	free(hilites[CLR_WHITE]);
+ }
+ 
+ # else /* UNIX && TERMINFO */
+@@ -1040,7 +1125,6 @@
+ #   endif
+ #  endif /* TOS */
+ }
+-# endif /* UNIX */
+ 
+ static void
+ kill_hilite()
+@@ -1058,6 +1142,7 @@
+ # endif
+ 	return;
+ }
++# endif /* UNIX */
+ #endif /* TEXTCOLOR */
+ 
+ 
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/win/tty/wintty.c nh343-nao/win/tty/wintty.c
+--- nethack-3.4.3-orig/win/tty/wintty.c	2003-12-07 23:39:14.000000000 +0000
++++ nh343-nao/win/tty/wintty.c	2008-03-20 18:45:04.000000000 +0000
+@@ -50,7 +50,11 @@
+     WC_MOUSE_SUPPORT|
+ #endif
+     WC_COLOR|WC_HILITE_PET|WC_INVERSE|WC_EIGHT_BIT_IN,
++#ifdef TERMINFO
++    WC2_DARKGRAY,
++#else
+     0L,
++#endif
+     tty_init_nhwindows,
+     tty_player_selection,
+     tty_askname,
+@@ -125,6 +129,10 @@
+ static char winpanicstr[] = "Bad window id %d";
+ char defmorestr[] = "--More--";
+ 
++#ifdef MENU_COLOR
++extern struct menucoloring *menu_colorings;
++#endif
++
+ #ifdef CLIPPING
+ # if defined(USE_TILES) && defined(MSDOS)
+ boolean clipping = FALSE;	/* clipping on? */
+@@ -162,7 +170,7 @@
+ STATIC_DCL void FDECL(process_menu_window, (winid,struct WinDesc *));
+ STATIC_DCL void FDECL(process_text_window, (winid,struct WinDesc *));
+ STATIC_DCL tty_menu_item *FDECL(reverse, (tty_menu_item *));
+-STATIC_DCL const char * FDECL(compress_str, (const char *));
++const char * FDECL(compress_str, (const char *));
+ STATIC_DCL void FDECL(tty_putsym, (winid, int, int, CHAR_P));
+ static char *FDECL(copy_of, (const char *));
+ STATIC_DCL void FDECL(bail, (const char *));	/* __attribute__((noreturn)) */
+@@ -842,7 +850,7 @@
+ #endif
+ 	newwin->offy = min((int)ttyDisplay->rows-2, ROWNO+1);
+ 	newwin->rows = newwin->maxrow = 2;
+-	newwin->cols = newwin->maxcol = min(ttyDisplay->cols, COLNO);
++	newwin->cols = newwin->maxcol = max(ttyDisplay->cols, COLNO);
+ 	break;
+     case NHW_MAP:
+ 	/* map window, ROWNO lines long, full width, below message window */
+@@ -1128,6 +1136,32 @@
+     }
+ }
+ 
++#ifdef MENU_COLOR
++STATIC_OVL boolean
++get_menu_coloring(str, color, attr)
++char *str;
++int *color, *attr;
++{
++    struct menucoloring *tmpmc;
++    if (iflags.use_menu_color)
++	for (tmpmc = menu_colorings; tmpmc; tmpmc = tmpmc->next)
++# ifdef MENU_COLOR_REGEX
++#  ifdef MENU_COLOR_REGEX_POSIX
++	    if (regexec(&tmpmc->match, str, 0, NULL, 0) == 0) {
++#  else
++	    if (re_search(&tmpmc->match, str, strlen(str), 0, 9999, 0) >= 0) {
++#  endif
++# else
++	    if (pmatch(tmpmc->match, str)) {
++# endif
++		*color = tmpmc->color;
++		*attr = tmpmc->attr;
++		return TRUE;
++	    }
++    return FALSE;
++}
++#endif /* MENU_COLOR */
++
+ STATIC_OVL void
+ process_menu_window(window, cw)
+ winid window;
+@@ -1204,6 +1238,10 @@
+ 		for (page_lines = 0, curr = page_start;
+ 			curr != page_end;
+ 			page_lines++, curr = curr->next) {
++#ifdef MENU_COLOR
++		    int color = NO_COLOR, attr = ATR_NONE;
++		    boolean menucolr = FALSE;
++#endif
+ 		    if (curr->selector)
+ 			*rp++ = curr->selector;
+ 
+@@ -1219,6 +1257,13 @@
+ 		     * actually output the character.  We're faster doing
+ 		     * this.
+ 		     */
++#ifdef MENU_COLOR
++		   if (iflags.use_menu_color &&
++		       (menucolr = get_menu_coloring(curr->str, &color,&attr))) {
++		       term_start_attr(attr);
++		       if (color != NO_COLOR) term_start_color(color);
++		   } else
++#endif
+ 		    term_start_attr(curr->attr);
+ 		    for (n = 0, cp = curr->str;
+ #ifndef WIN32CON
+@@ -1236,6 +1281,12 @@
+ 				(void) putchar('#'); /* count selected */
+ 			} else
+ 			    (void) putchar(*cp);
++#ifdef MENU_COLOR
++		   if (iflags.use_menu_color && menucolr) {
++		       if (color != NO_COLOR) term_end_color();
++		       term_end_attr(attr);
++		   } else
++#endif
+ 		    term_end_attr(curr->attr);
+ 		}
+ 	    } else {
+@@ -1529,11 +1580,19 @@
+ 	/* avoid converting to uchar before calculations are finished */
+ 	cw->offx = (uchar) (int)
+ 	    max((int) 10, (int) (ttyDisplay->cols - cw->maxcol - 1));
+-	if(cw->type == NHW_MENU)
++	if(cw->type == NHW_MENU
++#ifdef WIN_EDGE
++	    || iflags.win_edge
++#endif
++	)
+ 	    cw->offy = 0;
+ 	if(ttyDisplay->toplin == 1)
+ 	    tty_display_nhwindow(WIN_MESSAGE, TRUE);
+-	if(cw->offx == 10 || cw->maxrow >= (int) ttyDisplay->rows) {
++	if(cw->offx == 10 || cw->maxrow >= (int) ttyDisplay->rows
++#ifdef WIN_EDGE
++	    || iflags.win_edge
++#endif
++	) {
+ 	    cw->offx = 0;
+ 	    if(cw->offy) {
+ 		tty_curs(window, 1, 0);
+@@ -1722,7 +1781,7 @@
+ }
+ 
+ 
+-STATIC_OVL const char*
++const char*
+ compress_str(str)
+ const char *str;
+ {
+diff -Nurd -X diff_ignore_files.txt nethack-3.4.3-orig/win/win32/mhmenu.c nh343-nao/win/win32/mhmenu.c
+--- nethack-3.4.3-orig/win/win32/mhmenu.c	2003-12-07 23:39:14.000000000 +0000
++++ nh343-nao/win/win32/mhmenu.c	2008-03-18 14:55:15.000000000 +0000
+@@ -63,6 +63,10 @@
+ 
+ extern short glyph2tile[];
+ 
++#ifdef MENU_COLOR
++extern struct menucoloring *menu_colorings;
++#endif
++
+ static WNDPROC wndProcListViewOrig = NULL;
+ static WNDPROC editControlWndProc = NULL;
+ 
+@@ -83,6 +87,58 @@
+ static void reset_menu_count(HWND hwndList, PNHMenuWindow data);
+ static BOOL onListChar(HWND hWnd, HWND hwndList, WORD ch);
+ 
++#ifdef MENU_COLOR
++/* FIXME: nhcolor_to_RGB copied from mhmap.c */
++/* map nethack color to RGB */
++COLORREF nhcolor_to_RGB(int c)
++{
++	switch(c) {
++	case CLR_BLACK:			return RGB(0x55, 0x55, 0x55);
++	case CLR_RED:			return RGB(0xFF, 0x00, 0x00);
++	case CLR_GREEN:			return RGB(0x00, 0x80, 0x00);
++	case CLR_BROWN:			return RGB(0xA5, 0x2A, 0x2A);
++	case CLR_BLUE:			return RGB(0x00, 0x00, 0xFF);
++	case CLR_MAGENTA:		return RGB(0xFF, 0x00, 0xFF);
++	case CLR_CYAN:			return RGB(0x00, 0xFF, 0xFF);
++	case CLR_GRAY:			return RGB(0xC0, 0xC0, 0xC0);
++	case NO_COLOR:			return RGB(0xFF, 0xFF, 0xFF);
++	case CLR_ORANGE:		return RGB(0xFF, 0xA5, 0x00);
++	case CLR_BRIGHT_GREEN:		return RGB(0x00, 0xFF, 0x00);
++	case CLR_YELLOW:		return RGB(0xFF, 0xFF, 0x00);
++	case CLR_BRIGHT_BLUE:		return RGB(0x00, 0xC0, 0xFF);
++	case CLR_BRIGHT_MAGENTA: 	return RGB(0xFF, 0x80, 0xFF);
++	case CLR_BRIGHT_CYAN:		return RGB(0x80, 0xFF, 0xFF);	/* something close to aquamarine */
++	case CLR_WHITE:			return RGB(0xFF, 0xFF, 0xFF);
++	default:			return RGB(0x00, 0x00, 0x00);	/* black */
++	}
++}
++
++
++STATIC_OVL boolean
++get_menu_coloring(str, color, attr)
++char *str;
++int *color, *attr;
++{
++    struct menucoloring *tmpmc;
++    if (iflags.use_menu_color)
++	for (tmpmc = menu_colorings; tmpmc; tmpmc = tmpmc->next)
++# ifdef MENU_COLOR_REGEX
++#  ifdef MENU_COLOR_REGEX_POSIX
++	    if (regexec(&tmpmc->match, str, 0, NULL, 0) == 0) {
++#  else
++	    if (re_search(&tmpmc->match, str, strlen(str), 0, 9999, 0) >= 0) {
++#  endif
++# else
++	    if (pmatch(tmpmc->match, str)) {
++# endif
++		*color = tmpmc->color;
++		*attr = tmpmc->attr;
++		return TRUE;
++	    }
++    return FALSE;
++}
++#endif /* MENU_COLOR */
++
+ /*-----------------------------------------------------------------------------*/
+ HWND mswin_init_menu_window (int type) {
+ 	HWND ret;
+@@ -767,6 +823,11 @@
+ 	char *p, *p1;
+ 	int column;
+ 
++#ifdef MENU_COLOR
++	int color = NO_COLOR, attr;
++	boolean menucolr = FALSE;
++#endif
++
+ 	lpdis = (LPDRAWITEMSTRUCT) lParam; 
+ 
+     /* If there are no list box items, skip this message. */
+@@ -813,6 +874,15 @@
+ 			buf[0] = item->accelerator;
+ 			buf[1] = '\x0';
+ 
++#ifdef MENU_COLOR
++			if (iflags.use_menu_color &&
++			    (menucolr = get_menu_coloring(item->str, &color,&attr))) {
++			    /* TODO: use attr too */
++			    if (color != NO_COLOR)
++				SetTextColor(lpdis->hDC, nhcolor_to_RGB(color));
++			}
++#endif
++
+ 			SetRect( &drawRect, x, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom );
+ 			DrawText(lpdis->hDC, NH_A2W(buf, wbuf, 2), 1, &drawRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+ 		}

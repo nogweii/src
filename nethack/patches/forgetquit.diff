@@ -1,0 +1,69 @@
+--- nh343off/src/end.c	Mon Dec  8 01:39:14 2003
++++ nh343forgq/src/end.c	Sat Dec 13 14:25:52 2003
+@@ -540,6 +540,9 @@
+ 	char kilbuf[BUFSZ], pbuf[BUFSZ];
+ 	winid endwin = WIN_ERR;
+ 	boolean bones_ok, have_windows = iflags.window_inited;
++#ifdef PROMPT_LOGEXP
++	boolean update_log;
++#endif
+ 	struct obj *corpse = (struct obj *)0;
+ 	long umoney;
+ 
+@@ -732,7 +735,13 @@
+ 		ensure that it isn't used again */
+ 	    corpse = (struct obj *)0;
+ 	}
+-
++#ifdef PROMPT_LOGEXP
++	if (wizard || discover) {
++	  update_log = (yn("Update logfile?") == 'y');
++	} else {
++	  update_log = TRUE;
++	}
++#endif
+ 	/* update gold for the rip output, which can't use hidden_gold()
+ 	   (containers will be gone by then if bones just got saved...) */
+ #ifndef GOLDOBJ
+@@ -901,12 +910,18 @@
+ 	/* "So when I die, the first thing I will see in Heaven is a
+ 	 * score list?" */
+ 	if (flags.toptenwin) {
++#ifdef PROMPT_LOGEXP
++	    if (update_log)
++#endif
+ 	    topten(how);
+ 	    if (have_windows)
+ 		exit_nhwindows((char *)0);
+ 	} else {
+ 	    if (have_windows)
+ 		exit_nhwindows((char *)0);
++#ifdef PROMPT_LOGEXP
++	    if (update_log)
++#endif
+ 	    topten(how);
+ 	}
+ 
+--- nh343off/src/topten.c	Mon Dec  8 01:39:14 2003
++++ nh343forgq/src/topten.c	Sat Dec 13 14:25:52 2003
+@@ -361,6 +361,20 @@
+ 	    }
+ 	    goto showwin;
+ 	}
++#ifdef FORGET_QUITTER
++	if (how == QUIT) {
++	    char pbuf[]="Since you quit, the score list will not be checked.";
++	    topten_print("");
++	    topten_print(pbuf);
++#ifdef DUMP_LOG
++	    if (dump_fn) {
++		dump("", "");
++		dump("", pbuf);
++	    }
++#endif
++	    goto showwin;
++	}
++#endif
+ 
+ 	if (!lock_file(RECORD, SCOREPREFIX, 60))
+ 		goto destroywin;

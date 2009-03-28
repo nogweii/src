@@ -1,0 +1,56 @@
+diff -pruN mutt-1.5.4.orig/doc/manual.sgml.head mutt-1.5.4/doc/manual.sgml.head
+--- mutt-1.5.4.orig/doc/manual.sgml.head	2003-03-04 08:49:49.000000000 +0100
++++ mutt-1.5.4/doc/manual.sgml.head	2003-07-22 20:15:47.000000000 +0200
+@@ -1525,7 +1525,7 @@ which allows you to reset all variables 
+ 
+ <sect1>Reading initialization commands from another file<label id="source">
+ <p>
+-Usage: <tt/source/ <em/filename/
++Usage: <tt/source/ <em/filename/ &lsqb; <em/filename/ ... &rsqb;
+ 
+ This command allows the inclusion of initialization commands
+ from other files.  For example, I place all of my aliases in
+diff -pruN mutt-1.5.4.orig/init.c mutt-1.5.4/init.c
+--- mutt-1.5.4.orig/init.c	2003-03-04 08:49:48.000000000 +0100
++++ mutt-1.5.4/init.c	2003-07-22 20:15:47.000000000 +0200
+@@ -1289,20 +1289,24 @@ static int source_rc (const char *rcfile
+ static int parse_source (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
+ {
+   char path[_POSIX_PATH_MAX];
++  int rc = 0;
+ 
+-  if (mutt_extract_token (tmp, s, 0) != 0)
++  do
+   {
+-    snprintf (err->data, err->dsize, _("source: error at %s"), s->dptr);
+-    return (-1);
+-  }
+-  if (MoreArgs (s))
+-  {
+-    strfcpy (err->data, _("source: too many arguments"), err->dsize);
+-    return (-1);
++    if (mutt_extract_token (tmp, s, 0) != 0)
++    {
++      snprintf (err->data, err->dsize, _("source: error at %s"), s->dptr);
++      return (-1);
++    }
++
++    strfcpy (path, tmp->data, sizeof (path));
++    mutt_expand_path (path, sizeof (path));
++
++    rc += source_rc (path, err);
+   }
+-  strfcpy (path, tmp->data, sizeof (path));
+-  mutt_expand_path (path, sizeof (path));
+-  return (source_rc (path, err));
++  while (MoreArgs (s));
++
++  return ((rc < 0) ? -1 : 0);
+ }
+ 
+ /* line		command to execute
+diff -pruN mutt-1.5.4.orig/PATCHES mutt-1.5.4/PATCHES
+--- mutt-1.5.4.orig/PATCHES	2003-03-19 22:33:37.000000000 +0100
++++ mutt-1.5.4/PATCHES	2003-07-22 20:15:47.000000000 +0200
+@@ -1,0 +1 @@
++patch-1.5.4.cd.source_multiple.2

@@ -1,0 +1,45 @@
+--- nh343off/src/files.c	2003-12-14 21:06:10.000000000 +0200
++++ nh343bon/src/files.c	2003-12-14 21:39:45.000000000 +0200
+@@ -57,7 +57,7 @@
+ #endif
+ 
+ #if !defined(MFLOPPY) && !defined(VMS) && !defined(WIN32)
+-char bones[] = "bonesnn.xxx";
++char bones[] = "bones/bonesnn.xxx";
+ char lock[PL_NSIZ+14] = "1lock"; /* long enough for uid+name+.99 */
+ #else
+ # if defined(MFLOPPY)
+@@ -614,8 +614,14 @@
+ 	s_level *sptr;
+ 	char *dptr;
+ 
++#ifdef UNIX
++	Sprintf(file, "bones/bon%c%s", dungeons[lev->dnum].boneid,
++			In_quest(lev) ? urole.filecode : "0");
++#else
+ 	Sprintf(file, "bon%c%s", dungeons[lev->dnum].boneid,
+ 			In_quest(lev) ? urole.filecode : "0");
++#endif
+ 	dptr = eos(file);
+ 	if ((sptr = Is_special(lev)) != 0)
+ 	    Sprintf(dptr, ".%c", sptr->boneid);
+--- nh343off/sys/unix/Makefile.top	2003-12-08 01:39:13.000000000 +0200
++++ nh343bon/sys/unix/Makefile.top	2003-12-18 20:50:10.000000000 +0200
+@@ -234,12 +234,12 @@
+ # set up the directories
+ # not all mkdirs have -p; those that don't will create a -p directory
+ 	-mkdir -p $(SHELLDIR)
+-	-rm -rf $(GAMEDIR) $(VARDIR)
+-	-mkdir -p $(GAMEDIR) $(VARDIR) $(VARDIR)/save
++#	-rm -rf $(GAMEDIR) $(VARDIR)
++	-mkdir -p $(GAMEDIR) $(VARDIR) $(VARDIR)/save $(VARDIR)/bones
+ 	-rmdir ./-p
+-	-$(CHOWN) $(GAMEUID) $(GAMEDIR) $(VARDIR) $(VARDIR)/save
+-	$(CHGRP) $(GAMEGRP) $(GAMEDIR) $(VARDIR) $(VARDIR)/save
+-	chmod $(DIRPERM) $(GAMEDIR) $(VARDIR) $(VARDIR)/save
++	-$(CHOWN) $(GAMEUID) $(GAMEDIR) $(VARDIR) $(VARDIR)/save $(VARDIR)/bones
++	$(CHGRP) $(GAMEGRP) $(GAMEDIR) $(VARDIR) $(VARDIR)/save $(VARDIR)/bones
++	chmod $(DIRPERM) $(GAMEDIR) $(VARDIR) $(VARDIR)/save $(VARDIR)/bones
+ # set up the game files
+ 	( $(MAKE) dofiles )
+ # set up some additional files

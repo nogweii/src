@@ -1,0 +1,272 @@
+diff -urd nh343dump/dat/opthelp nh343extb/dat/opthelp
+--- nh343dump/dat/opthelp	2006-06-26 09:53:58.000000000 +0300
++++ nh343extb/dat/opthelp	2006-06-26 14:16:50.000000000 +0300
+@@ -61,6 +61,10 @@
+ Boolean option if MFLOPPY was set at compile time:
+ checkspace check free disk space before writing files to disk     [TRUE]
+ 
++Boolean option if SHOW_BORN was set at compile time:
++showborn   show numbers of created monsters after the number
++           vanquished                                             [FALSE]
++
+ Boolean option if EXP_ON_BOTL was set at compile time:
+ showexp    display your accumulated experience points             [FALSE]
+ 
+diff -urd nh343dump/dat/wizhelp nh343extb/dat/wizhelp
+--- nh343dump/dat/wizhelp	2003-12-08 01:39:13.000000000 +0200
++++ nh343extb/dat/wizhelp	2006-06-26 14:16:50.000000000 +0300
+@@ -16,6 +16,7 @@
+ #panic == panic test
+ #polyself == polymorph self
+ #seenv == show seen vectors
++#showkills == show numbers of monsters killed
+ #stats == show memory statistics
+ #timeout == look at timeout queue
+ #vision == show vision array
+diff -urd nh343dump/doc/Guidebook.mn nh343extb/doc/Guidebook.mn
+--- nh343dump/doc/Guidebook.mn	2006-06-26 09:53:58.000000000 +0300
++++ nh343extb/doc/Guidebook.mn	2006-06-26 14:16:50.000000000 +0300
+@@ -2094,6 +2094,10 @@
+ Control what parts of the score list you are shown at the end (ex.
+ ``scores:5 top scores/4 around my score/own scores'').  Only the first
+ letter of each category (`t', `a', or `o') is necessary.
++.lp showborn
++When the game ends, show the number of each monster created
++in the "Vanquished creatures" list, if it differs from the
++number of those monsters killed.
+ .lp showexp
+ Show your accumulated experience points on bottom line (default off).
+ .lp showrace
+diff -urd nh343dump/doc/Guidebook.tex nh343extb/doc/Guidebook.tex
+--- nh343dump/doc/Guidebook.tex	2006-06-26 09:53:58.000000000 +0300
++++ nh343extb/doc/Guidebook.tex	2006-06-26 14:16:50.000000000 +0300
+@@ -2566,6 +2566,11 @@
+ ``{\tt scores:5top scores/4around my score/own scores}'').  Only the first
+ letter of each category (`{\tt t}', `{\tt a}' or `{\tt o}') is necessary.
+ %.lp
++\item[\ib{showborn}]
++When the game ends, show the number of each monster created
++in the ``Vanquished creatures'' list, if it differs from the
++number of those monsters killed.
++%.lp
+ \item[\ib{showexp}]
+ Show your accumulated experience points on bottom line (default off).
+ %.lp
+diff -urd nh343dump/doc/Guidebook.txt nh343extb/doc/Guidebook.txt
+--- nh343dump/doc/Guidebook.txt	2006-06-26 09:53:58.000000000 +0300
++++ nh343extb/doc/Guidebook.txt	2006-06-26 14:16:50.000000000 +0300
+@@ -2700,6 +2700,11 @@
+             Only the first letter of each category (`t', `a',  or  `o')  is
+             necessary.
+ 
++          showborn
++               When the game ends, show the number of each monster created
++               in the "Vanquished creatures" list, if it differs from the
++               number of those monsters killed.
++
+           showexp
+             Show your accumulated experience points on bottom line (default
+             off).
+diff -urd nh343dump/include/flag.h nh343extb/include/flag.h
+--- nh343dump/include/flag.h	2003-12-08 01:39:13.000000000 +0200
++++ nh343extb/include/flag.h	2006-06-26 14:16:50.000000000 +0300
+@@ -216,6 +216,9 @@
+ 	boolean lan_mail;	/* mail is initialized */
+ 	boolean lan_mail_fetched; /* mail is awaiting display */
+ #endif
++#ifdef SHOW_BORN
++	boolean show_born;	/* show numbers of created monsters */
++#endif
+ /*
+  * Window capability support.
+  */
+diff -urd nh343dump/src/cmd.c nh343extb/src/cmd.c
+--- nh343dump/src/cmd.c	2006-06-26 09:53:58.000000000 +0300
++++ nh343extb/src/cmd.c	2006-06-26 14:16:50.000000000 +0300
+@@ -123,6 +123,10 @@
+ STATIC_PTR int NDECL(wiz_show_vision);
+ STATIC_PTR int NDECL(wiz_mon_polycontrol);
+ STATIC_PTR int NDECL(wiz_show_wmodes);
++STATIC_PTR int NDECL(wiz_showkills);	/* showborn patch */
++#ifdef SHOW_BORN
++extern void FDECL(list_vanquished, (int, BOOLEAN_P)); /* showborn patch */
++#endif /* SHOW_BORN */
+ #if defined(__BORLANDC__) && !defined(_WIN32)
+ extern void FDECL(show_borlandc_stats, (winid));
+ #endif
+@@ -756,6 +760,13 @@
+ 	return 0;
+ }
+ 
++/* #showkills command */
++STATIC_PTR int wiz_showkills()		/* showborn patch */
++{
++	list_vanquished('y', FALSE);
++	return 0;
++}
++
+ #endif /* WIZARD */
+ 
+ 
+@@ -1911,6 +1922,7 @@
+ 	{(char *)0, (char *)0, donull, TRUE},
+ #endif
+ 	{(char *)0, (char *)0, donull, TRUE},
++	{(char *)0, (char *)0, donull, TRUE}, /* showkills (showborn patch) */
+         {(char *)0, (char *)0, donull, TRUE},
+ 	{(char *)0, (char *)0, donull, TRUE},
+ 	{(char *)0, (char *)0, donull, TRUE},
+@@ -1936,6 +1948,7 @@
+ 	{"portdebug", "wizard port debug command", wiz_port_debug, TRUE},
+ #endif
+ 	{"seenv", "show seen vectors", wiz_show_seenv, TRUE},
++	{"showkills", "show list of monsters killed", wiz_showkills, TRUE},
+ 	{"stats", "show memory statistics", wiz_show_stats, TRUE},
+ 	{"timeout", "look at timeout queue", wiz_timeout_queue, TRUE},
+ 	{"vision", "show vision array", wiz_show_vision, TRUE},
+diff -urd nh343dump/src/end.c nh343extb/src/end.c
+--- nh343dump/src/end.c	2006-06-26 12:41:46.000000000 +0300
++++ nh343extb/src/end.c	2006-06-26 14:22:44.000000000 +0300
+@@ -39,7 +39,7 @@
+ STATIC_DCL void FDECL(sort_valuables, (struct valuable_data *,int));
+ STATIC_DCL void FDECL(artifact_score, (struct obj *,BOOLEAN_P,winid));
+ STATIC_DCL void FDECL(savelife, (int));
+-STATIC_DCL void FDECL(list_vanquished, (CHAR_P,BOOLEAN_P));
++void FDECL(list_vanquished, (CHAR_P,BOOLEAN_P));
+ #ifdef DUMP_LOG
+ extern char msgs[][BUFSZ];
+ extern int lastmsg;
+@@ -1181,7 +1181,7 @@
+ 	nethack_exit(status);
+ }
+ 
+-STATIC_OVL void
++void		/* showborn patch */
+ list_vanquished(defquery, ask)
+ char defquery;
+ boolean ask;
+@@ -1257,6 +1257,11 @@
+ 			else
+ 			    Sprintf(buf, "%d %s",
+ 				    nkilled, makeplural(mons[i].mname));
++#ifdef SHOW_BORN
++			if (iflags.show_born && nkilled != mvitals[i].born)
++			    Sprintf(buf + strlen(buf), " (%d created)",
++				    (int) mvitals[i].born);
++#endif
+ 		    }
+ 		    if (c == 'y') putstr(klwin, 0, buf);
+ #ifdef DUMP_LOG
+@@ -1313,21 +1318,48 @@
+ #endif
+ {
+     register int i;
+-    int ngenocided;
++    int ngenocided=0;
++#ifdef SHOW_EXTINCT
++    int nextincted=0;
++#endif
+     char c;
+     winid klwin;
+     char buf[BUFSZ];
+ 
++    /* get totals first */
++#ifdef SHOW_EXTINCT
++    for (i = LOW_PM; i < NUMMONS; i++) {
++	if (mvitals[i].mvflags & G_GENOD)
++	    ngenocided++;
++	else if ( (mvitals[i].mvflags & G_GONE) && !(mons[i].geno & G_UNIQ) )
++	    nextincted++;
++    }
+     ngenocided = num_genocides();
++#endif
+ 
+     /* genocided species list */
+-    if (ngenocided != 0) {
++    if (ngenocided != 0
++#ifdef SHOW_EXTINCT
++      || nextincted != 0
++#endif
++    ) {
++#ifdef SHOW_EXTINCT
++	if (nextincted != 0)
++	  c = ask ?
++	  yn_function("Do you want a list of species genocided or extinct?",
++		      ynqchars, defquery) : defquery;
++       else
++#endif
+ 	c = ask ? yn_function("Do you want a list of species genocided?",
+ 			      ynqchars, defquery) : defquery;
+ 	if (c == 'q') done_stopprint++;
+ 	if (c == 'y') {
+ 	    klwin = create_nhwindow(NHW_MENU);
++#ifdef SHOW_EXTINCT
++	    Sprintf(buf, "Genocided or extinct species:");
++#else
+ 	    Sprintf(buf, "Genocided species:");
++#endif
+ 	    putstr(klwin, 0, buf);
+ 	    putstr(klwin, 0, "");
+ #ifdef DUMP_LOG
+@@ -1335,13 +1367,21 @@
+ #endif
+ 
+ 	    for (i = LOW_PM; i < NUMMONS; i++)
++#ifdef SHOW_EXTINCT
++	      if (mvitals[i].mvflags & G_GONE && !(mons[i].geno & G_UNIQ) ){
++#else
+ 		if (mvitals[i].mvflags & G_GENOD) {
++#endif
+ 		    if ((mons[i].geno & G_UNIQ) && i != PM_HIGH_PRIEST)
+ 			Sprintf(buf, "%s%s",
+ 				!type_is_pname(&mons[i]) ? "" : "the ",
+ 				mons[i].mname);
+ 		    else
+ 			Strcpy(buf, makeplural(mons[i].mname));
++#ifdef SHOW_EXTINCT
++		    if( !(mvitals[i].mvflags & G_GENOD) )
++			Strcat(buf, " (extinct)");
++#endif
+ 		    putstr(klwin, 0, buf);
+ #ifdef DUMP_LOG
+ 		    if (want_dump)  dump("  ", buf);
+@@ -1349,11 +1389,26 @@
+ 		}
+ 
+ 	    putstr(klwin, 0, "");
++#ifdef SHOW_EXTINCT
++	    if (ngenocided>0) {
++#endif
+ 	    Sprintf(buf, "%d species genocided.", ngenocided);
+ 	    putstr(klwin, 0, buf);
+ #ifdef DUMP_LOG
+ 	    if (want_dump)  dump("  ", buf);
+ #endif
++#ifdef SHOW_EXTINCT
++	    }
++	    if (nextincted>0) {
++	      Sprintf(buf, "%d species extinct.", nextincted);
++	      putstr(klwin, 0, buf);
++#ifdef DUMP_LOG
++	      if (want_dump) dump(" ", buf);
++#endif
++#endif /* SHOW_EXTINCT */
++#ifdef DUMP_LOG
++	      if (want_dump)  dump("", "");
++#endif
+ 
+ 	    display_nhwindow(klwin, TRUE);
+ 	    destroy_nhwindow(klwin);
+diff -urd nh343dump/src/options.c nh343extb/src/options.c
+--- nh343dump/src/options.c	2006-06-26 09:53:58.000000000 +0300
++++ nh343extb/src/options.c	2006-06-26 14:16:50.000000000 +0300
+@@ -160,6 +160,9 @@
+ #else
+ 	{"sanity_check", (boolean *)0, FALSE, SET_IN_FILE},
+ #endif
++#ifdef SHOW_BORN
++	{"showborn", &iflags.show_born, FALSE, SET_IN_GAME},
++#endif
+ #ifdef EXP_ON_BOTL
+ 	{"showexp", &flags.showexp, FALSE, SET_IN_GAME},
+ #else

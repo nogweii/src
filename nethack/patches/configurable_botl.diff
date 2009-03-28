@@ -1,0 +1,928 @@
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.1-orig/README.cnf_botl nethack-3.4.1-cnfbotl/README.cnf_botl
+--- nethack-3.4.1-orig/README.cnf_botl	Thu Jan  1 02:00:00 1970
++++ nethack-3.4.1-cnfbotl/README.cnf_botl	Mon Feb 24 22:01:05 2003
+@@ -0,0 +1,181 @@
++
++Patch: Configurable Statuslines v2.1
++---
++
++ Allows the user to change what is shown on the bottom statuslines,
++ by setting the options in the config file.
++
++
++ Here's an example of how the default statuslines would look:
++ 
++OPTIONS=statline1:"%-.10a the %-12b St:%c Dx:%d Co:%e In:%f Wi:%g Ch:%h %i %y"
++OPTIONS=statline2:"%-7k %$:%-4l HP:%n(%m) Pw:%p(%o) AC:%-2q %t %v %w"
++
++ and here's alternative ones:
++
++OPTIONS=statline1:"%-.10a the %b S:%c D:%d C:%e I:%f W:%g C:%h %.3i %R %Z"
++OPTIONS=statline2:"%-7k %$:%-4l HP:%n(%m) Pw:%p(%o) AC:%-2q %t %v %S%T%U%V%W%X%Y"
++ or
++OPTIONS=statline2:'%-7k %$:%-2l HP:%{s:n;m}%n%{c}(%m) Pw:%{s:p;o}%p%{c}(%o) AC:%-2q %t %v %w'
++
++
++Variables and commands begin with percent sign ('%'), everything else before
++and after is shown normally.
++
++Variable format:
++
++  %[-][x][.y]z
++  
++  -	field output is left justified
++  x	field length
++  .y	number of characters to output on the field
++  z	one of the following:
++
++	  % = "%"
++	  $ = symbol for gold
++
++	  a = name
++	  b = rank
++
++	  c = strength
++	  d = dexterity
++	  e = constitution
++	  f = intelligence
++	  g = wisdom
++	  h = charisma
++
++	  i = alignment
++
++	  j = dungeon depth (number)
++	  k = dungeon name  ("Dlvl:%j", varies depending on the branch)
++
++	  l = gold
++
++	  m = max hit points
++	  n = current hit points
++
++	  o = max power
++	  p = current power
++
++	  q = armor class
++
++	  r = experience level (or hit dice if polymorphed)
++	  s = experience points (empty string if !showexp)
++	  t = "Exp:%r"  OR  "Xp:%r/%s"   depending on showexp-option,
++	      		OR  "HD:%r"      if polymorphed
++
++	  u = time   (or empty string if time-option is off)
++	  v = "T:%u" (or empty string if time-option if off)
++
++	  w = all status flags (blind, ill, foodpois, ...)
++
++	  x = score   (if compiled with SCORE_ON_BOTL, else empty string)
++	  y = "S:%x"  (if compiled with SCORE_ON_BOTL, else empty string)
++
++	  R = status: encumbrance level
++	  S = status: slime
++	  T = status: hallu
++	  U = status: stun
++	  V = status: blind
++	  W = status: ill
++	  X = status: foodpois
++	  Y = status: conf
++	  Z = status: hunger level
++
++
++Command format:
++
++  %{x[:y[;y]]}
++  
++  y	optional parameters for the command, separated with ';'
++  x	command identifier character, one of the following:
++  
++	  c = Set color and attribute.
++	      Parameters: 0, 1, or 2.
++	      First parameter is color, the second parameter.
++	      If parameters are omitted, the color and attribute are
++	       reset to defaults, if only one parameter is given, it's
++	       assumed to be a color.
++	      Valid values for color are black, red, green, brown, blue,
++	       magenta, cyan, gray, orange, lightgreen, yellow, lightblue,
++	       lightmagenta, lightcyan and white.
++	      Valid values for attributes are none, bold, dim, underline,
++	       blink, and inverse.
++	      You can also use numbers instead of named colors or attributes,
++	      eg. 0 is black, 1 is red, 2 is green, and so on.
++	      Note that the terminal is free to interpret the colors and
++	      attributes however it wants.
++	      Examples: %{c}
++			%{c:green}
++			%{c:blue;bold}
++			%{c:2;1}
++
++	  s = Use color "slide".
++	      Changes the printing color according to the parameters.
++	      The smaller the first parameter is when compared to the
++	      second parameter, the more eye-catching colors are used.
++	      (The colors are orange, yellow, white and no color)
++	      
++	      Parameters: 2.
++	      First is the current value, Second is the maximum value.
++	      You can either use constant positive integer values, or
++	      variable characters without the '%'.
++	      Examples: HP:%{s:n;m}%n%{c}(%m)
++	                Pw:%{s:p;o}%p%{c}(%o)
++
++
++
++
++
++For example, if the character's name is "Abcdefg":
++
++options str      status line
++"%10a"       =>  "   Abcdefg"
++"%-10a"      =>  "Abcdefg   "
++"%.3a"       =>  "Abc"
++"%10.3a"     =>  "       Abc"
++"%-10.3a"    =>  "Abc       "
++
++"%{c:green;bold}%a"  => Prints the player's name with green and bold.
++"HP:%{s:n;m}%n%{c}(%m)" => Prints current hitpoints with different colors,
++                           depending on how much you have compared to the
++			   maximum hitpoints.
++
++
++Affected files:
++---
++ src/save.c
++ src/botl.c
++ src/options.c
++ 
++
++
++Todo:
++---
++ -still only works with TTY
++ -win/tty/wintty.c:tty_putstr() changes the string, but it might not
++  be in the same 'format' as it expects. (eg. it removes chars before 
++  'St:')
++ 
++ v2.1
++ -updated to use 3.4.1 codebase
++ -compile time option CONF_BOTL
++ 
++ v2.0
++ -cleaned up the code a bit
++ -you can now use colors and attributes
++
++ v1.1
++ -uses Nethack 3.4.0 codebase
++ -major code cleanup
++
++ v1.0
++ -initial release
++
++
++---
++ Pasi Kallinen
++ pkalli@cs.joensuu.fi
++
++
++ You're free to (ab)use the code in any way you wish.
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.1-orig/include/config.h nethack-3.4.1-cnfbotl/include/config.h
+--- nethack-3.4.1-orig/include/config.h	Mon Feb 24 19:49:43 2003
++++ nethack-3.4.1-cnfbotl/include/config.h	Mon Feb 24 21:56:20 2003
+@@ -350,6 +350,9 @@
+  * bugs left here.
+  */
+ 
++#ifdef TTY_GRAPHICS
++# define CONF_BOTL	/* Configurable status lines */
++#endif
+ /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+ 
+ /* End of Section 5 */
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.1-orig/include/extern.h nethack-3.4.1-cnfbotl/include/extern.h
+--- nethack-3.4.1-orig/include/extern.h	Mon Feb 24 19:36:25 2003
++++ nethack-3.4.1-cnfbotl/include/extern.h	Mon Feb 24 21:54:08 2003
+@@ -131,6 +131,10 @@
+ E int FDECL(describe_level, (char *));
+ E const char *FDECL(rank_of, (int,SHORT_P,BOOLEAN_P));
+ E void NDECL(bot);
++#ifdef CONF_BOTL
++E void FDECL(parsebotl, (char *, int));
++E void NDECL(free_botlines);
++#endif
+ 
+ /* ### cmd.c ### */
+ 
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.1-orig/src/botl.c nethack-3.4.1-cnfbotl/src/botl.c
+--- nethack-3.4.1-orig/src/botl.c	Mon Feb 24 19:36:25 2003
++++ nethack-3.4.1-cnfbotl/src/botl.c	Mon Feb 24 22:01:49 2003
+@@ -3,6 +3,9 @@
+ /* NetHack may be freely redistributed.  See license for details. */
+ 
+ #include "hack.h"
++#ifdef CONF_BOTL
++# include <ctype.h>
++#endif
+ 
+ #ifdef OVL0
+ extern const char *hu_stat[];	/* defined in eat.c */
+@@ -16,8 +19,10 @@
+ 	"Overloaded"
+ };
+ 
++#ifndef CONF_BOTL
+ STATIC_DCL void NDECL(bot1);
+ STATIC_DCL void NDECL(bot2);
++#endif /* !CONF_BOTL */
+ #endif /* OVL0 */
+ 
+ /* MAXCO must hold longest uncompressed status line, and must be larger
+@@ -44,6 +49,58 @@
+ 
+ #ifdef OVL1
+ 
++#ifdef CONF_BOTL
++#define BOTLPARMTYP_TXT 0 /* printable text           eg. "HP: "  */
++#define BOTLPARMTYP_VAR 1 /* variable and formatting  eg. "%-2.5a" */
++#define BOTLPARMTYP_CMD 2 /* command          eg. "%{_blue&blink}" */
++
++struct botlparam {
++   struct botlparam *nextparam;
++   xchar bptyp;  /* one of BOTLPARMTYP_foo */
++   char valuechar; /* the variable */
++   char *params;         /* variable formatting string */
++   int parami1, parami2;
++};
++
++#define MAX_BOTLINES 2
++
++static struct botlparam *botlbase[MAX_BOTLINES] = { NULL, NULL };
++
++static const struct {
++   const char *name;
++   const int color;
++} colornames[] = {
++   {"black", CLR_BLACK},
++   {"red", CLR_RED},
++   {"green", CLR_GREEN},
++   {"brown", CLR_BROWN},
++   {"blue", CLR_BLUE},
++   {"magenta", CLR_MAGENTA},
++   {"cyan", CLR_CYAN},
++   {"gray", CLR_GRAY},
++   {"orange", CLR_ORANGE},
++   {"lightgreen", CLR_BRIGHT_GREEN},
++   {"yellow", CLR_YELLOW},
++   {"lightblue", CLR_BRIGHT_BLUE},
++   {"lightmagenta", CLR_BRIGHT_MAGENTA},
++   {"lightcyan", CLR_BRIGHT_CYAN},
++   {"white", CLR_WHITE}
++};
++
++static const struct {
++   const char *name;
++   const int attr;
++} attrnames[] = {
++     {"none", ATR_NONE},
++     {"bold", ATR_BOLD},
++     {"dim", ATR_DIM},
++     {"underline", ATR_ULINE},
++     {"blink", ATR_BLINK},
++     {"inverse", ATR_INVERSE}
++
++};
++#endif /* CONF_BOTL */
++
+ /* convert experience level (1..30) to rank index (0..8) */
+ int
+ xlev_to_rank(xlev)
+@@ -165,6 +222,7 @@
+ }
+ #endif
+ 
++#ifndef CONF_BOTL
+ STATIC_OVL void
+ bot1()
+ {
+@@ -218,6 +276,7 @@
+ 	curs(WIN_STATUS, 1, 0);
+ 	putstr(WIN_STATUS, 0, newbot1);
+ }
++#endif /* !CONF_BOTL */
+ 
+ /* provide the name of the current level for display by various ports */
+ int
+@@ -228,20 +287,37 @@
+ 
+ 	/* TODO:	Add in dungeon name */
+ 	if (Is_knox(&u.uz))
++#ifndef CONF_BOTL
+ 		Sprintf(buf, "%s ", dungeons[u.uz.dnum].dname);
++#else
++		Sprintf(buf, "%s", dungeons[u.uz.dnum].dname);
++#endif
+ 	else if (In_quest(&u.uz))
++#ifndef CONF_BOTL
+ 		Sprintf(buf, "Home %d ", dunlev(&u.uz));
++#else
++		Sprintf(buf, "Home %d", dunlev(&u.uz));
++#endif
+ 	else if (In_endgame(&u.uz))
+ 		Sprintf(buf,
++#ifndef CONF_BOTL
+ 			Is_astralevel(&u.uz) ? "Astral Plane " : "End Game ");
++#else
++			Is_astralevel(&u.uz) ? "Astral Plane" : "End Game");
++#endif
+ 	else {
+ 		/* ports with more room may expand this one */
++#ifndef CONF_BOTL
+ 		Sprintf(buf, "Dlvl:%-2d ", depth(&u.uz));
++#else
++		Sprintf(buf, "Dlvl:%-2d", depth(&u.uz));
++#endif
+ 		ret = 0;
+ 	}
+ 	return ret;
+ }
+ 
++#ifndef CONF_BOTL
+ STATIC_OVL void
+ bot2()
+ {
+@@ -303,6 +379,509 @@
+ 	bot2();
+ 	flags.botl = flags.botlx = 0;
+ }
++
++#else /* CONF_BOTL is defined */
++
++/* Deallocates memory used by botlbase[botlnum] */
++void 
++deallocbotlparam(botlnum)
++  const int botlnum;
++{
++   if ((botlnum >= 0) && (botlnum < MAX_BOTLINES)) {
++      struct botlparam *botlp = 0;
++      struct botlparam *tmpbotlp = botlbase[botlnum];
++      while (tmpbotlp) {
++	 botlp = tmpbotlp;
++	 tmpbotlp = tmpbotlp->nextparam;
++	 free(botlp->params);
++	 free(botlp);
++      }
++      botlbase[botlnum] = 0;
++   }
++}
++
++/* Frees all the memory taken by botlines */
++void
++free_botlines()
++{
++   int line;
++
++   for (line = 0; line < MAX_BOTLINES; line++) 
++     deallocbotlparam(line);
++}
++ 
++/* flips the chain in botlbase[basenum], because parsebotl() inserts
++   the params in wrong order into the chain */
++void
++flipbotlbase(basenum)
++int basenum;
++{
++   struct botlparam *b1 = 0;
++   
++   if ((basenum < 0) || (basenum >= MAX_BOTLINES)) return;
++
++   while (botlbase[basenum]) {
++      struct botlparam *tmpb = botlbase[basenum]->nextparam;
++      botlbase[basenum]->nextparam = b1;
++      b1 = botlbase[basenum];
++      botlbase[basenum] = tmpb;
++   }
++   botlbase[basenum] = b1;
++}
++
++/* Returns a string variable depending on valchar */
++char *
++botlvaluechar(valchar, buf)
++const char valchar;
++char *buf;
++{
++   int hp = Upolyd ? u.mh : u.uhp;
++   int hpmax = Upolyd ? u.mhmax : u.uhpmax;
++   int cap = near_capacity();
++
++   buf[0] = '\0';
++   
++   switch (valchar) {
++    case '%': /* percent sign */
++        Strcpy(buf, "%");
++        break;
++    case '$': /* gold symbol */
++        Sprintf(buf, "%c", oc_syms[COIN_CLASS]);
++	break;
++    case 'a': /* Player's name */
++  	Strcpy(buf, plname);
++	if('a' <= buf[0] && buf[0] <= 'z') buf[0] += 'A'-'a';
++        break;
++    case 'b': /* Player's rank */
++    	if (Upolyd) {
++	   char mbot[BUFSZ];
++	   int k = 0;
++
++	   Strcpy(mbot, mons[u.umonnum].mname);
++	   while(mbot[k] != 0) {
++	      if ((k == 0 || (k > 0 && mbot[k-1] == ' ')) &&
++		  'a' <= mbot[k] && mbot[k] <= 'z')
++		mbot[k] += 'A' - 'a';
++	      k++;
++	   }
++	   Sprintf(buf, "%s", mbot);
++	} else Sprintf(buf, "%s", rank());
++        break;
++    case 'c': /* current Str */
++      	if (ACURR(A_STR) > 18) {
++	   if (ACURR(A_STR) > STR18(100))
++	     Sprintf(buf,"%2d",ACURR(A_STR)-100);
++	   else if (ACURR(A_STR) < STR18(100))
++	     Sprintf(buf, "18/%02d",ACURR(A_STR)-18);
++	   else
++	     Sprintf(buf,"18/**");
++	} else Sprintf(buf, "%-1d",ACURR(A_STR));
++        break;
++    case 'd': /* current Dex */ 
++        Sprintf(buf, "%-1d", ACURR(A_DEX));
++        break;
++    case 'e': /* current Con */ 
++        Sprintf(buf, "%-1d", ACURR(A_CON));
++        break;
++    case 'f': /* current Int */ 
++        Sprintf(buf, "%-1d", ACURR(A_INT));
++        break;
++    case 'g': /* current Wis */ 
++        Sprintf(buf, "%-1d", ACURR(A_WIS));
++        break;
++    case 'h': /* current Cha */ 
++        Sprintf(buf, "%-1d", ACURR(A_CHA));
++        break;  
++    case 'i': /* current Alignment */
++	Sprintf(buf, (u.ualign.type == A_CHAOTIC) ? "Chaotic" :
++			(u.ualign.type == A_NEUTRAL) ? "Neutral" : "Lawful");
++        break;
++    case 'j': /* dungeon depth */
++        Sprintf(buf, "%-1d", depth(&u.uz));
++        break;
++    case 'k': /* dungeon name */
++        (void) describe_level(buf);
++        break;
++    case 'l': /* gold */
++        Sprintf(buf, "%-1ld",
++#ifndef GOLDOBJ
++		u.ugold
++#else
++		money_cnt(invent)
++#endif
++		);
++        break;
++    case 'm': /* max HP */
++        Sprintf(buf, "%d", hpmax);
++        break;
++    case 'n': /* current HP */
++	if (hp < 0) hp = 0;
++        Sprintf(buf, "%d", hp);
++        break;
++    case 'o': /* max power */
++        Sprintf(buf, "%d", u.uenmax);
++        break;
++    case 'p': /* current power */
++        Sprintf(buf, "%d", u.uen);
++        break;
++    case 'q': /* AC */
++        Sprintf(buf, "%-1d", u.uac);
++        break;  
++    case 'r': /* experience level */
++      	if (Upolyd) Sprintf(buf, "%d", mons[u.umonnum].mlevel);
++#ifdef EXP_ON_BOTL
++	else if(flags.showexp) Sprintf(buf, "%u", u.ulevel);
++#endif
++	else Sprintf(buf, "%u", u.ulevel);
++        break;
++#ifdef EXP_ON_BOTL
++    case 's': /* experience points */
++	if(flags.showexp) Sprintf(buf, "%-1ld", u.uexp);
++        break;
++#endif
++    case 't': /* full experience string */
++ 	if (Upolyd) Sprintf(buf, "HD:%d", mons[u.umonnum].mlevel);
++ #ifdef EXP_ON_BOTL
++ 	else if(flags.showexp) Sprintf(buf, "Xp:%u/%-1ld", u.ulevel,u.uexp);
++ #endif
++ 	else Sprintf(buf, "Exp:%u", u.ulevel);
++        break;    
++    case 'u': /* time value */
++	if(flags.time) Sprintf(buf, "%ld", moves);
++        break;
++    case 'v': /* full time string */
++	if(flags.time) Sprintf(buf, "T:%ld", moves);
++        break;
++    case 'w': /* all misc. flags */
++        if (strcmp(hu_stat[u.uhs], "        "))
++	    Sprintf(buf, "%s", hu_stat[u.uhs]);
++	if(Confusion)	   Strcat(buf, " Conf");
++ 	if(Sick) {
++	   if (u.usick_type & SICK_VOMITABLE)    Strcat(buf, " FoodPois");
++	   if (u.usick_type & SICK_NONVOMITABLE) Strcat(buf, " Ill");
++ 	}
++	if(Blind)	   Strcat(buf, " Blind");
++	if(Stunned)	   Strcat(buf, " Stun");
++	if(Hallucination)  Strcat(buf, " Hallu");
++	if(Slimed)         Strcat(buf, " Slime");
++	if(cap > UNENCUMBERED) {
++	   Strcat(buf, " ");
++	   Strcat(buf, enc_stat[cap]);
++	}
++        break;
++#ifdef SCORE_ON_BOTL
++    case 'x': /* score value */
++	if (flags.showscore) Sprintf(buf, "%ld", botl_score());
++        break;
++    case 'y': /* full score string */
++	if (flags.showscore) Sprintf(buf, "S:%ld", botl_score());
++        break;
++#endif
++    case 'Z': /* Hunger Status */
++	if (strcmp(hu_stat[u.uhs], "        "))	
++	    Sprintf(buf, "%s", hu_stat[u.uhs]);
++        break;
++    case 'Y': /* Confusion status */
++	if (Confusion) Sprintf(buf, "%s", "Conf");
++        break;
++    case 'X': /* FoodPois status */
++	if ((Sick) && (u.usick_type & SICK_VOMITABLE)) 
++	   Sprintf(buf, "%s", "FoodPois");
++        break;
++    case 'W': /*Ill status */
++	if ((Sick) && (u.usick_type & SICK_NONVOMITABLE)) 
++	   Sprintf(buf, "%s", "Ill");
++        break;
++    case 'V': /* Blind status */
++	if (Blind) Sprintf(buf, "%s", "Blind");
++        break;
++    case 'U': /* Stun status */
++	if (Stunned) Sprintf(buf, "%s", "Stun");
++        break;
++    case 'T': /* Hallu status */
++	if (Hallucination) Sprintf(buf, "%s", "Hallu");
++        break;
++    case 'S': /* Slimed status */
++	if (Slimed) Sprintf(buf, "%s", "Slime");
++        break;
++    case 'R': /* Encumbrance status */
++	if (cap>UNENCUMBERED) Sprintf(buf, "%s", enc_stat[cap]);
++        break;    
++    default:;
++   }
++   return buf;
++}
++
++/* Shows the botl on screen */
++void
++showbotl(botlnum)
++const int botlnum;
++{
++    char tmpstr[BUFSZ], tmpbuf[BUFSZ], buf[BUFSZ];
++    struct botlparam *tmpparm;
++    int x = 1;
++    int color = NO_COLOR, attr = ATR_NONE;
++    int do_color_slide = -1;
++
++    if ((botlnum < 0) || (botlnum >= MAX_BOTLINES)) return;
++
++    tmpparm = botlbase[botlnum];
++
++    while (tmpparm) {
++	tmpbuf[0] = tmpstr[0] = buf[0] = '\0';
++
++	switch (tmpparm->bptyp) {
++	    case BOTLPARMTYP_TXT: {
++		curs(WIN_STATUS, x, botlnum);
++		putstr(WIN_STATUS, 0, tmpparm->params);
++		x += strlen(tmpparm->params);
++		break;
++	    }
++	    case BOTLPARMTYP_VAR: {
++		Sprintf(tmpstr, "%%%ss", tmpparm->params);
++		Sprintf(buf, tmpstr, botlvaluechar(tmpparm->valuechar, tmpbuf));
++		curs(WIN_STATUS, x, botlnum);
++		putstr(WIN_STATUS, 0, buf);
++		x += strlen(buf);
++		break;
++	    }
++	    case BOTLPARMTYP_CMD: {
++		switch (tmpparm->valuechar) {
++		    case 'c': { /* Set color and attribute */
++			if (iflags.wc_color && (color != NO_COLOR)) 
++			  term_end_color();
++			term_end_attr(attr);
++
++			if (iflags.wc_color) {
++			    color = tmpparm->parami1;
++			    if (color != NO_COLOR) {
++				term_end_color();
++				term_start_color(color);
++			    }
++			}
++			attr = tmpparm->parami2;
++			term_start_attr(attr);
++			break;
++		    }
++		    case 's': { /* Use color slider */
++			char slidebuf[BUFSZ];
++			long v1, v2;
++			char tmpc;
++			const static int slideri[5] =
++			     {CLR_ORANGE, CLR_YELLOW, CLR_WHITE, 
++			      NO_COLOR, NO_COLOR};
++
++			if (iflags.wc_color && (color != NO_COLOR)) 
++			  term_end_color();
++			term_end_attr(attr);
++
++			if (tmpparm->parami1 <= 0)
++			  v1 = -tmpparm->parami1;
++			else {
++			    tmpc = tmpparm->parami1;
++			    v1 = atoi(botlvaluechar(tmpc, slidebuf));
++			}
++			if (tmpparm->parami2 < 0)
++			  v2 = -tmpparm->parami2;
++			else {
++			    tmpc = tmpparm->parami2;
++			    v2 = atoi(botlvaluechar(tmpc, slidebuf));
++			}
++			if (iflags.wc_color) {
++			    int idx = (v1 * 5) / v2;
++			    if (idx < 0) idx = 0;
++			    if (idx >= 5) idx = 5 - 1;
++			    color = slideri[idx];
++			    if (color != NO_COLOR) {
++				term_end_color();
++				term_start_color(color);
++			    }
++			}
++			attr = ATR_NONE;
++			term_start_attr(attr);
++			break;
++		    }
++		    default: break;
++		}
++		break;
++	    }
++	    default: break;
++	}
++	tmpparm = tmpparm->nextparam;      
++    }
++    if (iflags.wc_color && (color != NO_COLOR)) term_end_color();
++    term_end_attr(attr);
++}
++
++struct botlparam *
++parsebotl_cmd(str)
++char *str;
++{
++    if (str) {
++	struct botlparam *botlp = (struct botlparam *) alloc(sizeof(struct botlparam));
++	char *params = (char *)0;
++
++	botlp->bptyp = BOTLPARMTYP_CMD;
++	botlp->valuechar = str[0];
++	str++;
++	if (*str && (*str == ':')) str++;
++	params = str;
++
++	switch (botlp->valuechar) {
++	    case 'c': { /* Set color and attribute */
++
++		int i, clr = NO_COLOR, atr = ATR_NONE;
++
++		if (*params) {
++		    for (i = 0; i < SIZE(colornames); i++)
++		      if (strstri(params, colornames[i].name)) {
++			  clr = colornames[i].color;
++			  break;
++		      }
++		    if ((i == SIZE(colornames)) && 
++			(*params >= '0' && *params <= '9')) {
++			clr = colornames[atoi(params) % SIZE(colornames)].color;
++		    }
++
++		    while (*params && (*params != ';')) params++;
++		    if (*params) {
++			for (i = 0; i < SIZE(attrnames); i++)
++			  if (strstri(params, attrnames[i].name)) {
++			      atr = attrnames[i].attr;
++			      break;
++			  }
++			if ((i == SIZE(attrnames)) && 
++			    (*params >= '0' && *params <= '9')) {
++			    atr = attrnames[atoi(params) % SIZE(attrnames)].attr;
++			}
++		    }
++		}
++
++		botlp->parami1 = clr;
++		botlp->parami2 = atr;
++		botlp->params = (char *)0;
++
++		break;
++	    }
++	    case 's': { /* Use color slide */
++		if (*params) {
++		    if (*params >= '0' && *params <= '9')
++		      botlp->parami1 = -atoi(params);
++		    else
++		      botlp->parami1 = *params;
++		}
++		while (*params && (*params != ';')) params++;
++		params++;
++		if (*params) {
++		    if (*params >= '0' && *params <= '9')
++		      botlp->parami2 = -atoi(params);
++		    else
++		      botlp->parami2 = *params;
++		}
++		break;
++	    }
++	    default:  break;
++	}
++
++	return botlp;
++    } else return 0;
++}
++
++/* Parse "%1.4s %d Yuck! %Z" or something like that into botlbase[botlnum] */
++void
++parsebotl(str, botlnum)
++   char *str;
++   int botlnum;
++{
++   char params[BUFSZ];
++   int params_pos = 0;
++   boolean hasquotes = FALSE;
++   struct botlparam *botlp = (struct botlparam *)0;
++
++   if ((botlnum < 0) || (botlnum >= MAX_BOTLINES)) return;
++
++   if (botlbase[botlnum]) deallocbotlparam(botlnum);
++
++   if (str && (strlen(str) > 1) 
++       && ((*str == '"') || (*str == '\'')) 
++       && (*str == str[strlen(str)-1])) {
++      hasquotes = TRUE;
++      str++;
++   }
++
++   while (*str) {
++       if (hasquotes && (*(str+1) == '\0')) break;
++       if (*str == '%') {
++	   /* It's a variable or a command */
++	   str++;
++	   if (*str == '{') {
++	       /* It's a command */
++	       str++;
++	       params[0] = '\0';
++	       params_pos = 0;
++	       while (*str && (*str != '}')) {
++		   params[params_pos++] = *str;
++		   params[params_pos] = '\0';
++		   str++;
++	       }
++	       if (*str && (*str == '}')) str++;
++	       botlp = parsebotl_cmd(params);
++	       if (botlp) {
++		   botlp->nextparam = botlbase[botlnum];
++		   botlbase[botlnum] = botlp;
++	       }
++	   } else if (*str) {
++	       /* It's a variable */
++	       params[0] = '\0';
++	       params_pos = 0;
++	       while (*str && !isalpha(*str) && (*str != '%') && (*str != '$')) {
++		   params[params_pos++] = *str;
++		   params[params_pos] = '\0';
++		   str++;
++	       }
++	       botlp = (struct botlparam *) alloc(sizeof(struct botlparam));
++	       botlp->bptyp = BOTLPARMTYP_VAR;
++	       botlp->params = (char *) alloc(strlen(params)+1);
++	       Strcpy(botlp->params, params);
++	       botlp->valuechar = *str;
++	       str++;
++	       botlp->nextparam = botlbase[botlnum];
++	       botlbase[botlnum] = botlp;	       
++	   }
++       } else {
++	   /* It's printable text */
++	   params[0] = '\0';
++	   params_pos = 0;
++	   while (*str && (*str != '%')) {
++	       params[params_pos++] = *str;
++	       params[params_pos] = '\0';
++	       str++;
++	   }
++	   botlp = (struct botlparam *) alloc(sizeof(struct botlparam));
++	   botlp->bptyp = BOTLPARMTYP_TXT;
++	   botlp->params = (char *) alloc(strlen(params)+1);
++	   Strcpy(botlp->params, params);
++	   botlp->nextparam = botlbase[botlnum];
++	   botlbase[botlnum] = botlp;
++       }
++   }
++   flipbotlbase(botlnum);
++}
++
++void
++bot()
++{
++    int y;
++
++    for (y = 0; y < MAX_BOTLINES; y++) {
++	curs(WIN_STATUS, 1, y);
++	showbotl(y);
++    }
++
++    flags.botl = flags.botlx = 0;
++}
++    
++#endif /* CONF_BOTL */
+ 
+ #endif /* OVL0 */
+ 
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.1-orig/src/options.c nethack-3.4.1-cnfbotl/src/options.c
+--- nethack-3.4.1-orig/src/options.c	Mon Feb 24 19:36:25 2003
++++ nethack-3.4.1-cnfbotl/src/options.c	Mon Feb 24 21:59:24 2003
+@@ -300,6 +300,10 @@
+ #ifdef MSDOS
+ 	{ "soundcard", "type of sound card to use", 20, SET_IN_FILE },
+ #endif
++#ifdef CONF_BOTL
++	{ "statline1", "the first status line",  COLNO,   SET_IN_FILE },
++	{ "statline2", "the second status line", COLNO,   SET_IN_FILE },
++#endif
+ 	{ "suppress_alert", "suppress alerts about version-specific features",
+ 						8, SET_IN_GAME },
+ 	{ "tile_width", "width of tiles", 20, DISP_IN_GAME},	/*WC*/
+@@ -498,6 +502,10 @@
+ 	flags.initgend = -1;
+ 	flags.initalign = -1;
+ 
++#ifdef CONF_BOTL
++	parsebotl("%-.10a the %-12b St:%c Dx:%d Co:%e In:%f Wi:%g Ch:%h  %i  %y", 0);
++	parsebotl("%-7k %$:%-2l HP:%n(%m) Pw:%p(%o) AC:%-2q %t %v %w", 1);
++#endif
+ 	/* Set the default monster and object class symbols.  Don't use */
+ 	/* memcpy() --- sizeof char != sizeof uchar on some machines.	*/
+ 	for (i = 0; i < MAXOCLASSES; i++)
+@@ -1062,6 +1070,30 @@
+ 		return;
+ 	}
+ 
++#ifdef CONF_BOTL
++	fullname = "statline1";
++	if (match_optname(opts, fullname, 9, TRUE)) {
++		if (negated) bad_negation(fullname, FALSE);
++		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0) {
++		    char tempbotlinebuf[BUFSZ];
++
++		    nmcpy(tempbotlinebuf, op, BUFSZ);
++		    parsebotl(tempbotlinebuf, 0);
++		}
++		return;
++	}
++	fullname = "statline2";
++	if (match_optname(opts, fullname, 9, TRUE)) {
++		if (negated) bad_negation(fullname, FALSE);
++		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0) {
++		     char tempbotlinebuf[BUFSZ];
++
++		     nmcpy(tempbotlinebuf, op, BUFSZ);
++		     parsebotl(tempbotlinebuf, 1);
++		}
++		return;
++	}
++#endif /* CONF_BOTL */
+ 	fullname = "runmode";
+ 	if (match_optname(opts, fullname, 4, TRUE)) {
+ 		if (negated) {
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.1-orig/src/save.c nethack-3.4.1-cnfbotl/src/save.c
+--- nethack-3.4.1-orig/src/save.c	Mon Feb 24 19:36:25 2003
++++ nethack-3.4.1-cnfbotl/src/save.c	Mon Feb 24 21:53:33 2003
+@@ -1001,6 +1001,9 @@
+ 	free_animals();
+ 	free_oracles();
+ 	freefruitchn();
++#ifdef CONF_BOTL
++	free_botlines();
++#endif
+ 	freenames();
+ 	free_waterlevel();
+ 	free_dungeons();

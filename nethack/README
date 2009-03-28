@@ -1,0 +1,9 @@
+This is a simple installation script for NetHack (v3.4.3). Uses all the patches in ./patches/ to enhance NetHack, a lot. Some patches were modified to work with the others I used, the originals are in ./old_patches/ .
+
+Unified/monolithic patches for projects that I like but didn't want to use are in ./old_patches/ as well, such as the N.A.O mono-diff, and SLASH'EM's. These are mostly for reference for which patches I should include or not.
+
+Many thanks to the NetHack Patch Database - without you, it would've been a lot harder to find these wonderful patches :)
+
+Make sure to modify INSTALL_ROOT in installer.sh, where nethack is supposed to be installed. The default is "$HOME/sys/".
+
+As currently configured, nethack will be compiled with optimizations for Core2 Duo CPUs, if you don't want that or can't, change patches/unix-makefile-conf.patch or edit sys/unix/Makefile.src

@@ -1,0 +1,11 @@
+http://www.netsonic.fi/~walker/nethack.html
+	- nethack page of the author of the unified patch I started with
+	- do the bonesdir.diff patch, seems useful.
+	- do other good patches (Priest races, window edge, etc) listed there.
+
+Do the makefile patching *after* the call to setup.sh (which moves the correct Makefiles to their locations)
+	- Do it before anyways?
+
+Check out sys/unix/ files for more hacking possibilities?
+
+MORE STUFF! There are 264 patches in the NHPDB, I'm sure there are a few more awesome patches out there :)

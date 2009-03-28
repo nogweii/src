@@ -1,0 +1,1478 @@
+? flipcoin.patch
+? herorace.patch
+? key_rebinding.patch
+? doc/README.patch.key_rebinding
+Index: dat/opthelp
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/dat/opthelp,v
+retrieving revision 1.1.1.1
+retrieving revision 1.4
+diff -u -r1.1.1.1 -r1.4
+--- dat/opthelp	22 Mar 2002 23:56:26 -0000	1.1.1.1
++++ dat/opthelp	4 Apr 2002 23:52:41 -0000	1.4
+@@ -66,6 +66,9 @@
+ color      use different colors for objects on screen   [TRUE for micros]
+ hilite_pet display pets in a highlighted manner                   [FALSE]
+ 
++Boolean option if TEXTCOLOR and MENU_COLOR were set at compile time:
++menucolors use different colors for menus               [TRUE for micros]
++
+ Boolean option if TIMED_DELAY was set at compile time (tty interface only):
+ timed_delay    on unix and VMS, use a timer instead of sending
+                extra screen output when attempting to pause for
+@@ -75,6 +78,14 @@
+ Boolean option if TTY_GRAPHICS was set at compile time:
+ msg_window show previous messages in a screen-size window         [FALSE]
+ 
++Boolean option if TRAVEL_CACHE was set at compile time:
++travel_cache   cache the location of the previous travel, and
++               use it as the default destination next time        [TRUE]
++
++Boolean option if HERO_RACE was set at compile time:
++hero_race  display the player with the race symbol (otherwise
++           always @)                                              [FALSE]
++
+ Boolean option if USE_TILES was set at compile time (MSDOS protected mode only):
+ preload_tiles  control whether tiles get pre-loaded into RAM at the
+                start of the game.  Doing so enhances performance
+@@ -160,6 +171,19 @@
+            still denote your gender using the "male" and "female"
+            options, the "gender" option will take precedence.  [RANDOM]
+ horsename  the name of your first horse  [NONE]
++menucolor  Set colors for menus. (menucolor:"regex_string"=color)
++           If boolean option ``menucolors'' is true, menus will be shown
++	   with different colors.
++	   For example, setting ``menucolor:" blessed "=green'' shows
++	   all lines in a menu with the text " blessed " in green.
++	   The string is matched using regular expressions.
++	   Valid values for the color are black, red, green, brown, blue,
++	   magenta, cyan, gray, orange, lightgreen, yellow, lightblue, 
++	   lightmagenta, lightcyan and white.
++	   You can define menucolor as many times as you wish; those
++	   defined later will take precedence.
++	   Setting menucolor has effect only if TEXTCOLOR and MENU_COLOR
++	   were set at compile time.  [NONE]
+ menu_*     create single character accelerators for menu commands.  Below
+            is a list of all commands.  Each is followed by a list of window-
+            ports that implement them:  'x' is X11, 't' is tty, 'g' is Gem,
+Index: doc/Guidebook.mn
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/doc/Guidebook.mn,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- doc/Guidebook.mn	22 Mar 2002 23:56:37 -0000	1.1.1.1
++++ doc/Guidebook.mn	4 Apr 2002 23:52:41 -0000	1.2
+@@ -2089,6 +2089,11 @@
+ NetHack should use this size font for the status window.
+ .lp font_size_text	
+ NetHack should use this size font for text windows.
++.lp hero_race
++Makes the player be shown with the symbol of his/her race
++(dwarf, elf, gnome, human, orc). Normally the player is
++always shown as a human regardless of his/her race. Note that HERORACE
++must have been defined at compile time.
+ .lp hilite_pet
+ Visually distinguish pets from similar animals (default off).
+ The behavior of this option depends on the type of windowing you use.
+Index: doc/Guidebook.tex
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/doc/Guidebook.tex,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- doc/Guidebook.tex	22 Mar 2002 23:56:40 -0000	1.1.1.1
++++ doc/Guidebook.tex	4 Apr 2002 23:52:41 -0000	1.2
+@@ -2572,6 +2572,12 @@
+ \item[\ib{font\_size\_text}]
+ NetHack should use this size font for text windows.
+ %.lp
++\item[\ib{hero\_race}]
++Makes the player be shown with the symbol of his/her race
++(dwarf, elf, gnome, human, orc). Normally the player is
++always shown as a human regardless of his/her race. Note that HERORACE
++must have been defined at compile time.
++%.lp
+ \item[\ib{hilite\_pet}]
+ Visually distinguish pets from similar animals (default off).
+ The behavior of this option depends on the type of windowing you use.
+Index: doc/Guidebook.txt
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/doc/Guidebook.txt,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- doc/Guidebook.txt	22 Mar 2002 23:56:43 -0000	1.1.1.1
++++ doc/Guidebook.txt	4 Apr 2002 23:52:41 -0000	1.2
+@@ -2785,6 +2785,12 @@
+           font_size_text
+                NetHack should use this size font for text windows.
+ 
++          hero_race
++               Makes the player be shown with the symbol of his/her race
++               (dwarf, elf, gnome, human, orc). Normally the player is
++               always shown as a human regardless of his/her
++               race. Note that HERORACE must have been defined at compile time.
++
+           hilite_pet
+                Visually distinguish  pets  from  similar  animals  (default
+                off).   The  behavior  of this option depends on the type of
+Index: doc/README.patch.menu_color
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/doc/README.patch.menu_color,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -u -r1.1 -r1.2
+--- doc/README.patch.menu_color	28 Mar 2002 05:04:14 -0000	1.1
++++ doc/README.patch.menu_color	28 Mar 2002 05:55:53 -0000	1.2
+@@ -0,0 +1,85 @@
++
++   This is version 1.04
++
++   This patch allows the user to define in what color menus are shown.
++   For example, putting
++
++   OPTIONS=menucolors
++   MENUCOLOR=" blessed "=green
++   MENUCOLOR=" holy "=green
++   MENUCOLOR=" cursed "=red
++   MENUCOLOR=" unholy "=red
++   MENUCOLOR=" cursed .* (being worn)"=orange&underline
++
++   in the configuration file makes all known blessed items
++   show up in green, all cursed items show up in red and
++   all cursed worn items show up in orange and underlined
++   when viewing inventory.
++   
++   If you do not have GNU regex.h, comment
++   #define USE_REGEX_MATCH out from include/config.h
++   and replace the MENUCOLOR lines in your config file with these:
++   
++   MENUCOLOR="* blessed *"=green
++   MENUCOLOR="* holy *"=green
++   MENUCOLOR="* cursed *"=red
++   MENUCOLOR="* unholy *"=red
++   MENUCOLOR="* cursed * (being worn)"=orange&underline
++
++
++   Colors: black, red, green, brown, blue, magenta, cyan, gray, orange,
++           lightgreen, yellow, lightblue, lightmagenta, lightcyan, white.
++   Attributes: none, bold, dim, underline, blink, inverse.
++   
++   Note that the terminal is free to interpret the attributes however
++   it wants.
++
++
++   TODO/BUGS:
++
++    o Only works with TTY
++    o You can't use '=' or '&' in the match-string.
++    o Maybe add color-field to tty_menu_item in include/wintty.h
++      (so there's no need to find the color for the line again)
++    o Guidebook & dat/opthelp are not up to date
++    o Better place to put the functions, colornames[] and attrnames[]?
++    o Some menus do not need coloring; maybe add new parameter
++      to process_menu_window() ?
++
++
++   FIXES:
++   
++   v1.04:
++    o Oops! 1.03 worked only on *nixes... (GNU regex.h)
++    o Compile-time option USE_REGEX_MATCH: if it's defined, use regex,
++      otherwise use globbing. ('?' and '*' wildcards)
++
++   v1.03:
++
++    o Now using Nethack 3.4.0 codebase
++    o Compile-time option MENU_COLOR
++    o Strings match using regular expressions instead of globbing
++    o You can use attribute with color (attr must come after '&')
++    o Use ``MENUCOLOR="foo"=color'' instead of ``OPTIONS=menucolor=...''
++      (Both work, but OPTIONS complains if you define menucolor 
++      more than once)
++
++   v1.02:
++
++    o Should now work with OS/2, thanks to Jukka Lahtinen
++    o Strings match now using simple globbing. ('?' and '*' wildcards)
++
++   v1.01:
++
++    o Moved 'menucolors' boolean option, so now the options-menu
++      is in alphabetical order.
++    o Fixed 'menucolor' description in dat/opthelp.
++    o menu_colorings is now initialized to null in src/decl.c.
++
++   v1.0:
++
++    o Initial release
++
++--
++ Pasi Kallinen
++ pkalli@cs.joensuu.fi
+Index: include/color.h
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/include/color.h,v
+retrieving revision 1.1.1.1
+retrieving revision 1.3
+diff -u -r1.1.1.1 -r1.3
+--- include/color.h	22 Mar 2002 23:56:46 -0000	1.1.1.1
++++ include/color.h	28 Mar 2002 05:55:53 -0000	1.3
+@@ -5,13 +5,23 @@
+ #ifndef COLOR_H
+ #define COLOR_H
+ 
++#ifdef MENU_COLOR
++# ifdef USE_REGEX_MATCH
++#  include <regex.h>
++# endif  
++#endif
++
+ /*
+  * The color scheme used is tailored for an IBM PC.  It consists of the
+  * standard 8 colors, folowed by their bright counterparts.  There are
+  * exceptions, these are listed below.	Bright black doesn't mean very
+  * much, so it is used as the "default" foreground color of the screen.
+  */
++#ifndef COLOR_BRIGHT_BLACK
+ #define CLR_BLACK		0
++#else
++#define CLR_BLACK		8 /* make "black" show up as bright black */
++#endif /* COLOR_BRIGHT_BLACK */
+ #define CLR_RED			1
+ #define CLR_GREEN		2
+ #define CLR_BROWN		3 /* on IBM, low-intensity yellow is brown */
+@@ -19,7 +29,11 @@
+ #define CLR_MAGENTA		5
+ #define CLR_CYAN		6
+ #define CLR_GRAY		7 /* low-intensity white */
++#ifndef COLOR_BRIGHT_BLACK
+ #define NO_COLOR		8
++#else
++#define NO_COLOR		0 /* used to be 8 */
++#endif /* COLOR_BRIGHT_BLACK */
+ #define CLR_ORANGE		9
+ #define CLR_BRIGHT_GREEN	10
+ #define CLR_YELLOW		11
+@@ -47,5 +61,17 @@
+ #define HI_GLASS	CLR_BRIGHT_CYAN
+ #define HI_MINERAL	CLR_GRAY
+ #define HI_ZAP		CLR_BRIGHT_BLUE
++
++#ifdef MENU_COLOR
++struct menucoloring {
++#ifdef USE_REGEX_MATCH
++   struct re_pattern_buffer match;
++#else
++   char *match;
++#endif
++   int color, attr;
++   struct menucoloring *next;
++};
++#endif
+ 
+ #endif /* COLOR_H */
+Index: include/config.h
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/include/config.h,v
+retrieving revision 1.1.1.1
+retrieving revision 1.9
+diff -u -r1.1.1.1 -r1.9
+--- include/config.h	22 Mar 2002 23:56:46 -0000	1.1.1.1
++++ include/config.h	4 Apr 2002 23:52:41 -0000	1.9
+@@ -350,6 +350,69 @@
+ 
+ /* End of Section 5 */
+ 
++/*
++ * Section 6:  PATCHHACK
++ *
++ * Conditional compilation of additional patches that are not a part of the
++ * (vanilla) NetHack code.
++ *
++ * Put together by Jason Short, Philipp Lucas, et al.  Patch authors listed
++ * below.
++ *
++ * Most or all of the patches can be found from
++ * http://avrc.city.ac.uk/nethack.html; thanks to J. Ali Harlow for
++ * collecting them.
++ *
++ * Problems or comments?  jdorje@users.sourceforge.net
++ */
++
++/* Fixes a very fatal bug when a boulder is exploded by a land mine.
++ * Compatible with old save/bones files.
++ * by Darshan Shaligram, darshans@aztec.soft.net */
++#define EXPLODING_BOULDER_BUGFIX
++
++/* Causes black monsters to show up as "bright black" instead of blue.  On
++ * appropriate terminals (like my ncurses) this will be a dark gray.  On
++ * others, it may give bad results.
++ * Compatible with old save/bones files.
++ * author unknown (updated by Jason Short) */
++#define COLOR_BRIGHT_BLACK
++
++/* Show inventory menu in different colors, user-configurable.  Only works in
++ * tty mode.  Define USE_REGEX_MATCH if you have GNU's regex.h (or compatible)
++ * to allow for regular-expression matches, otherwise pmatch() will be used..
++ * See doc/README.patch.menu_color for more.
++ * Compatible with old save/bones files.
++ * v1.04, by Pasi Kallinen, pkalli@cs.joensuu.fi */
++#ifdef TTY_GRAPHICS
++# define MENU_COLOR
++# define USE_REGEX_MATCH
++#endif
++
++/* Add a travel_cache option to the game, set by default.  If set, the
++ * destination of the "travel" command will be cached, and used as the default
++ * destination the next time you travel.
++ * Compatible with old save/bones files.
++ * by Alexis Manning, option support by Jason Short */
++#define TRAVEL_CACHE
++
++/* The dungeon is alive and growing!
++ * Compatible with old save/bones files.
++ * by Pasi Kallinen <pkalli@cs.joensuu.fi> */
++/* #define DUNGEON_GROWTH */
++
++/* Apply $ to flip a coin.
++ * Compatible with old save/bones files.
++ * by Pasi Kallinen <pkalli@cs.joensuu.fi> */
++#define FLIPCOIN
++
++/* Display character with a corresponding race symbol, rather than always @.
++ * Compatible with old save/bones files.
++ * by Jukka Lahtinen */
++#define HERORACE
++
++/* End of Section 6 */
++
+ #include "global.h"	/* Define everything else according to choices above */
+ 
+ #endif /* CONFIG_H */
+Index: include/display.h
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/include/display.h,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- include/display.h	22 Mar 2002 23:56:47 -0000	1.1.1.1
++++ include/display.h	4 Apr 2002 23:52:41 -0000	1.2
+@@ -317,7 +317,12 @@
+ /* The hero's glyph when seen as a monster.  Could also be...
+  * mon_to_glyph(Upolyd || Race_if(PM_HUMAN) ? u.umonnum : urace.malenum)
+  */
++#ifdef HERO_RACE
++#define hero_glyph monnum_to_glyph(Upolyd || !iflags.hero_race ? \
++					u.umonnum : urace.malenum)
++#else
+ #define hero_glyph monnum_to_glyph(u.umonnum)
++#endif
+ 
+ 
+ /*
+Index: include/extern.h
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/include/extern.h,v
+retrieving revision 1.1.1.1
+retrieving revision 1.3
+diff -u -r1.1.1.1 -r1.3
+--- include/extern.h	22 Mar 2002 23:56:48 -0000	1.1.1.1
++++ include/extern.h	4 Apr 2002 23:47:20 -0000	1.3
+@@ -656,6 +656,10 @@
+ 
+ /* ### hack.c ### */
+ 
++#ifdef DUNGEON_GROWTH
++E void FDECL(catchup_dgn_growths, (int));
++E void FDECL(dgn_growths, (BOOLEAN_P,BOOLEAN_P));
++#endif
+ E boolean FDECL(revive_nasty, (int,int,const char*));
+ E void FDECL(movobj, (struct obj *,XCHAR_P,XCHAR_P));
+ E boolean FDECL(may_dig, (XCHAR_P,XCHAR_P));
+@@ -1353,6 +1357,9 @@
+ E void FDECL(set_duplicate_opt_detection, (int));
+ E void FDECL(set_wc_option_mod_status, (unsigned long, int));
+ E void FDECL(set_option_mod_status, (char *, int));
++#ifdef MENU_COLOR
++E boolean FDECL(add_menu_coloring, (char *));
++#endif
+ 
+ /* ### pager.c ### */
+ 
+Index: include/flag.h
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/include/flag.h,v
+retrieving revision 1.1.1.1
+retrieving revision 1.4
+diff -u -r1.1.1.1 -r1.4
+--- include/flag.h	22 Mar 2002 23:56:49 -0000	1.1.1.1
++++ include/flag.h	4 Apr 2002 23:52:41 -0000	1.4
+@@ -177,6 +177,9 @@
+ 	boolean prevmsg_window;	/* show more old messages at a time */
+ 	boolean  extmenu;	/* extended commands use menu interface */
+ #endif
++#ifdef MENU_COLOR
++        boolean use_menu_color; /* use color in menus; only if wc_color */
++#endif
+ #ifdef MFLOPPY
+ 	boolean  checkspace;	/* check disk space before writing files */
+ 				/* (in iflags to allow restore after moving
+@@ -204,9 +207,15 @@
+ 	boolean usevga;		/* use the vga adapter */
+ 	boolean grmode;		/* currently in graphics mode */
+ #endif
++#ifdef TRAVEL_CACHE
++	boolean travel_cache;	/* Cache coordinates from previous "travel" */
++#endif /* TRAVEL_CACHE */
+ #ifdef LAN_FEATURES
+ 	boolean lan_mail;	/* mail is initialized */
+ 	boolean lan_mail_fetched; /* mail is awaiting display */
++#endif
++#ifdef HERO_RACE
++	boolean hero_race;	/* show player with the race symbol */
+ #endif
+ /*
+  * Window capability support.
+Index: src/allmain.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/allmain.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- src/allmain.c	22 Mar 2002 23:56:56 -0000	1.1.1.1
++++ src/allmain.c	4 Apr 2002 23:47:23 -0000	1.2
+@@ -142,7 +142,9 @@
+ 		    if(Glib) glibr();
+ 		    nh_timeout();
+ 		    run_regions();
+-
++#ifdef DUNGEON_GROWTH
++		    dgn_growths(TRUE, TRUE);
++#endif
+ 		    if (u.ublesscnt)  u.ublesscnt--;
+ 		    if(flags.time && !flags.run)
+ 			flags.botl = 1;
+Index: src/apply.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/apply.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- src/apply.c	22 Mar 2002 23:56:58 -0000	1.1.1.1
++++ src/apply.c	4 Apr 2002 23:49:30 -0000	1.2
+@@ -7,9 +7,17 @@
+ 
+ #ifdef OVLB
+ 
+-static const char tools[] = { TOOL_CLASS, WEAPON_CLASS, WAND_CLASS, 0 };
+-static const char tools_too[] = { ALL_CLASSES, TOOL_CLASS, POTION_CLASS,
+-				  WEAPON_CLASS, WAND_CLASS, GEM_CLASS, 0 };
++static const char tools[] = { 
++#ifdef FLIPCOIN
++   GOLD_CLASS,
++#endif
++   TOOL_CLASS, WEAPON_CLASS, WAND_CLASS, 0 };
++static const char tools_too[] = { 
++#ifdef FLIPCOIN
++     GOLD_CLASS,
++#endif
++   ALL_CLASSES, TOOL_CLASS, POTION_CLASS, 
++     WEAPON_CLASS, WAND_CLASS, GEM_CLASS, 0 };
+ 
+ #ifdef TOURIST
+ STATIC_DCL int FDECL(use_camera, (struct obj *));
+@@ -36,6 +44,9 @@
+ STATIC_DCL int FDECL(use_pole, (struct obj *));
+ STATIC_DCL int FDECL(use_grapple, (struct obj *));
+ STATIC_DCL int FDECL(do_break_wand, (struct obj *));
++#ifdef FLIPCOIN
++STATIC_DCL int FDECL(do_flip_coin, (struct obj *));
++#endif
+ STATIC_DCL boolean FDECL(figurine_location_checks,
+ 				(struct obj *, coord *, BOOLEAN_P));
+ STATIC_DCL boolean NDECL(uhave_graystone);
+@@ -2621,6 +2632,51 @@
+ 	return FALSE;
+ }
+ 
++#ifdef FLIPCOIN
++STATIC_OVL int
++do_flip_coin(obj)
++struct obj *obj;
++{
++#ifndef GOLDOBJ
++   u.ugold += obj->quan;
++   dealloc_obj(obj);
++#endif
++
++   if (nohands(youmonst.data)) {
++      pline("And how would you flip the coin without hands?");
++      return 0;
++   } else
++   if (!freehand()) {
++      You("need at least one free %s.", body_part(HAND));
++      return 0;
++   }
++	        
++   You("flip %s coin.",
++#ifndef GOLDOBJ
++       (u.ugold > 1)
++#else
++       (obj->quan > 1)
++#endif
++       ? "a" : "the");
++   if (!Fumbling && !Glib && !Blind &&
++       ((ACURR(A_DEX) + Luck) > 0) && rn2(ACURR(A_DEX) + Luck)) {
++      pline("%s.", rn2(2) ? "Heads" : "Tails");
++   } else {
++      struct obj *gold;
++      You("try to catch the coin but it slips from your %s.",
++	  makeplural(body_part(HAND)));
++#ifndef GOLDOBJ
++      gold = mkgoldobj(1);
++#else
++      if (obj->quan > 1) gold = splitobj(obj, 1L);
++      else gold = obj;
++#endif
++      dropx(gold); 
++   } 
++   return 1;
++}
++#endif
++
+ int
+ doapply()
+ {
+@@ -2634,6 +2690,10 @@
+ 
+ 	if (obj->oclass == WAND_CLASS)
+ 	    return do_break_wand(obj);
++#ifdef FLIPCOIN
++        else if (obj->oclass == GOLD_CLASS)
++            return do_flip_coin(obj);
++#endif
+ 
+ 	switch(obj->otyp){
+ 	case BLINDFOLD:
+Index: src/cmd.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/cmd.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- src/cmd.c	22 Mar 2002 23:57:01 -0000	1.1.1.1
++++ src/cmd.c	29 Mar 2002 04:44:20 -0000	1.2
+@@ -145,6 +145,9 @@
+ #endif /* OVLB */
+ 
+ static const char* readchar_queue="";
++#ifdef TRAVEL_CACHE
++coord cctravel = {-1, -1};
++#endif
+ 
+ STATIC_DCL char *NDECL(parse);
+ 
+@@ -2143,15 +2146,35 @@
+ 	static char cmd[2];
+ 	coord cc;
+ 	cmd[1]=0;
++#ifdef TRAVEL_CACHE
++	if (iflags.travel_cache) {
++	    cc.x = cctravel.x;
++	    cc.y = cctravel.y;
++	    if (cc.x == -1 && cc.y == -1) {
++	        /* No cached destination, so
++		   start attempt from current position */
++	        cc.x = u.ux;
++		cc.y = u.uy;
++	    }
++	} else {
++#endif
+ 	cc.x = u.ux;
+ 	cc.y = u.uy;
++#ifdef TRAVEL_CACHE
++	}
++#endif
+ 	pline("Where do you want to travel to?");
+ 	if (getpos(&cc, TRUE, "the desired destination") < 0) {
+ 		/* user pressed ESC */
+ 		return 0;
+ 	}
++#ifdef TRAVEL_CACHE
++	cctravel.x = u.tx = cc.x;
++	cctravel.y = u.ty = cc.y;
++#else
+ 	u.tx = cc.x;
+ 	u.ty = cc.y;
++#endif
+ 	cmd[0] = CMD_TRAVEL;
+ 	readchar_queue = cmd;
+ 	return 0;
+Index: src/decl.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/decl.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- src/decl.c	22 Mar 2002 23:57:02 -0000	1.1.1.1
++++ src/decl.c	28 Mar 2002 05:55:53 -0000	1.2
+@@ -233,6 +233,10 @@
+ 	"white",		/* CLR_WHITE */
+ };
+ 
++#ifdef MENU_COLOR
++struct menucoloring *menu_colorings = 0;
++#endif
++
+ struct c_common_strings c_common_strings = {
+ 	"Nothing happens.",		"That's enough tries!",
+ 	"That is a silly thing to %s.",	"shudder for a moment.",
+Index: src/explode.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/explode.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- src/explode.c	22 Mar 2002 23:57:15 -0000	1.1.1.1
++++ src/explode.c	28 Mar 2002 04:31:48 -0000	1.2
+@@ -439,7 +439,9 @@
+ 		if (otmp->otyp == BOULDER) {
+ 		    pline("%s apart.", Tobjnam(otmp, "break"));
+ 		    fracture_rock(otmp);
++#ifndef EXPLODING_BOULDER_BUGFIX
+ 		    place_object(otmp, sx, sy);	/* put fragments on floor */
++#endif /* EXPLODING_BOULDER_BUGFIX */
+ 		    if ((otmp = sobj_at(BOULDER, sx, sy)) != 0) {
+ 			/* another boulder here, restack it to the top */
+ 			obj_extract_self(otmp);
+@@ -452,7 +454,9 @@
+ 			    deltrap(trap);
+ 		    pline("%s.", Tobjnam(otmp, "crumble"));
+ 		    (void) break_statue(otmp);
++#ifndef EXPLODING_BOULDER_BUGFIX
+ 		    place_object(otmp, sx, sy);	/* put fragments on floor */
++#endif /* EXPLODING_BOULDER_BUGFIX */
+ 		}
+ 		used_up = TRUE;
+ 
+Index: src/files.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/files.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- src/files.c	22 Mar 2002 23:57:16 -0000	1.1.1.1
++++ src/files.c	28 Mar 2002 05:55:53 -0000	1.2
+@@ -1355,6 +1355,10 @@
+ 
+ 	} else if (match_varname(buf, "BOULDER", 3)) {
+ 	    (void) get_uchars(fp, buf, bufp, &iflags.bouldersym, 1, "BOULDER");
++	} else if (match_varname(buf, "MENUCOLOR", 9)) {
++#ifdef MENU_COLOR
++	   add_menu_coloring(bufp);
++#endif
+ 	} else if (match_varname(buf, "GRAPHICS", 4)) {
+ 	    len = get_uchars(fp, buf, bufp, translate, MAXPCHARS, "GRAPHICS");
+ 	    assign_graphics(translate, len, MAXPCHARS, 0);
+Index: src/hack.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/hack.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.4
+diff -u -r1.1.1.1 -r1.4
+--- src/hack.c	22 Mar 2002 23:57:18 -0000	1.1.1.1
++++ src/hack.c	4 Apr 2002 23:47:23 -0000	1.4
+@@ -4,6 +4,10 @@
+ 
+ #include "hack.h"
+ 
++#ifdef TRAVEL_CACHE
++extern coord cctravel;
++#endif /* TRAVEL_CACHE */
++
+ #ifdef OVL1
+ STATIC_DCL void NDECL(maybe_wail);
+ #endif /*OVL1*/
+@@ -21,6 +25,332 @@
+ 
+ #ifdef OVL2
+ 
++#ifdef DUNGEON_GROWTH
++void
++rndmappos(x,y) /* guaranteed to return a valid coord */
++xchar *x;
++xchar *y;
++{
++   if (*x >= COLNO) *x = COLNO;
++   else if (*x == -1) *x = rn2(COLNO-1)+1;
++   else if (*x < 1) *x = 1;
++   
++   if (*y >= ROWNO) *y = ROWNO;
++   else if (*y == -1) *y = rn2(ROWNO);
++   else if (*y < 0) *y = 0;
++}
++
++#define HERB_GROWTH_LIMIT    3 /* to limit excessive farming */
++
++static const struct herb_info {
++   int herb;
++   boolean in_water;
++} herb_info[] = { 
++   { SPRIG_OF_WOLFSBANE, FALSE },
++   { CLOVE_OF_GARLIC,    FALSE }, 
++   { CARROT,             FALSE },
++   { KELP_FROND,         TRUE  }
++};
++
++long
++count_herbs_at(x,y, watery)
++xchar x,y;
++boolean watery;
++{
++   register int dd;
++   register long count = 0;
++   
++   if (isok(x,y)) {
++      for (dd = 0; dd < SIZE(herb_info); dd++) {
++	 if (watery == herb_info[dd].in_water) {
++	    register struct obj *otmp = sobj_at(herb_info[dd].herb, x,y);
++	    if (otmp)
++	      count += otmp->quan;
++	 }
++      }
++   }
++   return count;
++}
++
++/* returns TRUE if a herb can grow at (x,y) */
++boolean
++herb_can_grow_at(x,y, watery)
++xchar x,y;
++boolean watery;
++{
++  register struct rm *lev = &levl[x][y];
++  if (inside_shop(x,y)) return FALSE;
++  if (watery) 
++     return (IS_POOL(lev->typ) && 
++	     ((count_herbs_at(x,y, watery)) < HERB_GROWTH_LIMIT));
++   return (lev->lit && (lev->typ == ROOM || lev->typ == CORR ||
++			(IS_DOOR(lev->typ) && 
++			 ((lev->doormask == D_NODOOR) ||
++			 (lev->doormask == D_ISOPEN) ||
++			 (lev->doormask == D_BROKEN)))) &&
++	   (count_herbs_at(x,y, watery) < HERB_GROWTH_LIMIT));
++}
++
++/* grow herbs in water. return true if did something. */
++boolean
++grow_water_herbs(herb, x,y)
++int herb;
++xchar x,y;
++{
++   struct obj *otmp;
++   
++   rndmappos(&x, &y);
++   otmp = sobj_at(herb, x, y);
++   if (otmp && herb_can_grow_at(x,y, TRUE)) {
++      otmp->quan++;
++      otmp->owt = weight(otmp);
++      return TRUE;
++      /* There's no need to start growing these on the neighboring
++       * mapgrids, as they move around (see water_current())
++       */
++   }
++   return FALSE;
++}
++
++/* grow herb on ground at (x,y), or maybe spread out.
++   return true if did something. */
++boolean
++grow_herbs(herb, x,y, showmsg, update)
++int herb;
++xchar x,y;
++boolean showmsg, update;
++{
++   struct obj *otmp;
++   struct rm *lev;
++   
++   rndmappos(&x, &y);
++   lev = &levl[x][y];
++   otmp = sobj_at(herb, x, y);
++   if (otmp && herb_can_grow_at(x,y, FALSE)) {
++      if (otmp->quan <= rn2(HERB_GROWTH_LIMIT)) {
++	 otmp->quan++;
++	 otmp->owt = weight(otmp);
++	 return TRUE;
++      } else {
++	 int dd, dofs = rn2(8);
++	 /* check surroundings, maybe grow there? */
++	 for (dd = 0; dd < 8; dd++) {
++	    coord pos;
++	    
++	    dtoxy(&pos, (dd+dofs) % 8);
++	    pos.x += x;
++	    pos.y += y;
++	    if (isok(pos.x,pos.y) && herb_can_grow_at(pos.x,pos.y, FALSE)) {
++	       lev = &levl[pos.x][pos.y];
++	       otmp = sobj_at(herb, pos.x, pos.y);
++	       if (otmp) {
++		  if (otmp->quan <= rn2(HERB_GROWTH_LIMIT)) {
++		     otmp->quan++;
++		     otmp->owt = weight(otmp);
++		     return TRUE;
++		  }
++	       } else {
++		  otmp = mksobj(herb, TRUE, FALSE);
++		  otmp->quan = 1;
++		  otmp->owt = weight(otmp); 
++		  place_object(otmp, pos.x, pos.y);
++		  if (update) newsym(pos.x,pos.y);
++		  if (cansee(pos.x,pos.y)) {
++		     if (showmsg && flags.verbose) {
++			const char *what;
++			if (herb == CLOVE_OF_GARLIC)
++			  what = "some garlic";
++			else 
++			  what = an(xname(otmp));
++			Norep("Suddenly you notice %s growing on the %s.",
++			      what, surface(pos.x,pos.y));
++		     }
++		  }
++		  return TRUE;
++	       } 
++	    }
++	 }
++      } 
++   }
++   return FALSE;
++}
++
++/* moves topmost object in water at (x,y) to dir. 
++   return true if did something. */
++boolean
++water_current(x,y,dir,waterforce, showmsg, update)
++xchar x,y;
++int dir;
++unsigned waterforce;  /* strength of the water current */
++boolean showmsg, update;
++{
++   struct obj *otmp;
++   coord pos;
++
++   rndmappos(&x,&y);
++   dtoxy(&pos, dir);
++   pos.x += x;
++   pos.y += y;
++   if (isok(pos.x,pos.y) && IS_POOL(levl[x][y].typ) && 
++       IS_POOL(levl[pos.x][pos.y].typ)) {
++      otmp = level.objects[x][y];
++      if (otmp && otmp->where == OBJ_FLOOR) {
++	 if (otmp->quan > 1) 
++	   otmp = splitobj(otmp, otmp->quan - 1);
++	 if (otmp->owt <= waterforce) {
++	    if (showmsg && Underwater && 
++		(cansee(pos.x,pos.y) || cansee(x,y))) {
++	       Norep("%s floats%s in%s the murky water.",
++		     An(xname(otmp)),
++		     (cansee(x,y) && cansee(pos.x,pos.y)) ? "" :
++		     (cansee(x,y) ? " away from you" : " towards you"),
++		     flags.verbose ? " the currents of" : "");
++	    }
++	    obj_extract_self(otmp);
++	    place_object(otmp, pos.x,pos.y);
++	    stackobj(otmp);
++	    if (update) {
++	       newsym(x,y);
++	       newsym(pos.x,pos.y);
++	    }
++	    return TRUE;
++	 } else  /* the object didn't move, put it back */
++	   stackobj(otmp);
++      }
++   }
++   return FALSE;
++}
++
++/* a tree at (x,y) spontaneously drops a ripe fruit */
++boolean
++drop_ripe_treefruit(x,y,showmsg, update)
++xchar x,y;
++boolean showmsg, update;
++{
++   register struct rm *lev;
++   
++   rndmappos(&x,&y);
++   lev = &levl[x][y];
++   if (IS_TREE(lev->typ) && !(lev->looted & TREE_LOOTED)) {
++      coord pos;
++      int dir, dofs = rn2(8);
++      for (dir = 0; dir < 8; dir++) {
++	 dtoxy(&pos, (dir + dofs) % 8);
++	 pos.x += x;
++	 pos.y += y;
++	 lev = &levl[pos.x][pos.y];
++	 if (SPACE_POS(lev->typ) || IS_POOL(lev->typ)) {
++	    struct obj *otmp;
++	    otmp = rnd_treefruit_at(pos.x,pos.y);
++	    if (otmp) {
++	       otmp->quan = 1;
++	       otmp->owt = weight(otmp);
++	       obj_extract_self(otmp);
++	       if (rn2(3))
++		 otmp->orotten = TRUE; /* Blecch!  Rotten food! */
++	       if (showmsg) {
++		  if ((cansee(pos.x,pos.y) || cansee(x,y))) {
++		     Norep("%s falls from %s%s.",
++			   cansee(pos.x,pos.y) ? An(xname(otmp)) : Something,
++			   cansee(x,y) ? "the tree" : "somewhere",
++			   (cansee(x,y) && IS_POOL(lev->typ)) ? 
++			   " into the water" : "");
++		  } else if (distu(pos.x,pos.y) < 9 && 
++			     otmp->otyp != EUCALYPTUS_LEAF) {
++		     /* a leaf is too light to cause any sound */
++		     You_hear("a %s!",
++			      (IS_POOL(lev->typ) || IS_FOUNTAIN(lev->typ)) ? 
++			      "plop" : "splut"); /* rainforesty sounds */
++		  }
++	       }
++	       place_object(otmp, pos.x,pos.y);
++	       stackobj(otmp);
++	       if (rn2(6)) levl[x][y].looted |= TREE_LOOTED;
++	       if (update) newsym(pos.x,pos.y);
++	       return TRUE;
++	    }
++	 }
++      }
++   }
++   return FALSE;
++}
++
++/* Tree at (x,y) seeds. returns TRUE if a new tree was created.
++ * Creates a kind of forest, with (hopefully) most places available.
++ */
++boolean
++seed_tree(x,y)
++xchar x,y;
++{
++   coord pos, pos2;
++   struct rm *lev = &levl[pos.x][pos.y];
++   
++   rndmappos(&x,&y);
++   if (IS_TREE(levl[x][y].typ)) {
++      int dir = rn2(8);
++      dtoxy(&pos, dir);
++      pos.x += x;
++      pos.y += y;
++      if (!rn2(3)) {
++	 dtoxy(&pos2, (dir+rn2(2)) % 8);
++	 pos.x += pos2.x;
++	 pos.y += pos2.y;
++      }
++      if (!isok(pos.x,pos.y)) return FALSE;
++      lev = &levl[pos.x][pos.y];
++      if (lev->lit && !cansee(pos.x,pos.y) && !inside_shop(pos.x,pos.y) &&
++	  (lev->typ == ROOM || lev->typ == CORR) &&
++	  !(u.ux == pos.x && u.uy == pos.y) && !m_at(pos.x,pos.y) && 
++	  !t_at(pos.x,pos.y) && !OBJ_AT(pos.x,pos.y)) {
++	 int nogrow = 0;
++	 int dx,dy;
++	 for (dx = pos.x-1; dx <= pos.x+1; dx++) {
++	    for (dy = pos.y-1; dy <= pos.y+1; dy++) {
++	       if (!isok(dx,dy) || 
++		   (isok(dx,dy) && !SPACE_POS(levl[dx][dy].typ)))
++		 nogrow++;
++	    }
++	 }
++	 if (nogrow < 3) {
++	    lev->typ = TREE;
++	    lev->looted &= ~TREE_LOOTED;
++	    block_point(pos.x,pos.y);
++	    return TRUE;
++	 }
++      }
++   } 
++   return FALSE;
++}
++
++void
++dgn_growths(showmsg, update)
++boolean showmsg; /* show messages */
++boolean update;  /* do newsym() */
++{
++   int herbnum = rn2(SIZE(herb_info));
++   (void) seed_tree(-1,-1);
++   if (herb_info[herbnum].in_water)
++     (void) grow_water_herbs(herb_info[herbnum].herb, -1,-1);
++   else
++     (void) grow_herbs(herb_info[herbnum].herb, -1,-1, showmsg, update);
++   if (!rn2(30))
++     (void) drop_ripe_treefruit(-1,-1, showmsg, update);
++   (void) water_current(-1,-1, rn2(8), 
++			Is_waterlevel(&u.uz) ? 200 : 25, showmsg, update);
++}
++
++/* catch up with growths when returning to a previously visited level */
++void
++catchup_dgn_growths(mvs)
++int mvs;
++{
++   if (mvs < 0) mvs = 0;
++   else if (mvs > LARGEST_INT) mvs = LARGEST_INT;
++   while (mvs-- > 0)
++     dgn_growths(FALSE, FALSE);
++}
++#endif /* DUNGEON_GROWTH */
++
+ boolean
+ revive_nasty(x, y, msg)
+ int x,y;
+@@ -714,6 +1044,9 @@
+ 	/* give up */
+     }
+ 
++#ifdef TRAVEL_CACHE
++    cctravel.x = cctravel.y = -1;
++#endif
+     u.dx = 0;
+     u.dy = 0;
+     nomul(0);
+Index: src/options.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/options.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.4
+diff -u -r1.1.1.1 -r1.4
+--- src/options.c	22 Mar 2002 23:57:39 -0000	1.1.1.1
++++ src/options.c	4 Apr 2002 23:52:41 -0000	1.4
+@@ -92,6 +92,11 @@
+ 	{"flush", (boolean *)0, FALSE, SET_IN_FILE},
+ #endif
+ 	{"help", &flags.help, TRUE, SET_IN_GAME},
++#ifdef HERO_RACE
++	{"hero_race", &iflags.hero_race, FALSE, SET_IN_GAME},
++#else
++	{"hero_race", (boolean *)0, FALSE, SET_IN_GAME},
++#endif
+ 	{"hilite_pet",    &iflags.wc_hilite_pet, FALSE, SET_IN_GAME},	/*WC*/
+ #ifdef ASCIIGRAPH
+ 	{"IBMgraphics", &iflags.IBMgraphics, FALSE, SET_IN_GAME},
+@@ -116,6 +121,15 @@
+ #else
+ 	{"mail", (boolean *)0, TRUE, SET_IN_FILE},
+ #endif
++#ifdef MENU_COLOR
++# ifdef MICRO
++	{"menucolors", &iflags.use_menu_color, TRUE,  SET_IN_GAME},
++# else
++	{"menucolors", &iflags.use_menu_color, FALSE, SET_IN_GAME},
++# endif
++#else
++	{"menucolors", (boolean *)0, FALSE, SET_IN_GAME},
++#endif
+ #ifdef WIZARD
+ 	/* for menu debugging only*/
+ 	{"menu_tab_sep", &iflags.menu_tab_sep, FALSE, SET_IN_GAME},
+@@ -181,6 +195,11 @@
+ #endif
+ 	{"tombstone",&flags.tombstone, TRUE, SET_IN_GAME},
+ 	{"toptenwin",&flags.toptenwin, FALSE, SET_IN_GAME},
++#ifdef TRAVEL_CACHE
++	{"travel_cache", &iflags.travel_cache, TRUE, SET_IN_GAME},
++#else /* TRAVEL_CACHE */
++	{"travel_cache", (boolean *)0, FALSE, SET_IN_GAME},
++#endif /* TRAVEL_CACHE */
+ 	{"use_inverse",   &iflags.wc_inverse, FALSE, SET_IN_GAME},		/*WC*/
+ 	{"verbose", &flags.verbose, TRUE, SET_IN_GAME},
+ 	{(char *)0, (boolean *)0, FALSE, 0}
+@@ -237,6 +256,7 @@
+ 	{ "horsename", "the name of your (first) horse (e.g., horsename:Silver)",
+ 						PL_PSIZ, DISP_IN_GAME },
+ 	{ "map_mode", "map display mode under Windows", 20, DISP_IN_GAME },	/*WC*/
++        { "menucolor", "set menu colors", PL_PSIZ, SET_IN_FILE },
+ 	{ "menustyle", "user interface for object selection",
+ 						MENUTYPELEN, SET_IN_GAME },
+ 	{ "menu_deselect_all", "deselect all items in a menu", 4, SET_IN_FILE },
+@@ -929,6 +949,120 @@
+ 	}
+ }
+ 
++#ifdef MENU_COLOR
++extern struct menucoloring *menu_colorings;
++
++static const struct {
++   const char *name;
++   const int color;
++} colornames[] = {
++   {"black", CLR_BLACK},
++   {"red", CLR_RED},
++   {"green", CLR_GREEN},
++   {"brown", CLR_BROWN},
++   {"blue", CLR_BLUE},
++   {"magenta", CLR_MAGENTA},
++   {"cyan", CLR_CYAN},
++   {"gray", CLR_GRAY},
++   {"orange", CLR_ORANGE},
++   {"lightgreen", CLR_BRIGHT_GREEN},
++   {"yellow", CLR_YELLOW},
++   {"lightblue", CLR_BRIGHT_BLUE},
++   {"lightmagenta", CLR_BRIGHT_MAGENTA},
++   {"lightcyan", CLR_BRIGHT_CYAN},
++   {"white", CLR_WHITE}
++};
++
++static const struct {
++   const char *name;
++   const int attr;
++} attrnames[] = {
++     {"none", ATR_NONE},
++     {"bold", ATR_BOLD},
++     {"dim", ATR_DIM},
++     {"underline", ATR_ULINE},
++     {"blink", ATR_BLINK},
++     {"inverse", ATR_INVERSE}
++
++};
++
++/* parse '"regex_string"=color' and add it to menucoloring */
++boolean
++add_menu_coloring(str)
++char *str;
++{
++   int i, c = NO_COLOR, a = ATR_NONE;
++   struct menucoloring *tmp;
++   char *tmps, *cs = strchr(str, '=');
++   const char *err = (char *)0;
++   
++   if (!cs || !str) return FALSE;
++   
++   tmps = cs;
++   tmps++;
++   while (*tmps && isspace(*tmps)) tmps++;
++
++   for (i = 0; i < SIZE(colornames); i++)
++     if (strstri(tmps, colornames[i].name) == tmps) {
++	c = colornames[i].color;
++	break;
++     }
++   if ((i == SIZE(colornames)) && (*tmps >= '0' && *tmps <='9'))
++     c = atoi(tmps);
++   
++   if (c > 15) return FALSE;
++   
++   tmps = strchr(str, '&');
++   if (tmps) {
++      tmps++;
++      while (*tmps && isspace(*tmps)) tmps++;
++      for (i = 0; i < SIZE(attrnames); i++)
++	if (strstri(tmps, attrnames[i].name) == tmps) {
++	   a = attrnames[i].attr;
++	   break;
++	}
++      if ((i == SIZE(attrnames)) && (*tmps >= '0' && *tmps <='9'))
++	a = atoi(tmps);
++   }
++   
++   *cs = '\0';
++   tmps = str;
++   if ((*tmps == '"') || (*tmps == '\'')) {
++      cs--;
++      while (isspace(*cs)) cs--;
++      if (*cs == *tmps) {
++	 *cs = '\0';
++	 tmps++;
++      }
++   }
++   
++   tmp = (struct menucoloring *)alloc(sizeof(struct menucoloring));
++#ifdef USE_REGEX_MATCH
++   tmp->match.translate = 0;
++   tmp->match.fastmap = 0;
++   tmp->match.buffer = 0;
++   tmp->match.allocated = 0;
++   tmp->match.regs_allocated = REGS_FIXED;
++   err = re_compile_pattern(tmps, strlen(tmps), &tmp->match);
++#else
++   tmp->match = (char *)alloc(strlen(tmps)+1);
++   (void) memcpy((genericptr_t)tmp->match, (genericptr_t)tmps, strlen(tmps)+1);
++#endif
++   if (err) {
++      raw_printf("\nMenucolor regex error: %s\n", err);
++      wait_synch();
++      free(tmp);
++      return FALSE;
++   } else {
++      tmp->next = menu_colorings;
++      tmp->color = c;
++      tmp->attr = a;
++      menu_colorings = tmp;
++      return TRUE;
++   }
++}
++#endif /* MENU_COLOR */
++
+ void
+ parseoptions(opts, tinitial, tfrom_file)
+ register char *opts;
+@@ -1049,6 +1183,18 @@
+ 		return;
+ 	}
+ 
++	/* menucolor:"regex_string"=color */
++	fullname = "menucolor";
++	if (match_optname(opts, fullname, 9, TRUE)) {
++#ifdef MENU_COLOR
++		if (negated) bad_negation(fullname, FALSE);
++		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
++			if (!add_menu_coloring(op))
++				badoption(opts);
++#endif
++ 		return;
++ 	}
++   
+ 	fullname = "msghistory";
+ 	if (match_optname(opts, fullname, 3, TRUE)) {
+ 		op = string_for_env_opt(fullname, opts, negated);
+@@ -2085,7 +2231,11 @@
+ # endif
+ 			}
+ #endif
+-
++#ifdef HERO_RACE
++			else if (boolopt[i].addr == &iflags.hero_race) {
++			    need_redraw = TRUE;
++			}
++#endif
+ 			return;
+ 		}
+ 	}
+Index: src/restore.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/restore.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- src/restore.c	22 Mar 2002 23:57:47 -0000	1.1.1.1
++++ src/restore.c	4 Apr 2002 23:47:23 -0000	1.2
+@@ -866,7 +866,9 @@
+ 	relink_timers(ghostly);
+ 	relink_light_sources(ghostly);
+ 	reset_oattached_mids(ghostly);
+-
++#ifdef DUNGEON_GROWTH
++	if (!ghostly) catchup_dgn_growths((monstermoves - omoves) / 5);
++#endif
+ 	if (ghostly)
+ 	    clear_id_mapping();
+ }
+Index: src/save.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/src/save.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- src/save.c	22 Mar 2002 23:57:49 -0000	1.1.1.1
++++ src/save.c	28 Mar 2002 05:55:53 -0000	1.2
+@@ -49,6 +49,10 @@
+ #define HUP
+ #endif
+ 
++#ifdef MENU_COLOR
++extern struct menucoloring *menu_colorings;
++#endif
++
+ /* need to preserve these during save to avoid accessing freed memory */
+ static unsigned ustuck_id = 0, usteed_id = 0;
+ 
+@@ -939,12 +943,35 @@
+ 	return;
+ }
+ 
++#ifdef MENU_COLOR
++void
++free_menu_coloring()
++{
++   struct menucoloring *tmp = menu_colorings;
++   
++   while (tmp) {
++      struct menucoloring *tmp2 = tmp->next;
++#ifdef USE_REGEX_MATCH
++      (void) regfree(&tmp->match);
++#else
++      free(tmp->match);
++#endif
++      free(tmp);
++      tmp = tmp2;
++   }
++   return;
++}
++#endif
++
+ void
+ freedynamicdata()
+ {
+ 	unload_qtlist();
+ 	free_invbuf();	/* let_to_name (invent.c) */
+ 	free_youbuf();	/* You_buf,&c (pline.c) */
++#ifdef MENU_COLOR
++        free_menu_coloring();
++#endif
+ 	tmp_at(DISP_FREEMEM, 0);	/* temporary display effects */
+ #ifdef FREE_ALL_MEMORY
+ # define freeobjchn(X)	(saveobjchn(0, X, FREE_SAVE),  X = 0)
+Index: util/makedefs.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/util/makedefs.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.8
+diff -u -r1.1.1.1 -r1.8
+--- util/makedefs.c	22 Mar 2002 23:59:21 -0000	1.1.1.1
++++ util/makedefs.c	4 Apr 2002 23:52:55 -0000	1.8
+@@ -654,6 +654,27 @@
+ #  endif
+ # endif
+ #endif
++#ifdef EXPLODING_BOULDER_BUGFIX
++		"patch: exploding boulder bugfix",
++#endif /* EXPLODING_BOULDER_BUGFIX */
++#ifdef COLOR_BRIGHT_BLACK
++		"patch: use \"bright black\" color",
++#endif /* COLOR_BRIGHT_BLACK */
++#ifdef MENU_COLOR
++		"patch: menu colors",
++#endif /* MENU_COLOR */
++#ifdef TRAVEL_CACHE
++		"patch: travel cache",
++#endif
++#ifdef DUNGEON_GROWTH
++		"patch: growing dungeon",
++#endif
++#ifdef FLIPCOIN
++		"patch: coin flipping",
++#endif
++#ifdef HERORACE
++		"patch: herorace",
++#endif
+ #ifdef REDO
+ 		"redo command",
+ #endif
+Index: win/tty/termcap.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/win/tty/termcap.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- win/tty/termcap.c	22 Mar 2002 23:59:40 -0000	1.1.1.1
++++ win/tty/termcap.c	28 Mar 2002 05:44:02 -0000	1.2
+@@ -840,9 +840,14 @@
+ #endif
+ 
+ #  ifdef COLOR_BLACK	/* trust include file */
++#ifndef COLOR_BRIGHT_BLACK
+ #undef COLOR_BLACK
++#endif /* COLOR_BRIGHT_BLACK */
+ #  else
+ #   ifndef _M_UNIX	/* guess BGR */
++#ifdef COLOR_BRIGHT_BLACK
++#define COLOR_BLACK   0 /* added for bright black patch */
++#endif /* COLOR_BRIGHT_BLACK */
+ #define COLOR_BLUE    1
+ #define COLOR_GREEN   2
+ #define COLOR_CYAN    3
+@@ -860,7 +865,9 @@
+ #define COLOR_WHITE   7
+ #   endif
+ #  endif
++#ifndef COLOR_BRIGHT_BLACK
+ #define COLOR_BLACK COLOR_BLUE
++#endif /* COLOR_BRIGHT_BLACK */
+ 
+ const int ti_map[8] = {
+ 	COLOR_BLACK, COLOR_RED, COLOR_GREEN, COLOR_YELLOW,
+Index: win/tty/wintty.c
+===================================================================
+RCS file: /cvsroot/patchhack/patchhack-nh340/win/tty/wintty.c,v
+retrieving revision 1.1.1.1
+retrieving revision 1.2
+diff -u -r1.1.1.1 -r1.2
+--- win/tty/wintty.c	22 Mar 2002 23:59:41 -0000	1.1.1.1
++++ win/tty/wintty.c	28 Mar 2002 05:55:53 -0000	1.2
+@@ -119,6 +119,10 @@
+ static char winpanicstr[] = "Bad window id %d";
+ char defmorestr[] = "--More--";
+ 
++#ifdef MENU_COLOR
++extern struct menucoloring *menu_colorings;
++#endif
++
+ #ifdef CLIPPING
+ # if defined(USE_TILES) && defined(MSDOS)
+ boolean clipping = FALSE;	/* clipping on? */
+@@ -1117,6 +1121,28 @@
+     }
+ }
+ 
++#ifdef MENU_COLOR
++STATIC_OVL boolean
++get_menu_coloring(str, color, attr)
++char *str;
++int *color, *attr;
++{
++   struct menucoloring *tmpmc;
++   if (iflags.use_menu_color)
++     for (tmpmc = menu_colorings; tmpmc; tmpmc = tmpmc->next)
++#ifdef USE_REGEX_MATCH
++       if (re_search(&tmpmc->match, str, strlen(str), 0, 9999, 0) >= 0) {
++#else
++       if (pmatch(tmpmc->match, str)) {
++#endif
++	  *color = tmpmc->color;
++	  *attr = tmpmc->attr;
++	 return TRUE;
++       }
++   return FALSE;
++}
++#endif /* MENU_COLOR */
++
+ STATIC_OVL void
+ process_menu_window(window, cw)
+ winid window;
+@@ -1190,6 +1216,10 @@
+ 		for (page_lines = 0, curr = page_start;
+ 			curr != page_end;
+ 			page_lines++, curr = curr->next) {
++#ifdef MENU_COLOR
++		   int color = NO_COLOR, attr = ATR_NONE;
++		   boolean menucolr = FALSE;
++#endif
+ 		    if (curr->selector)
+ 			*rp++ = curr->selector;
+ 
+@@ -1205,6 +1235,13 @@
+ 		     * actually output the character.  We're faster doing
+ 		     * this.
+ 		     */
++#ifdef MENU_COLOR
++		   if (iflags.use_menu_color &&
++		       (menucolr = get_menu_coloring(curr->str, &color,&attr))) {
++		      term_start_attr(attr);
++		      if (color != NO_COLOR) term_start_color(color);
++		   } else
++#endif
+ 		    term_start_attr(curr->attr);
+ 		    for (n = 0, cp = curr->str;
+ 			  *cp && (int) ++ttyDisplay->curx < (int) ttyDisplay->cols;
+@@ -1217,6 +1254,12 @@
+ 				(void) putchar('#'); /* count selected */
+ 			} else
+ 			    (void) putchar(*cp);
++#ifdef MENU_COLOR
++		   if (iflags.use_menu_color && menucolr) {
++		      if (color != NO_COLOR) term_end_color();
++		      term_end_attr(attr);
++		   } else
++#endif
+ 		    term_end_attr(curr->attr);
+ 		}
+ 	    } else {

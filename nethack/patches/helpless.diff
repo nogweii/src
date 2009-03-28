@@ -1,0 +1,1087 @@
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/include/decl.h nethack-3.4.3-helpless/include/decl.h
+--- nethack-3.4.3-orig/include/decl.h	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/include/decl.h	2004-03-03 01:47:09.000000000 +0200
+@@ -27,6 +27,7 @@
+ E NEARDATA int bases[MAXOCLASSES];
+ 
+ E NEARDATA int multi;
++E char multi_txt[BUFSZ];
+ #if 0
+ E NEARDATA int warnlevel;
+ #endif
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/include/extern.h nethack-3.4.3-helpless/include/extern.h
+--- nethack-3.4.3-orig/include/extern.h	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/include/extern.h	2004-03-03 01:02:59.000000000 +0200
+@@ -694,7 +694,7 @@
+ E int NDECL(dopickup);
+ E void NDECL(lookaround);
+ E int NDECL(monster_nearby);
+-E void FDECL(nomul, (int));
++E void FDECL(nomul, (int, const char *));
+ E void FDECL(unmul, (const char *));
+ E void FDECL(losehp, (int,const char *,BOOLEAN_P));
+ E int NDECL(weight_cap);
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/allmain.c nethack-3.4.3-helpless/src/allmain.c
+--- nethack-3.4.3-orig/src/allmain.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/allmain.c	2004-03-03 01:16:09.000000000 +0200
+@@ -245,7 +245,7 @@
+ 				if (occupation)
+ 				    stop_occupation();
+ 				else
+-				    nomul(0);
++				    nomul(0, 0);
+ 				if (change == 1) polyself(FALSE);
+ 				else you_were();
+ 				change = 0;
+@@ -438,7 +438,7 @@
+ 		sync_hunger();
+ */
+ #ifdef REDO
+-		nomul(0);
++		nomul(0, 0);
+ 		pushch(0);
+ #endif
+ 	}
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/apply.c nethack-3.4.3-helpless/src/apply.c
+--- nethack-3.4.3-orig/src/apply.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/apply.c	2004-03-03 01:18:02.000000000 +0200
+@@ -624,7 +624,7 @@
+ 			pline(Hallucination ?
+ 			      "Yow!  The mirror stares back!" :
+ 			      "Yikes!  You've frozen yourself!");
+-			nomul(-rnd((MAXULEV+6) - u.ulevel));
++			nomul(-rnd((MAXULEV+6) - u.ulevel), "gazing into a mirror");
+ 			} else You("stiffen momentarily under your gaze.");
+ 		    } else if (youmonst.data->mlet == S_VAMPIRE)
+ 			You("don't have a reflection.");
+@@ -788,7 +788,7 @@
+ 				break;
+ 			case 2: /* no explanation; it just happens... */
+ 				nomovemsg = "";
+-				nomul(-rnd(2));
++				nomul(-rnd(2), 0);
+ 				break;
+ 		}
+ 	    }
+@@ -1358,7 +1358,7 @@
+ 		change_luck(-1);
+ 
+ 	    teleds(cc.x, cc.y, TRUE);
+-	    nomul(-1);
++	    nomul(-1, "jumping around");
+ 	    nomovemsg = "";
+ 	    morehungry(rnd(25));
+ 	    return 1;
+@@ -2750,7 +2750,7 @@
+     current_wand = 0;
+     if (obj)
+ 	delobj(obj);
+-    nomul(0);
++    nomul(0, 0);
+     return 1;
+ }
+ 
+@@ -3012,11 +3012,11 @@
+ 		}
+ 		pline("Sorry, I don't know how to use that.");
+ 	xit:
+-		nomul(0);
++		nomul(0, 0);
+ 		return 0;
+ 	}
+ 	if (res && obj && obj->oartifact) arti_speak(obj);
+-	nomul(0);
++	nomul(0, 0);
+ 	return res;
+ }
+ 
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/artifact.c nethack-3.4.3-helpless/src/artifact.c
+--- nethack-3.4.3-orig/src/artifact.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/artifact.c	2004-03-03 01:18:30.000000000 +0200
+@@ -856,7 +856,7 @@
+ 	    if (Antimagic) {
+ 		resisted = TRUE;
+ 	    } else {
+-		nomul(-3);
++		nomul(-3, "being scared stiff");
+ 		nomovemsg = "";
+ 		if (magr && magr == u.ustuck && sticks(youmonst.data)) {
+ 		    u.ustuck = (struct monst *)0;
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/ball.c nethack-3.4.3-helpless/src/ball.c
+--- nethack-3.4.3-orig/src/ball.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/ball.c	2004-03-03 01:18:50.000000000 +0200
+@@ -557,7 +557,7 @@
+ 	if (near_capacity() > SLT_ENCUMBER && dist2(x, y, u.ux, u.uy) <= 2) {
+ 	    You("cannot %sdrag the heavy iron ball.",
+ 			    invent ? "carry all that and also " : "");
+-	    nomul(0);
++	    nomul(0, 0);
+ 	    return FALSE;
+ 	}
+ 
+@@ -595,7 +595,7 @@
+ 		    u.uy = uchain->oy;
+ 		    newsym(u.ux0, u.uy0);
+ 		}
+-		nomul(0);
++		nomul(0, 0);
+ 
+ 		*bc_control = BC_BALL;
+ 		move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/decl.c nethack-3.4.3-helpless/src/decl.c
+--- nethack-3.4.3-orig/src/decl.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/decl.c	2004-03-03 01:46:40.000000000 +0200
+@@ -20,6 +20,7 @@
+ NEARDATA int bases[MAXOCLASSES] = DUMMY;
+ 
+ NEARDATA int multi = 0;
++char multi_txt[BUFSZ] = DUMMY;
+ #if 0
+ NEARDATA int warnlevel = 0;		/* used by movemon and dochugw */
+ #endif
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/detect.c nethack-3.4.3-helpless/src/detect.c
+--- nethack-3.4.3-orig/src/detect.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/detect.c	2004-03-03 01:19:25.000000000 +0200
+@@ -861,7 +861,7 @@
+ 	return;
+     }
+     You("peer into %s...", the(xname(obj)));
+-    nomul(-rnd(10));
++    nomul(-rnd(10), "gazing into a crystal ball");
+     nomovemsg = "";
+     if (obj->spe <= 0)
+ 	pline_The("vision is unclear.");
+@@ -1191,7 +1191,7 @@
+ 			if(rnl(7-fund)) continue;
+ 			cvt_sdoor_to_door(&levl[x][y]);	/* .typ = DOOR */
+ 			exercise(A_WIS, TRUE);
+-			nomul(0);
++			nomul(0, 0);
+ 			if (Blind && !aflag)
+ 			    feel_location(x,y);	/* make sure it shows up */
+ 			else
+@@ -1201,7 +1201,7 @@
+ 			levl[x][y].typ = CORR;
+ 			unblock_point(x,y);	/* vision */
+ 			exercise(A_WIS, TRUE);
+-			nomul(0);
++			nomul(0, 0);
+ 			newsym(x,y);
+ 		    } else {
+ 		/* Be careful not to find anything in an SCORR or SDOOR */
+@@ -1246,7 +1246,7 @@
+ 			}
+ 
+ 			if ((trap = t_at(x,y)) && !trap->tseen && !rnl(8)) {
+-			    nomul(0);
++			    nomul(0, 0);
+ 
+ 			    if (trap->ttyp == STATUE_TRAP) {
+ 				if (activate_statue_trap(trap, x, y, FALSE))
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/dig.c nethack-3.4.3-helpless/src/dig.c
+--- nethack-3.4.3-orig/src/dig.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/dig.c	2004-03-03 01:20:33.000000000 +0200
+@@ -916,7 +916,7 @@
+ 				aobjnam(obj, "become"));
+ 			    /* you ought to be able to let go; tough luck */
+ 			    /* (maybe `move_into_trap()' would be better) */
+-			    nomul(-d(2,2));
++			    nomul(-d(2,2), "stuck in a spider web");
+ 			    nomovemsg = "You pull free.";
+ 			} else if (lev->typ == IRONBARS) {
+ 			    pline("Clang!");
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/dothrow.c nethack-3.4.3-helpless/src/dothrow.c
+--- nethack-3.4.3-orig/src/dothrow.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/dothrow.c	2004-03-03 01:21:12.000000000 +0200
+@@ -608,13 +608,13 @@
+      */
+     if(Punished && !carried(uball)) {
+ 	You_feel("a tug from the iron ball.");
+-	nomul(0);
++	nomul(0, 0);
+ 	return;
+     } else if (u.utrap) {
+ 	You("are anchored by the %s.",
+ 	    u.utraptype == TT_WEB ? "web" : u.utraptype == TT_LAVA ? "lava" :
+ 		u.utraptype == TT_INFLOOR ? surface(u.ux,u.uy) : "trap");
+-	nomul(0);
++	nomul(0, 0);
+ 	return;
+     }
+ 
+@@ -624,7 +624,7 @@
+ 
+     if(!range || (!dx && !dy) || u.ustuck) return; /* paranoia */
+ 
+-    nomul(-range);
++    nomul(-range, "moving through the air");
+     if (verbose)
+ 	You("%s in the opposite direction.", range > 1 ? "hurtle" : "float");
+     /* if we're in the midst of shooting multiple projectiles, stop */
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/do_wear.c nethack-3.4.3-helpless/src/do_wear.c
+--- nethack-3.4.3-orig/src/do_wear.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/do_wear.c	2004-03-03 01:21:56.000000000 +0200
+@@ -1184,7 +1184,7 @@
+ 
+ 	if(cursed(otmp)) return(0);
+ 	if(delay) {
+-		nomul(delay);
++		nomul(delay, "disrobing");
+ 		if (is_helmet(otmp)) {
+ 			nomovemsg = "You finish taking off your helmet.";
+ 			afternmv = Helmet_off;
+@@ -1441,7 +1441,7 @@
+ 	setworn(otmp, mask);
+ 	delay = -objects[otmp->otyp].oc_delay;
+ 	if(delay){
+-		nomul(delay);
++		nomul(delay, "dressing up");
+ 		if(is_boots(otmp)) afternmv = Boots_on;
+ 		if(is_helmet(otmp)) afternmv = Helmet_on;
+ 		if(is_gloves(otmp)) afternmv = Gloves_on;
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/eat.c nethack-3.4.3-helpless/src/eat.c
+--- nethack-3.4.3-orig/src/eat.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/eat.c	2004-03-03 02:16:14.000000000 +0200
+@@ -862,7 +862,7 @@
+                     /* A pile of gold can't ride. */
+ 		    if (u.usteed) dismount_steed(DISMOUNT_FELL);
+ #endif
+-		    nomul(-tmp);
++		    nomul(-tmp, "pretending to be a pile of gold");
+ 		    Sprintf(buf, Hallucination ?
+ 			"You suddenly dread being peeled and mimic %s again!" :
+ 			"You now prefer mimicking %s again.",
+@@ -1224,7 +1224,7 @@
+ 			   surface(u.ux,u.uy);
+ 		pline_The("world spins and %s %s.", what, where);
+ 		flags.soundok = 0;
+-		nomul(-rnd(10));
++		nomul(-rnd(10), "unconscious from rotten food");
+ 		nomovemsg = "You are conscious again.";
+ 		afternmv = Hear_again;
+ 		return(1);
+@@ -2244,7 +2244,7 @@
+ void
+ reset_faint()	/* call when a faint must be prematurely terminated */
+ {
+-	if(is_fainted()) nomul(0);
++	if(is_fainted()) nomul(0, 0);
+ }
+ 
+ #if 0
+@@ -2255,7 +2255,7 @@
+ 	if(is_fainted()) {
+ 
+ 		flags.soundok = 0;
+-		nomul(-10+(u.uhunger/10));
++		nomul(-10+(u.uhunger/10), "fainted from lack of food");
+ 		nomovemsg = "You regain consciousness.";
+ 		afternmv = unfaint;
+ 	}
+@@ -2320,7 +2320,7 @@
+ 				stop_occupation();
+ 				You("faint from lack of food.");
+ 				flags.soundok = 0;
+-				nomul(-10+(u.uhunger/10));
++				nomul(-10+(u.uhunger/10), "fainted from lack of food");
+ 				nomovemsg = "You regain consciousness.";
+ 				afternmv = unfaint;
+ 				newhs = FAINTED;
+@@ -2489,7 +2489,7 @@
+ vomit()		/* A good idea from David Neves */
+ {
+ 	make_sick(0L, (char *) 0, TRUE, SICK_VOMITABLE);
+-	nomul(-2);
++	nomul(-2, "vomiting");
+ }
+ 
+ int
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/end.c nethack-3.4.3-helpless/src/end.c
+--- nethack-3.4.3-orig/src/end.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/end.c	2004-03-03 01:12:39.000000000 +0200
+@@ -101,7 +101,7 @@
+ 		clear_nhwindow(WIN_MESSAGE);
+ 		curs_on_u();
+ 		wait_synch();
+-		if(multi > 0) nomul(0);
++		if(multi > 0) nomul(0, 0);
+ 	} else {
+ 		(void)done2();
+ 	}
+@@ -119,7 +119,7 @@
+ 		clear_nhwindow(WIN_MESSAGE);
+ 		curs_on_u();
+ 		wait_synch();
+-		if(multi > 0) nomul(0);
++		if(multi > 0) nomul(0, 0);
+ 		if(multi == 0) {
+ 		    u.uinvulnerable = FALSE;	/* avoid ctrl-C bug -dlc */
+ 		    u.usleep = 0;
+@@ -224,7 +224,12 @@
+ 		    Sprintf(eos(buf), " called %s", NAME(mtmp));
+ 	}
+ 
+-	if (multi) Strcat(buf, ", while helpless");
++	if (multi) {
++	  if (strlen(multi_txt) > 0)
++	    Sprintf(eos(buf), ", while %s", multi_txt);
++	  else
++	    Strcat(buf, ", while helpless");
++	}
+ 	killer = buf;
+ 	if (mtmp->data->mlet == S_WRAITH)
+ 		u.ugrave_arise = PM_WRAITH;
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/engrave.c nethack-3.4.3-helpless/src/engrave.c
+--- nethack-3.4.3-orig/src/engrave.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/engrave.c	2004-03-03 01:24:22.000000000 +0200
+@@ -343,7 +343,7 @@
+ 			et = ep->engr_txt;
+ 		You("%s: \"%s\".",
+ 		      (Blind) ? "feel the words" : "read",  et);
+-		if(flags.run > 1) nomul(0);
++		if(flags.run > 1) nomul(0, 0);
+ 	    }
+ 	}
+ }
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/explode.c nethack-3.4.3-helpless/src/explode.c
+--- nethack-3.4.3-orig/src/explode.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/explode.c	2004-03-03 01:24:33.000000000 +0200
+@@ -513,7 +513,7 @@
+ 				if (scflags & MAY_HITYOU) {
+ 				    int hitvalu, hitu;
+ 
+-				    if (multi) nomul(0);
++				    if (multi) nomul(0, 0);
+ 				    hitvalu = 8 + stmp->obj->spe;
+ 				    if (bigmonst(youmonst.data)) hitvalu++;
+ 				    hitu = thitu(hitvalu,
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/hack.c nethack-3.4.3-helpless/src/hack.c
+--- nethack-3.4.3-orig/src/hack.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/hack.c	2004-03-03 01:56:15.000000000 +0200
+@@ -72,7 +72,7 @@
+ 
+ 	rx = u.ux + 2 * u.dx;	/* boulder destination position */
+ 	ry = u.uy + 2 * u.dy;
+-	nomul(0);
++	nomul(0, 0);
+ 	if (Levitation || Is_airlevel(&u.uz)) {
+ 	    if (Blind) feel_location(sx, sy);
+ 	    You("don't have enough leverage to push %s.", the(xname(otmp)));
+@@ -323,7 +323,7 @@
+     if (!boulder && IS_ROCK(lev->typ) && !may_dig(x,y)) {
+ 	You("hurt your teeth on the %s.",
+ 	    IS_TREE(lev->typ) ? "tree" : "hard stone");
+-	nomul(0);
++	nomul(0, 0);
+ 	return 1;
+     } else if (digging.pos.x != x || digging.pos.y != y ||
+ 		!on_level(&digging.level, &u.uz)) {
+@@ -719,7 +719,7 @@
+ 	if (test_move(u.ux, u.uy, u.tx-u.ux, u.ty-u.uy, TEST_MOVE)) {
+ 	    u.dx = u.tx-u.ux;
+ 	    u.dy = u.ty-u.uy;
+-	    nomul(0);
++	    nomul(0, 0);
+ 	    iflags.travelcc.x = iflags.travelcc.y = -1;
+ 	    return TRUE;
+ 	}
+@@ -785,7 +785,7 @@
+ 				u.dx = x-ux;
+ 				u.dy = y-uy;
+ 				if (x == u.tx && y == u.ty) {
+-				    nomul(0);
++				    nomul(0, 0);
+ 				    /* reset run so domove run checks work */
+ 				    flags.run = 8;
+ 				    iflags.travelcc.x = iflags.travelcc.y = -1;
+@@ -855,7 +855,7 @@
+ found:
+     u.dx = 0;
+     u.dy = 0;
+-    nomul(0);
++    nomul(0, 0);
+     return FALSE;
+ }
+ 
+@@ -891,7 +891,7 @@
+ 		exercise(A_CON, FALSE);
+ 	    } else
+ 		You("collapse under your load.");
+-	    nomul(0);
++	    nomul(0, 0);
+ 	    return;
+ 	}
+ 	if(u.uswallow) {
+@@ -943,7 +943,7 @@
+ 
+ 			do {
+ 				if(tries++ > 50) {
+-					nomul(0);
++					nomul(0, 0);
+ 					return;
+ 				}
+ 				confdir();
+@@ -955,14 +955,14 @@
+ 		if (u.uinwater) {
+ 			water_friction();
+ 			if (!u.dx && !u.dy) {
+-				nomul(0);
++				nomul(0, 0);
+ 				return;
+ 			}
+ 			x = u.ux + u.dx;
+ 			y = u.uy + u.dy;
+ 		}
+ 		if(!isok(x, y)) {
+-			nomul(0);
++			nomul(0, 0);
+ 			return;
+ 		}
+ 		if (((trap = t_at(x, y)) && trap->tseen) ||
+@@ -970,11 +970,11 @@
+ 		     !is_clinger(youmonst.data) &&
+ 		     (is_pool(x, y) || is_lava(x, y)) && levl[x][y].seenv)) {
+ 			if(flags.run >= 2) {
+-				nomul(0);
++				nomul(0, 0);
+ 				flags.move = 0;
+ 				return;
+ 			} else
+-				nomul(0);
++				nomul(0, 0);
+ 		}
+ 
+ 		if (u.ustuck && (x != u.ustuck->mx || y != u.ustuck->my)) {
+@@ -1015,7 +1015,7 @@
+ 				!Conflict && !u.ustuck->mconf)
+ 				goto pull_free;
+ 			    You("cannot escape from %s!", mon_nam(u.ustuck));
+-			    nomul(0);
++			    nomul(0, 0);
+ 			    return;
+ 			}
+ 		    }
+@@ -1031,7 +1031,7 @@
+ 				mtmp->m_ap_type != M_AP_OBJECT) ||
+ 			       Protection_from_shape_changers)) ||
+ 			     sensemon(mtmp))) {
+-				nomul(0);
++				nomul(0, 0);
+ 				flags.move = 0;
+ 				return;
+ 			}
+@@ -1046,7 +1046,7 @@
+ 
+ 	/* attack monster */
+ 	if(mtmp) {
+-	    nomul(0);
++	    nomul(0, 0);
+ 	    /* only attack if we know it's there */
+ 	    /* or if we used the 'F' command to fight blindly */
+ 	    /* or if it hides_under, in which case we call attack() to print
+@@ -1108,7 +1108,7 @@
+ 		    is_pool(x,y) ? "empty water" : buf);
+ 		unmap_object(x, y); /* known empty -- remove 'I' if present */
+ 		newsym(x, y);
+-		nomul(0);
++		nomul(0, 0);
+ 		if (expl) {
+ 		    u.mh = -1;		/* dead in the current form */
+ 		    rehumanize();
+@@ -1123,7 +1123,7 @@
+ #ifdef STEED
+ 	if (u.usteed && !u.usteed->mcanmove && (u.dx || u.dy)) {
+ 		pline("%s won't move!", upstart(y_monnam(u.usteed)));
+-		nomul(0);
++		nomul(0, 0);
+ 		return;
+ 	} else
+ #endif
+@@ -1131,7 +1131,7 @@
+ 		You("are rooted %s.",
+ 		    Levitation || Is_airlevel(&u.uz) || Is_waterlevel(&u.uz) ?
+ 		    "in place" : "to the ground");
+-		nomul(0);
++		nomul(0, 0);
+ 		return;
+ 	}
+ 	if(u.utrap) {
+@@ -1254,7 +1254,7 @@
+ 
+ 	if (!test_move(u.ux, u.uy, x-u.ux, y-u.uy, DO_MOVE)) {
+ 	    flags.move = 0;
+-	    nomul(0);
++	    nomul(0, 0);
+ 	    return;
+ 	}
+ 
+@@ -1370,7 +1370,7 @@
+ 	    if ( flags.run < 8 )
+ 		if (IS_DOOR(tmpr->typ) || IS_ROCK(tmpr->typ) ||
+ 			IS_FURNITURE(tmpr->typ))
+-		    nomul(0);
++		    nomul(0, 0);
+ 	}
+ 
+ 	if (hides_under(youmonst.data))
+@@ -1408,7 +1408,7 @@
+ 	/* delay next move because of ball dragging */
+ 	/* must come after we finished picking up, in spoteffects() */
+ 	if (cause_delay) {
+-	    nomul(-2);
++	    nomul(-2, "dragging an iron ball");
+ 	    nomovemsg = "";
+ 	}
+ 
+@@ -1436,7 +1436,7 @@
+ 	    char buf[BUFSZ];
+ 	    struct obj *otmp = carrying(CANDELABRUM_OF_INVOCATION);
+ 
+-	    nomul(0);		/* stop running or travelling */
++	    nomul(0, 0);		/* stop running or travelling */
+ #ifdef STEED
+ 	    if (u.usteed) Sprintf(buf, "beneath %s", y_monnam(u.usteed));
+ 	    else
+@@ -1924,7 +1924,7 @@
+     /* Grid bugs stop if trying to move diagonal, even if blind.  Maybe */
+     /* they polymorphed while in the middle of a long move. */
+     if (u.umonnum == PM_GRID_BUG && u.dx && u.dy) {
+-	nomul(0);
++	nomul(0, 0);
+ 	return;
+     }
+ 
+@@ -2001,7 +2001,7 @@
+ 	       continue;
+ 	}
+ stop:
+-	nomul(0);
++	nomul(0, 0);
+ 	return;
+     } /* end for loops */
+ 
+@@ -2064,13 +2064,18 @@
+ }
+ 
+ void
+-nomul(nval)
+-	register int nval;
++nomul(nval, txt)
++register int nval;
++const char *txt;
+ {
+ 	if(multi < nval) return;	/* This is a bug fix by ab@unido */
+ 	u.uinvulnerable = FALSE;	/* Kludge to avoid ctrl-C bug -dlc */
+ 	u.usleep = 0;
+ 	multi = nval;
++	if (txt && txt[0])
++	  (void) strncpy(multi_txt, txt, BUFSZ);
++	else
++	  (void) memset(multi_txt, 0, BUFSZ);
+ 	flags.travel = iflags.travel1 = flags.mv = flags.run = 0;
+ }
+ 
+@@ -2080,6 +2085,7 @@
+ const char *msg_override;
+ {
+ 	multi = 0;	/* caller will usually have done this already */
++	(void) memset(multi_txt, 0, BUFSZ);
+ 	if (msg_override) nomovemsg = msg_override;
+ 	else if (!nomovemsg) nomovemsg = You_can_move_again;
+ 	if (*nomovemsg) pline(nomovemsg);
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/mcastu.c nethack-3.4.3-helpless/src/mcastu.c
+--- nethack-3.4.3-orig/src/mcastu.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/mcastu.c	2004-03-03 01:25:45.000000000 +0200
+@@ -228,7 +228,7 @@
+ 	    return(0);
+ 	}
+ 
+-	nomul(0);
++	nomul(0, 0);
+ 	if(rn2(ml*10) < (mtmp->mconf ? 100 : 20)) {	/* fumbled attack */
+ 	    if (canseemon(mtmp) && flags.soundok)
+ 		pline_The("air crackles around %s.", mon_nam(mtmp));
+@@ -600,13 +600,13 @@
+ 	    shieldeff(u.ux, u.uy);
+ 	    if (multi >= 0)
+ 		You("stiffen briefly.");
+-	    nomul(-1);
++	    nomul(-1, "paralyzed by a monster");
+ 	} else {
+ 	    if (multi >= 0)
+ 		You("are frozen in place!");
+ 	    dmg = 4 + (int)mtmp->m_lev;
+ 	    if (Half_spell_damage) dmg = (dmg + 1) / 2;
+-	    nomul(-dmg);
++	    nomul(-dmg, "paralyzed by a monster");
+ 	}
+ 	dmg = 0;
+ 	break;
+@@ -771,7 +771,7 @@
+ 	    return(0);
+ 	}
+ 	if(lined_up(mtmp) && rn2(3)) {
+-	    nomul(0);
++	    nomul(0, 0);
+ 	    if(mattk->adtyp && (mattk->adtyp < 11)) { /* no cf unsigned >0 */
+ 		if(canseemon(mtmp))
+ 		    pline("%s zaps you with a %s!", Monnam(mtmp),
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/mhitu.c nethack-3.4.3-helpless/src/mhitu.c
+--- nethack-3.4.3-orig/src/mhitu.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/mhitu.c	2004-03-03 01:26:22.000000000 +0200
+@@ -317,7 +317,7 @@
+ 		 * invisible, or you might be blind....
+ 		 */
+ 	
+-	if(!ranged) nomul(0);
++	if(!ranged) nomul(0, 0);
+ 	if(mtmp->mhp <= 0 || (Underwater && !is_swimmer(mtmp->data)))
+ 	    return(0);
+ 
+@@ -1122,7 +1122,7 @@
+ 			if (Blind) You("are frozen!");
+ 			else You("are frozen by %s!", mon_nam(mtmp));
+ 			nomovemsg = 0;	/* default: "you can move again" */
+-			nomul(-rnd(10));
++			nomul(-rnd(10), "paralyzed by a monster");
+ 			exercise(A_DEX, FALSE);
+ 		    }
+ 		}
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/mthrowu.c nethack-3.4.3-helpless/src/mthrowu.c
+--- nethack-3.4.3-orig/src/mthrowu.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/mthrowu.c	2004-03-03 01:26:53.000000000 +0200
+@@ -324,7 +324,7 @@
+ 		    if (ohitmon(mtmp, singleobj, range, TRUE))
+ 			break;
+ 		} else if (bhitpos.x == u.ux && bhitpos.y == u.uy) {
+-		    if (multi) nomul(0);
++		    if (multi) nomul(0, 0);
+ 
+ 		    if (singleobj->oclass == GEM_CLASS &&
+ 			    singleobj->otyp <= LAST_GEM+9 /* 9 glass colors */
+@@ -608,7 +608,7 @@
+ 	m_shot.o = STRANGE_OBJECT;
+ 	m_shot.s = FALSE;
+ 
+-	nomul(0);
++	nomul(0, 0);
+ }
+ 
+ #endif /* OVL1 */
+@@ -646,7 +646,7 @@
+ 			pline("%s spits venom!", Monnam(mtmp));
+ 		    m_throw(mtmp, mtmp->mx, mtmp->my, sgn(tbx), sgn(tby),
+ 			distmin(mtmp->mx,mtmp->my,mtmp->mux,mtmp->muy), otmp);
+-		    nomul(0);
++		    nomul(0, 0);
+ 		    return 0;
+ 		}
+ 	}
+@@ -684,7 +684,7 @@
+ 			      breathwep[typ-1]);
+ 		    buzz((int) (-20 - (typ-1)), (int)mattk->damn,
+ 			 mtmp->mx, mtmp->my, sgn(tbx), sgn(tby));
+-		    nomul(0);
++		    nomul(0, 0);
+ 		    /* breath runs out sometimes. Also, give monster some
+ 		     * cunning; don't breath if the player fell asleep.
+ 		     */
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/muse.c nethack-3.4.3-helpless/src/muse.c
+--- nethack-3.4.3-orig/src/muse.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/muse.c	2004-03-03 01:27:02.000000000 +0200
+@@ -1121,7 +1121,7 @@
+ 			    losehp(tmp, "wand", KILLED_BY_AN);
+ 			} else pline_The("wand misses you.");
+ 			stop_occupation();
+-			nomul(0);
++			nomul(0, 0);
+ 		} else if (resists_magm(mtmp)) {
+ 			shieldeff(mtmp->mx, mtmp->my);
+ 			pline("Boing!");
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/pickup.c nethack-3.4.3-helpless/src/pickup.c
+--- nethack-3.4.3-orig/src/pickup.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/pickup.c	2004-03-03 01:28:03.000000000 +0200
+@@ -267,7 +267,7 @@
+ 
+ 	/* If there are objects here, take a look. */
+ 	if (ct) {
+-	    if (flags.run) nomul(0);
++	    if (flags.run) nomul(0, 0);
+ 	    flush_screen(1);
+ 	    (void) look_here(ct, picked_some);
+ 	} else {
+@@ -440,7 +440,7 @@
+ 		}
+ 
+ 		/* if there's anything here, stop running */
+-		if (OBJ_AT(u.ux,u.uy) && flags.run && flags.run != 8 && !flags.nopick) nomul(0);
++		if (OBJ_AT(u.ux,u.uy) && flags.run && flags.run != 8 && !flags.nopick) nomul(0, 0);
+ 	}
+ 
+ 	add_valid_menu_class(0);	/* reset */
+@@ -1301,7 +1301,7 @@
+ 		    obj->quan -= count;
+ 	    }
+ 	    flags.botl = 1;
+-	    if (flags.run) nomul(0);
++	    if (flags.run) nomul(0, 0);
+ 	    return 1;
+ #endif
+ 	} else if (obj->otyp == CORPSE) {
+@@ -2101,7 +2101,7 @@
+ 	    (void) chest_trap(obj, HAND, FALSE);
+ 	    /* even if the trap fails, you've used up this turn */
+ 	    if (multi >= 0) {	/* in case we didn't become paralyzed */
+-		nomul(-1);
++		nomul(-1, "opening FIXME!");
+ 		nomovemsg = "";
+ 	    }
+ 	    return 1;
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/polyself.c nethack-3.4.3-helpless/src/polyself.c
+--- nethack-3.4.3-orig/src/polyself.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/polyself.c	2004-03-03 01:28:49.000000000 +0200
+@@ -729,7 +729,7 @@
+ 	    done(DIED);
+ 	}
+ 	if (!uarmg) selftouch("No longer petrify-resistant, you");
+-	nomul(0);
++	nomul(0, 0);
+ 
+ 	flags.botl = 1;
+ 	vision_full_recalc = 1;
+@@ -1019,7 +1019,7 @@
+ 			    nomul((u.ulevel > 6 || rn2(4)) ?
+ 				    -d((int)mtmp->m_lev+1,
+ 					    (int)mtmp->data->mattk[0].damd)
+-				    : -200);
++				    : -200, "frozen by a monster's gaze");
+ 			    return 1;
+ 			} else
+ 			    You("stiffen momentarily under %s gaze.",
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/potion.c nethack-3.4.3-helpless/src/potion.c
+--- nethack-3.4.3-orig/src/potion.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/potion.c	2004-03-03 01:30:36.000000000 +0200
+@@ -316,7 +316,7 @@
+ 		Hallucination ? rndmonnam() : (const char *)"ghost");
+ 	if(flags.verbose)
+ 	    You("are frightened to death, and unable to move.");
+-	nomul(-3);
++	nomul(-3, "being frightened to death");
+ 	nomovemsg = "You regain your composure.";
+ }
+ 
+@@ -603,7 +603,7 @@
+ 		    else
+ 			Your("%s are frozen to the %s!",
+ 			     makeplural(body_part(FOOT)), surface(u.ux, u.uy));
+-		    nomul(-(rn1(10, 25 - 12*bcsign(otmp))));
++		    nomul(-(rn1(10, 25 - 12*bcsign(otmp))), "frozen by a potion");
+ 		    nomovemsg = You_can_move_again;
+ 		    exercise(A_DEX, FALSE);
+ 		}
+@@ -1255,7 +1255,7 @@
+ 		kn++;
+ 		if (!Free_action) {
+ 		    pline("%s seems to be holding you.", Something);
+-		    nomul(-rnd(5));
++		    nomul(-rnd(5), "frozen by a potion");
+ 		    nomovemsg = You_can_move_again;
+ 		    exercise(A_DEX, FALSE);
+ 		} else You("stiffen momentarily.");
+@@ -1264,7 +1264,7 @@
+ 		kn++;
+ 		if (!Free_action && !Sleep_resistance) {
+ 		    You_feel("rather tired.");
+-		    nomul(-rnd(5));
++		    nomul(-rnd(5), "sleeping off a magical draught");
+ 		    nomovemsg = You_can_move_again;
+ 		    exercise(A_DEX, FALSE);
+ 		} else You("yawn.");
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/pray.c nethack-3.4.3-helpless/src/pray.c
+--- nethack-3.4.3-orig/src/pray.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/pray.c	2004-03-03 01:31:48.000000000 +0200
+@@ -1206,7 +1206,7 @@
+ 		    if (sgn(u.ualign.type) == sgn(dmon->data->maligntyp))
+ 			dmon->mpeaceful = TRUE;
+ 		    You("are terrified, and unable to move.");
+-		    nomul(-3);
++		    nomul(-3, "being terrified of a demon");
+ 		} else pline_The("%s.", demonless_msg);
+ 	    }
+ 
+@@ -1579,7 +1579,7 @@
+ 	}
+     }
+ #endif
+-    nomul(-3);
++    nomul(-3, "praying");
+     nomovemsg = "You finish your prayer.";
+     afternmv = prayer_done;
+ 
+@@ -1739,7 +1739,7 @@
+ 		    }
+ 	    }
+ 	}
+-	nomul(-5);
++	nomul(-5, "trying to turn the monsters");
+ 	return(1);
+ }
+ 
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/priest.c nethack-3.4.3-helpless/src/priest.c
+--- nethack-3.4.3-orig/src/priest.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/priest.c	2004-03-03 01:32:17.000000000 +0200
+@@ -393,7 +393,7 @@
+ 		    set_malign(mtmp);
+ 		    if(flags.verbose)
+ 			You("are frightened to death, and unable to move.");
+-		    nomul(-3);
++		    nomul(-3, "frightened to death");
+ 		    nomovemsg = "You regain your composure.";
+ 	       }
+ 	   }
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/save.c nethack-3.4.3-helpless/src/save.c
+--- nethack-3.4.3-orig/src/save.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/save.c	2004-03-03 01:32:45.000000000 +0200
+@@ -57,7 +57,7 @@
+ 	clear_nhwindow(WIN_MESSAGE);
+ 	if(yn("Really save?") == 'n') {
+ 		clear_nhwindow(WIN_MESSAGE);
+-		if(multi > 0) nomul(0);
++		if(multi > 0) nomul(0, 0);
+ 	} else {
+ 		clear_nhwindow(WIN_MESSAGE);
+ 		pline("Saving...");
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/sounds.c nethack-3.4.3-helpless/src/sounds.c
+--- nethack-3.4.3-orig/src/sounds.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/sounds.c	2004-03-03 01:34:51.000000000 +0200
+@@ -325,7 +325,7 @@
+ 	growl_verb = growl_sound(mtmp);
+     if (growl_verb) {
+ 	pline("%s %s!", Monnam(mtmp), vtense((char *)0, growl_verb));
+-	if(flags.run) nomul(0);
++	if(flags.run) nomul(0, 0);
+ 	wake_nearto(mtmp->mx, mtmp->my, mtmp->data->mlevel * 18);
+     }
+ }
+@@ -366,7 +366,7 @@
+     }
+     if (yelp_verb) {
+ 	pline("%s %s!", Monnam(mtmp), vtense((char *)0, yelp_verb));
+-	if(flags.run) nomul(0);
++	if(flags.run) nomul(0, 0);
+ 	wake_nearto(mtmp->mx, mtmp->my, mtmp->data->mlevel * 12);
+     }
+ }
+@@ -398,7 +398,7 @@
+     }
+     if (whimper_verb) {
+ 	pline("%s %s.", Monnam(mtmp), vtense((char *)0, whimper_verb));
+-	if(flags.run) nomul(0);
++	if(flags.run) nomul(0, 0);
+ 	wake_nearto(mtmp->mx, mtmp->my, mtmp->data->mlevel * 6);
+     }
+ }
+@@ -627,7 +627,7 @@
+ 	case MS_BONES:
+ 	    pline("%s rattles noisily.", Monnam(mtmp));
+ 	    You("freeze for a moment.");
+-	    nomul(-2);
++	    nomul(-2, "scared by rattling");
+ 	    break;
+ 	case MS_LAUGH:
+ 	    {
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/spell.c nethack-3.4.3-helpless/src/spell.c
+--- nethack-3.4.3-orig/src/spell.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/spell.c	2004-03-03 01:35:49.000000000 +0200
+@@ -325,7 +325,7 @@
+ 	if (Confusion) {		/* became confused while learning */
+ 	    (void) confused_book(book);
+ 	    book = 0;			/* no longer studying */
+-	    nomul(delay);		/* remaining delay is uninterrupted */
++	    nomul(delay, "reading a book");		/* remaining delay is uninterrupted */
+ 	    delay = 0;
+ 	    return(0);
+ 	}
+@@ -463,7 +463,7 @@
+ 		if (too_hard) {
+ 		    boolean gone = cursed_book(spellbook);
+ 
+-		    nomul(delay);			/* study time */
++		    nomul(delay, "reading a book");			/* study time */
+ 		    delay = 0;
+ 		    if(gone || !rn2(3)) {
+ 			if (!gone) pline_The("spellbook crumbles to dust!");
+@@ -478,7 +478,7 @@
+ 		    if (!confused_book(spellbook)) {
+ 			spellbook->in_use = FALSE;
+ 		    }
+-		    nomul(delay);
++		    nomul(delay, "reading a book");
+ 		    delay = 0;
+ 		    return(1);
+ 		}
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/steal.c nethack-3.4.3-helpless/src/steal.c
+--- nethack-3.4.3-orig/src/steal.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/steal.c	2004-03-03 01:36:27.000000000 +0200
+@@ -382,7 +382,7 @@
+ 				  equipname(otmp));
+ 			named++;
+ 			/* the following is to set multi for later on */
+-			nomul(-armordelay);
++			nomul(-armordelay, "taking off clothes");
+ 			remove_worn_item(otmp, TRUE);
+ 			otmp->cursed = curssv;
+ 			if(multi < 0){
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/teleport.c nethack-3.4.3-helpless/src/teleport.c
+--- nethack-3.4.3-orig/src/teleport.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/teleport.c	2004-03-03 01:36:59.000000000 +0200
+@@ -326,7 +326,7 @@
+ 	newsym(u.ux0,u.uy0);
+ 	see_monsters();
+ 	vision_full_recalc = 1;
+-	nomul(0);
++	nomul(0, 0);
+ 	vision_recalc(0);	/* vision before effects */
+ 	spoteffects(TRUE);
+ 	invocation_message();
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/timeout.c nethack-3.4.3-helpless/src/timeout.c
+--- nethack-3.4.3-orig/src/timeout.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/timeout.c	2004-03-03 01:38:07.000000000 +0200
+@@ -35,7 +35,7 @@
+ 	if (i == 5L)
+ 		HFast = 0L;
+ 	if (i == 3L)
+-		nomul(-3);
++		nomul(-3, "getting stoned");
+ 	exercise(A_DEX, FALSE);
+ }
+ 
+@@ -137,7 +137,7 @@
+ 	if (i == 3L) {	/* limbs becoming oozy */
+ 	    HFast = 0L;	/* lose intrinsic speed */
+ 	    stop_occupation();
+-	    if (multi > 0) nomul(0);
++	    if (multi > 0) nomul(0, 0);
+ 	}
+ 	exercise(A_DEX, FALSE);
+ }
+@@ -327,7 +327,7 @@
+ 			/* otherwise handle fumbling msgs locally. */
+ 			if (u.umoved && !Levitation) {
+ 			    slip_or_trip();
+-			    nomul(-2);
++			    nomul(-2, "fumbling");
+ 			    nomovemsg = "";
+ 			    /* The more you are carrying the more likely you
+ 			     * are to make noise when you fumble.  Adjustments
+@@ -362,7 +362,7 @@
+ boolean wakeup_msg;
+ {
+ 	stop_occupation();
+-	nomul(how_long);
++	nomul(how_long, "sleeping");
+ 	/* generally don't notice sounds while sleeping */
+ 	if (wakeup_msg && multi == how_long) {
+ 	    /* caller can follow with a direct call to Hear_again() if
+@@ -1220,7 +1220,7 @@
+ 	pline("Kaboom!!!  Boom!!  Boom!!");
+ 	if(!u.uinvulnerable) {
+ 	    stop_occupation();
+-	    nomul(-3);
++	    nomul(-3, "hiding from thunderstorm");
+ 	}
+     } else
+ 	You_hear("a rumbling noise.");
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/trap.c nethack-3.4.3-helpless/src/trap.c
+--- nethack-3.4.3-orig/src/trap.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/trap.c	2004-03-03 01:39:04.000000000 +0200
+@@ -591,7 +591,7 @@
+ 	boolean webmsgok = (!(trflags & NOWEBMSG));
+ 	boolean forcebungle = (trflags & FORCEBUNGLE);
+ 
+-	nomul(0);
++	nomul(0, 0);
+ 
+ 	/* KMH -- You can't escape the Sokoban level traps */
+ 	if (In_sokoban(&u.uz) &&
+@@ -1415,7 +1415,7 @@
+ 				break;
+ 			}
+ 		} else if (bhitpos.x == u.ux && bhitpos.y == u.uy) {
+-			if (multi) nomul(0);
++			if (multi) nomul(0, 0);
+ 			if (thitu(9 + singleobj->spe,
+ 				  dmgval(singleobj, &youmonst),
+ 				  singleobj, (char *)0))
+@@ -3741,7 +3741,7 @@
+ 		case 3:
+ 			if (!Free_action) {                        
+ 			pline("Suddenly you are frozen in place!");
+-			nomul(-d(5, 6));
++			nomul(-d(5, 6), "frozen by a trap");
+ 			exercise(A_DEX, FALSE);
+ 			nomovemsg = You_can_move_again;
+ 			} else You("momentarily stiffen.");
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/uhitm.c nethack-3.4.3-helpless/src/uhitm.c
+--- nethack-3.4.3-orig/src/uhitm.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/uhitm.c	2004-03-03 01:39:52.000000000 +0200
+@@ -1813,7 +1813,7 @@
+ 				 */
+ 				You("digest %s.", mon_nam(mdef));
+ 				if (Slow_digestion) tmp *= 2;
+-				nomul(-tmp);
++				nomul(-tmp, "digesting something");
+ 				nomovemsg = msgbuf;
+ 			    } else pline("%s", msgbuf);
+ 			    if (mdef->data == &mons[PM_GREEN_SLIME]) {
+@@ -2267,7 +2267,7 @@
+ 			else {
+ 			    You("are frozen by %s gaze!",
+ 				  s_suffix(mon_nam(mon)));
+-			    nomul((ACURR(A_WIS) > 12 || rn2(4)) ? -tmp : -127);
++			    nomul((ACURR(A_WIS) > 12 || rn2(4)) ? -tmp : -127, "frozen by a monster's gaze");
+ 			}
+ 		    } else {
+ 			pline("%s cannot defend itself.",
+@@ -2279,7 +2279,7 @@
+ 		} else { /* gelatinous cube */
+ 		    You("are frozen by %s!", mon_nam(mon));
+ 	    	    nomovemsg = 0;	/* default: "you can move again" */
+-		    nomul(-tmp);
++		    nomul(-tmp, "frozen by a monster");
+ 		    exercise(A_DEX, FALSE);
+ 		}
+ 		break;
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/vault.c nethack-3.4.3-helpless/src/vault.c
+--- nethack-3.4.3-orig/src/vault.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/vault.c	2004-03-03 01:40:05.000000000 +0200
+@@ -260,7 +260,7 @@
+ 	}
+ 
+ 	stop_occupation();		/* if occupied, stop it *now* */
+-	if (multi > 0) { nomul(0); unmul((char *)0); }
++	if (multi > 0) { nomul(0, 0); unmul((char *)0); }
+ 	trycount = 5;
+ 	do {
+ 	    getlin("\"Hello stranger, who are you?\" -", buf);
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/zap.c nethack-3.4.3-helpless/src/zap.c
+--- nethack-3.4.3-orig/src/zap.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-helpless/src/zap.c	2004-03-03 01:40:15.000000000 +0200
+@@ -3436,7 +3436,7 @@
+ 		miss(fltxt,mon);
+ 	    }
+ 	} else if (sx == u.ux && sy == u.uy && range >= 0) {
+-	    nomul(0);
++	    nomul(0, 0);
+ #ifdef STEED
+ 	    if (u.usteed && !rn2(3) && !mon_reflects(u.usteed, (char *)0)) {
+ 		    mon = u.usteed;
+@@ -3466,7 +3466,7 @@
+ 		if (!Blind) Your(vision_clears);
+ 	    }
+ 	    stop_occupation();
+-	    nomul(0);
++	    nomul(0, 0);
+ 	}
+ 
+ 	if(!ZAP_POS(lev->typ) || (closed_door(sx, sy) && (range >= 0))) {

@@ -1,0 +1,390 @@
+diff -Naur nethack-3.4.3/include/config.h nethack-3.4.3-named/include/config.h
+--- nethack-3.4.3/include/config.h	2009-03-22 11:34:53.000000000 -0400
++++ nethack-3.4.3-named/include/config.h	2009-03-22 11:35:43.000000000 -0400
+@@ -370,6 +370,7 @@
+ #endif
+ /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+ /*#define AUTOPICKUP_EXCEPTIONS */ /* exceptions to autopickup */
++#define WEBB_NAMED_MONSTERS
+ 
+ #define INVISIBLE_OBJECTS
+ 
+diff -Naur nethack-3.4.3/include/extern.h nethack-3.4.3-named/include/extern.h
+--- nethack-3.4.3/include/extern.h	2009-03-22 11:34:53.000000000 -0400
++++ nethack-3.4.3-named/include/extern.h	2009-03-22 11:35:43.000000000 -0400
+@@ -327,6 +327,10 @@
+ 
+ E int FDECL(getpos, (coord *,BOOLEAN_P,const char *));
+ E struct monst *FDECL(christen_monst, (struct monst *,const char *));
++#ifdef WEBB_NAMED_MONSTERS
++E struct monst * FDECL(introduce_mons, (struct monst *));
++E const char * FDECL(monst_rnd_name,(int, int));
++#endif
+ E int NDECL(do_mname);
+ E struct obj *FDECL(oname, (struct obj *,const char *));
+ E int NDECL(ddocall);
+diff -Naur nethack-3.4.3/src/bones.c nethack-3.4.3-named/src/bones.c
+--- nethack-3.4.3/src/bones.c	2003-12-07 18:39:13.000000000 -0500
++++ nethack-3.4.3-named/src/bones.c	2009-03-22 11:35:43.000000000 -0400
+@@ -231,6 +231,11 @@
+ 		    mptr->msound == MS_NEMESIS || mptr->msound == MS_LEADER ||
+ 		    mptr == &mons[PM_VLAD_THE_IMPALER])
+ 		mongone(mtmp);
++#ifdef WEBB_NAMED_MONSTERS
++     /* blank an unknown name for compatability */
++     else if (mtmp->mnamelth && ((uchar)NAME(mtmp)[0] == 0x0A)) 
++       christen_monst(mtmp, "");
++#endif
+ 	}
+ #ifdef STEED
+ 	if (u.usteed) dismount_steed(DISMOUNT_BONES);
+diff -Naur nethack-3.4.3/src/do_name.c nethack-3.4.3-named/src/do_name.c
+--- nethack-3.4.3/src/do_name.c	2003-12-07 18:39:13.000000000 -0500
++++ nethack-3.4.3-named/src/do_name.c	2009-03-22 11:35:43.000000000 -0400
+@@ -221,6 +221,18 @@
+ 	return(mtmp2);
+ }
+ 
++#ifdef WEBB_NAMED_MONSTERS
++struct monst *
++introduce_mons(mtmp)
++struct monst * mtmp;
++{
++  char name[PL_PSIZ];
++  if (!mtmp->mnamelth || (NAME(mtmp)[0] != 0x0A) ) return mtmp;
++  strcpy(name, &(NAME(mtmp)[1]));
++  return christen_monst(mtmp, name);
++}
++#endif
++
+ int
+ do_mname()
+ {
+@@ -548,19 +560,81 @@
+     return rn2(7) ? ghostnames[rn2(SIZE(ghostnames))] : (const char *)plname;
+ }
+ 
++#ifdef WEBB_NAMED_MONSTERS
++static char * erinysnames[] = {
++  "\012Alecto",
++  "\012Megaera",
++  "\012Tisiphone"
++};
++
++static int erinys_shuffled = FALSE;
++  
++static const char * qmnames[] = {
++  "\012Buckaroo",  /* B. Banzai */
++  "\012Dick",      /* D. Feynman */
++  "\012Erwin",     /* E. Schroedinger */
++  "\012Louis",     /* L. de Broglie */
++  "\012Max",       /* M. Born, M. Planck */
++  "\012Niels",     /* N. Bohr */
++  "\012Pascual",   /* P. Jordan */
++  "\012Paul",      /* P. Dirac */
++  "\012Sam",       /* S. Beckett */ 
++  "\012Satyen",    /* Satyendra Bose */
++  "\012Werner",    /* W. Heisenberg */
++  "\012Wolfgang",  /* W. Pauli */
++  "\012Enrico",    /* E. Fermi */  
++
++  "\012Marie",     /* M. Curie */
++  "\012Lise",      /* L. Meitner */
++};
++
++const char *
++monst_rnd_name(mtype, gender)
++int mtype, gender;
++{
++  char * empty  = "";
++  switch (mtype){
++    case PM_QUANTUM_MECHANIC:
++      if (gender) 
++        return (rn2(3))?empty:qmnames[SIZE(qmnames)-rnd(2)];
++      return ((rn2(3))?qmnames[rn2(SIZE(qmnames)-2)]:empty);
++      break;
++    case PM_ERINYS:
++      if (mvitals[PM_ERINYS].born > 3) return empty;
++      else if (!erinys_shuffled){
++        char * swap;
++        int index, i, seed = (u.ubirthday/10)%6;
++        for (i = 2; i > 0; --i){
++          index = seed%(i+1);
++          swap = erinysnames[i];
++          erinysnames[i] = erinysnames[index];
++          erinysnames[index] = swap;
++        }
++        erinys_shuffled = TRUE;
++      }
++      return erinysnames[ mvitals[PM_ERINYS].born - 1 ];
++      break;
++    default:
++      return empty;
++  }
++}
++
++#endif
++
+ /* Monster naming functions:
+  * x_monnam is the generic monster-naming function.
+  *		  seen	      unseen	   detected		  named
+  * mon_nam:	the newt	it	the invisible orc	Fido
+- * noit_mon_nam:the newt (as if detected) the invisible orc	Fido
++ * noit_mon_nam:the newt      **    the invisible orc	      Fido
+  * l_monnam:	newt		it	invisible orc		dog called fido
+  * Monnam:	The newt	It	The invisible orc	Fido
+- * noit_Monnam: The newt (as if detected) The invisible orc	Fido
++ * noit_Monnam: The newt      **    The invisible orc	      Fido
+  * Adjmonnam:	The poor newt	It	The poor invisible orc	The poor Fido
+  * Amonnam:	A newt		It	An invisible orc	Fido
+  * a_monnam:	a newt		it	an invisible orc	Fido
+  * m_monnam:	newt		xan	orc			Fido
+  * y_monnam:	your newt     your xan	your invisible orc	Fido
++ *  ** (as if detected)
+  */
+ 
+ /* Bug: if the monster is a priest or shopkeeper, not every one of these
+@@ -593,6 +667,12 @@
+ 	boolean do_hallu, do_invis, do_it, do_saddle;
+ 	boolean name_at_start, has_adjectives;
+ 	char *bp;
++#ifdef WEBB_NAMED_MONSTERS
++  char *name = NAME(mtmp);
++  const char * mname =  
++    (mtmp->m_ap_type == M_AP_MONSTER && mdat != &mons[PM_WIZARD_OF_YENDOR])? 
++    mons[mtmp->mappearance].mname : mdat->mname;
++#endif
+ 
+ 	if (program_state.gameover)
+ 	    suppress |= SUPPRESS_HALLUCINATION;
+@@ -657,7 +737,11 @@
+ 	    Strcat(buf, " the ");
+ 	    if (do_invis)
+ 		Strcat(buf, "invisible ");
++#ifdef WEBB_NAMED_MONSTERS
++    Strcat(buf, mname);
++#else
+ 	    Strcat(buf, mdat->mname);
++#endif
+ 	    return buf;
+ 	}
+ 
+@@ -681,14 +765,24 @@
+ 	if (do_hallu) {
+ 	    Strcat(buf, rndmonnam());
+ 	    name_at_start = FALSE;
++#ifdef WEBB_NAMED_MONSTERS
++  } else if (mtmp->mnamelth && (name[0] != 0x0A)) {     
++#else
+ 	} else if (mtmp->mnamelth) {
+ 	    char *name = NAME(mtmp);
++#endif
+ 
+ 	    if (mdat == &mons[PM_GHOST]) {
+ 		Sprintf(eos(buf), "%s ghost", s_suffix(name));
+ 		name_at_start = TRUE;
+ 	    } else if (called) {
+-		Sprintf(eos(buf), "%s called %s", mdat->mname, name);
++      Sprintf(eos(buf), "%s called %s", 
++#ifdef WEBB_NAMED_MONSTERS
++          mname,
++#else
++          mdat->mname,
++#endif
++          name);
+ 		name_at_start = (boolean)type_is_pname(mdat);
+ 	    } else if (is_mplayer(mdat) && (bp = strstri(name, " the ")) != 0) {
+ 		/* <name> the <adjective> <invisible> <saddled> <rank> */
+@@ -714,7 +808,13 @@
+ 	    Strcat(buf, lcase(pbuf));
+ 	    name_at_start = FALSE;
+ 	} else {
+-	    Strcat(buf, mdat->mname);
++    Strcat(buf, 
++#ifdef WEBB_NAMED_MONSTERS
++        mname
++#else
++        mdat->mname
++#endif
++        );
+ 	    name_at_start = (boolean)type_is_pname(mdat);
+ 	}
+ 
+diff -Naur nethack-3.4.3/src/end.c nethack-3.4.3-named/src/end.c
+--- nethack-3.4.3/src/end.c	2009-03-22 11:34:53.000000000 -0400
++++ nethack-3.4.3-named/src/end.c	2009-03-22 11:37:53.000000000 -0400
+@@ -220,9 +220,14 @@
+ 		Strcat(buf, killer);
+ 	} else {
+ 		Strcat(buf, mtmp->data->mname);
+-		if (mtmp->mnamelth)
++      if (mtmp->mnamelth
++#ifdef WEBB_NAMED_MONSTERS
++          && ((uchar)NAME(mtmp)[0] != 0x0A)
++#endif
++          ) {     
+ 		    Sprintf(eos(buf), " called %s", NAME(mtmp));
+ 	}
++	}
+ 
+ 	if (multi) Strcat(buf, ", while helpless");
+ 	killer = buf;
+@@ -924,7 +929,11 @@
+ 	char buf[BUFSZ];
+ 
+ 	for (box = list; box; box = box->nobj) {
+-	    if (Is_container(box) || box->otyp == STATUE) {
++ 	    if (Is_container(box) || box->otyp == STATUE
++#ifdef NEPHI_PHOTOGRAPHY
++ 		|| box->otyp==SPE_PHOTO_ALBUM
++#endif			
++	    ) {
+ 		if (box->otyp == BAG_OF_TRICKS && box->spe) {
+ 		    continue;	/* bag of tricks with charges can't contain anything */
+ 		} else if (box->cobj) {
+diff -Naur nethack-3.4.3/src/makemon.c nethack-3.4.3-named/src/makemon.c
+--- nethack-3.4.3/src/makemon.c	2009-03-22 11:34:53.000000000 -0400
++++ nethack-3.4.3-named/src/makemon.c	2009-03-22 11:35:43.000000000 -0400
+@@ -621,12 +621,27 @@
+ 		if (rn2(7)) (void)mongets(mtmp, MUMMY_WRAPPING);
+ 		break;
+ 	    case S_QUANTMECH:
++#ifdef WEBB_NAMED_MONSTERS
++      {
++        char * ame = (mtmp->mnamelth &&
++            (NAME(mtmp)[0] == 0x0A)) ? NAME(mtmp)+1:0; 
++        if (ptr == &mons[PM_QUANTUM_MECHANIC]){
++          if (!rn2(20) || (ame && !strcmp(ame,"Erwin"))) {
++            otmp = mksobj(LARGE_BOX, FALSE, FALSE);
++            otmp->spe = 1; /* flag for special box */
++            otmp->owt = weight(otmp);
++            (void) mpickobj(mtmp, otmp);
++          }
++        }
++      }
++#else
+ 		if (!rn2(20)) {
+ 			otmp = mksobj(LARGE_BOX, FALSE, FALSE);
+ 			otmp->spe = 1; /* flag for special box */
+ 			otmp->owt = weight(otmp);
+ 			(void) mpickobj(mtmp, otmp);
+ 		}
++#endif
+ 		break;
+ 	    case S_LEPRECHAUN:
+ #ifndef GOLDOBJ
+@@ -1021,6 +1036,13 @@
+ 		flags.ghost_count++;
+ 		if (!(mmflags & MM_NONAME))
+ 			mtmp = christen_monst(mtmp, rndghostname());
++#ifdef WEBB_NAMED_MONSTERS
++   } else if (mndx == PM_QUANTUM_MECHANIC ) {
++     if(!(mmflags & MM_NONAME))
++       mtmp = christen_monst(mtmp, monst_rnd_name(mndx, mtmp->female));
++   } else if (mndx == PM_ERINYS && countbirth){ /* ignore MM_NONAME */
++     mtmp = christen_monst(mtmp, monst_rnd_name(mndx, 1));
++#endif
+ 	} else if (mndx == PM_VLAD_THE_IMPALER) {
+ 		mitem = CANDELABRUM_OF_INVOCATION;
+ 	} else if (mndx == PM_CROESUS) {
+@@ -1317,7 +1339,7 @@
+ 
+ 	maxmlev = level_difficulty() >> 1;
+ 	if(class < 1 || class >= MAXMCLASSES) {
+-	    impossible("mkclass called with bad class!");
++	    impossible("mkclass called with bad class! [#%d]", class);
+ 	    return((struct permonst *) 0);
+ 	}
+ /*	Assumption #1:	monsters of a given class are contiguous in the
+diff -Naur nethack-3.4.3/src/mon.c nethack-3.4.3-named/src/mon.c
+--- nethack-3.4.3/src/mon.c	2009-03-22 11:34:53.000000000 -0400
++++ nethack-3.4.3-named/src/mon.c	2009-03-22 11:35:43.000000000 -0400
+@@ -313,7 +313,11 @@
+ 	   prevent the same attack beam from hitting its corpse */
+ 	if (flags.bypasses) bypass_obj(obj);
+ 
+-	if (mtmp->mnamelth)
++  if (mtmp->mnamelth
++#ifdef WEBB_NAMED_MONSTERS
++      && (NAME(mtmp)[0] != 0x0A)
++#endif
++     )
+ 	    obj = oname(obj, NAME(mtmp));
+ 
+ 	/* Avoid "It was hidden under a green mold corpse!" 
+diff -Naur nethack-3.4.3/src/pager.c nethack-3.4.3-named/src/pager.c
+--- nethack-3.4.3/src/pager.c	2009-03-22 11:34:53.000000000 -0400
++++ nethack-3.4.3-named/src/pager.c	2009-03-22 11:35:43.000000000 -0400
+@@ -127,6 +127,15 @@
+ 	if (mtmp != (struct monst *) 0) {
+ 	    char *name, monnambuf[BUFSZ];
+ 	    boolean accurate = !Hallucination;
++#ifdef WEBB_NAMED_MONSTERS
++      /* You read their mind, you learn an unknown name */
++      if (mtmp->mnamelth){
++          if((NAME(mtmp)[0] == 0x0A) &&
++              accurate && (tp_sensemon(mtmp)) ){
++            mtmp = introduce_mons(mtmp);
++          } 
++      } 
++#endif
+ 
+ 	    if (mtmp->data == &mons[PM_COYOTE] && accurate)
+ 		name = coyotename(mtmp, monnambuf);
+diff -Naur nethack-3.4.3/src/restore.c nethack-3.4.3-named/src/restore.c
+--- nethack-3.4.3/src/restore.c	2003-12-07 18:39:13.000000000 -0500
++++ nethack-3.4.3-named/src/restore.c	2009-03-22 11:35:43.000000000 -0400
+@@ -277,6 +277,10 @@
+ 				/* cookie to trigger purge in getbones() */
+ 				mtmp->mhpmax = DEFUNCT_MONSTER;	
+ 			}
++#ifdef WEBB_NAMED_MONSTERS
++         else if (mndx == PM_ERINYS) /* ignore MM_NONAME */
++           mtmp = christen_monst(mtmp, monst_rnd_name(mndx, 1));
++#endif
+ 		}
+ 		if(mtmp->minvent) {
+ 			struct obj *obj;
+diff -Naur nethack-3.4.3/src/sounds.c nethack-3.4.3-named/src/sounds.c
+--- nethack-3.4.3/src/sounds.c	2003-12-07 18:39:13.000000000 -0500
++++ nethack-3.4.3-named/src/sounds.c	2009-03-22 11:35:43.000000000 -0400
+@@ -670,6 +670,20 @@
+ 		if (In_endgame(&u.uz) && is_mplayer(ptr)) {
+ 		    mplayer_talk(mtmp);
+ 		    break;
++#ifdef WEBB_NAMED_MONSTERS
++        } else if (mtmp->mnamelth && (NAME(mtmp)[0] == 0x0A) ){
++          mtmp = introduce_mons(mtmp);
++          if (ptr == &mons[PM_QUANTUM_MECHANIC])
++            verbalize("I'm %s, are you ready for the quantum immortality experiment?", NAME(mtmp));
++          else
++            verbalize("Hello, my name is %s. Prepare to die.", NAME(mtmp));
++            /* do you happen to have six fingers on your right hand? */
++          break;
++        } else if (ptr == &mons[PM_QUANTUM_MECHANIC] && 
++            !strcmp(NAME(mtmp), "Sam")){
++          verbalize("Oh, boy.");
++          break;
++#endif
+ 		} else return 0;	/* no sound */
+ 	    }
+ 	    /* Generic peaceful humanoid behaviour. */
+@@ -692,6 +706,18 @@
+ 						moves > EDOG(mtmp)->hungrytime)
+ 		verbl_msg = "I'm hungry.";
+ 	    /* Specific monsters' interests */
++#ifdef WEBB_NAMED_MONSTERS
++      else if (mtmp->mnamelth && (uchar)NAME(mtmp)[0] == 0x0A){
++        mtmp = introduce_mons(mtmp);
++        verbalize("%s, I'm %s.  %s", Hello(mtmp), NAME(mtmp), 
++            (ptr == &mons[PM_QUANTUM_MECHANIC])?
++            "Please come back during my office hours.":
++            (Inhell)?"Hot enough for ya?":"Dank enough for ya?");
++      } else if (ptr == &mons[PM_QUANTUM_MECHANIC] && 
++          !strcmp(NAME(mtmp), "Sam")){
++        verbl_msg = "Oh, boy.";
++      }
++#endif
+ 	    else if (is_elf(ptr))
+ 		pline_msg = "curses orcs.";
+ 	    else if (is_dwarf(ptr))

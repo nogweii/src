@@ -1,0 +1,84 @@
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/include/extern.h nethack-3.4.3-minenlite/include/extern.h
+--- nethack-3.4.3-orig/include/extern.h	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-minenlite/include/extern.h	2006-06-17 14:48:37.000000000 +0300
+@@ -122,6 +122,8 @@
+ 
+ /* ### botl.c ### */
+ 
++E const char *NDECL(encstat);
++E const char *NDECL(hunstat);
+ E int FDECL(xlev_to_rank, (int));
+ E int FDECL(title_to_mon, (const char *,int *,int *));
+ E void NDECL(max_rank_sz);
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/botl.c nethack-3.4.3-minenlite/src/botl.c
+--- nethack-3.4.3-orig/src/botl.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-minenlite/src/botl.c	2006-06-17 14:45:10.000000000 +0300
+@@ -242,6 +242,23 @@
+ 	return ret;
+ }
+ 
++const char *
++encstat()
++{
++    int cap = near_capacity();
++    if(cap > UNENCUMBERED)
++	return enc_stat[cap];
++    else return "";
++}
++
++const char *
++hunstat()
++{
++    if (strcmp(hu_stat[u.uhs], "        "))
++	return hu_stat[u.uhs];
++    else return "";
++}
++
+ STATIC_OVL void
+ bot2()
+ {
+diff -Nurd --exclude-from=diff_ignore_files.txt nethack-3.4.3-orig/src/cmd.c nethack-3.4.3-minenlite/src/cmd.c
+--- nethack-3.4.3-orig/src/cmd.c	2003-12-08 01:39:13.000000000 +0200
++++ nethack-3.4.3-minenlite/src/cmd.c	2006-06-17 14:48:48.000000000 +0300
+@@ -1145,6 +1145,7 @@
+ 	static const char tabbed_deity_fmtstr[] = "%s\t%s";
+ 	static const char *fmtstr;
+ 	static const char *deity_fmtstr;
++	boolean stats = FALSE;
+ 
+ 	fmtstr = iflags.menu_tab_sep ? tabbed_fmtstr : untabbed_fmtstr;
+ 	deity_fmtstr = iflags.menu_tab_sep ?
+@@ -1224,6 +1225,33 @@
+ 	Sprintf(buf, fmtstr, "Lawful", buf2);
+ 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+ 
++	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", FALSE);
++	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Status", FALSE);
++	if (strcmp(hunstat(), "")) {
++	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, hunstat(), FALSE);
++	    stats = TRUE;
++	}
++	if (near_capacity() > UNENCUMBERED) {
++	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, encstat(), FALSE);
++	    stats = TRUE;
++	}
++	if (Confusion) { add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "Confused", FALSE); stats = TRUE; }
++	if (Sick) {
++	    if (u.usick_type & SICK_VOMITABLE) {
++		add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "Dying from food poisoning", FALSE);
++		stats = TRUE;
++	    }
++	    if (u.usick_type & SICK_NONVOMITABLE) {
++		add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "Dying from illness", FALSE);
++		stats = TRUE;
++	    }
++	}
++	if (Blind) { add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "Blind", FALSE); stats = TRUE; }
++	if (Stunned) { add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "Stunned", FALSE); stats = TRUE; }
++	if (Hallucination) { add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "Hallucinating", FALSE); stats = TRUE; }
++	if (Slimed) { add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "Slimed", FALSE); stats = TRUE; }
++	if (!stats) add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "None", FALSE);
++
+ 	end_menu(tmpwin, "Base Attributes");
+ 	n = select_menu(tmpwin, PICK_NONE, &selected);
+ 	destroy_nhwindow(tmpwin);
