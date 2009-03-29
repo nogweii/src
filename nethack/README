@@ -6,4 +6,6 @@ Many thanks to the NetHack Patch Database - without you, it would've been a lot 
 
 Make sure to modify INSTALL_ROOT in installer.sh, where nethack is supposed to be installed. The default is "$HOME/sys/".
 
-As currently configured, nethack will be compiled with optimizations for Core2 Duo CPUs, if you don't want that or can't, change patches/unix-makefile-conf.patch or edit sys/unix/Makefile.src
+Patches that I'm currently thinking about (or haven't tried applying) are in ./unknown/.
+
+As currently configured, nethack will be compiled with optimizations for Core2 Duo CPUs, if you don't want that or can't, change patches/unix-makefile-conf.patch or edit nethack-3.4.3-sys/unix/Makefile.src (after downloading/extracting the nethack tarball).
